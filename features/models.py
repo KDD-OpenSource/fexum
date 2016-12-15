@@ -10,6 +10,7 @@ class Feature(models.Model):
     is_target = models.BooleanField(default=False) # Never use directly
 
     def select_as_target(self):
+        # TODO: Fix that no target is selected if validation for self failed
         Feature.objects.all().update(is_target=False)
         self.is_target = True
 
