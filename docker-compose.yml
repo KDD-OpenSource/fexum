@@ -1,0 +1,17 @@
+version: "2"
+
+services:
+  web:
+    build: ./
+    networks:
+      - predots
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      DJANGO_SETTINGS_MODULE: predots.settings
+
+networks:
+  predots:
