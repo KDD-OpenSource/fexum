@@ -1,8 +1,17 @@
 version: "2"
 
 services:
+  redis:
+    image: redis:lastest
+    networks:
+      - predots
+
   web:
     build: ./
+    links:
+      - redis
+    depends_on:
+      - redis
     networks:
       - predots
     volumes:
