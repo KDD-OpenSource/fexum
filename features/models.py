@@ -19,7 +19,7 @@ class Histogram(models.Model):
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
 
 
-class Bucket(models.Model):
+class Bin(models.Model):
     histogram = models.ForeignKey(Histogram, on_delete=models.CASCADE)
     # TODO: Make sure from_value < to_value
     from_value = models.DecimalField(max_digits=10, decimal_places=5)

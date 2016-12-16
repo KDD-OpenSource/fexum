@@ -1,7 +1,9 @@
 from django.test import TestCase
-from features.tests.factories import FeatureFactory, BucketFactory, HistogramFactory, SliceFactory
-from features.serializers import FeatureSerializer, BucketSerializer, HistogramSerializer, SliceSerializer
+from features.tests.factories import FeatureFactory, BinFactory, SliceFactory
+from features.serializers import FeatureSerializer, BinSerializer, HistogramSerializer, \
+    SliceSerializer
 from decimal import Decimal
+
 
 class TestFeatureSerializer(TestCase):
     def test_serialize_one(self):
@@ -20,29 +22,29 @@ class TestFeatureSerializer(TestCase):
 
 class TestHistogramSerializer(TestCase):
     def test_serialize_one(self):
-        bucket = BucketFactory()
-        histogram = bucket.histogram
+        bin = BinFactory()
+        histogram = bin.histogram
         serializer = HistogramSerializer(instance=histogram)
         data = serializer.data
 
         self.assertEqual(data.pop('id'), histogram.id)
-        self.assertEqual(data.pop('buckets'), [{
-            'from_value': bucket.from_value,
-            'to_value': bucket.to_value,
-            'count': bucket.count
+        self.assertEqual(data.pop('bin_set'), [{
+            'from_value': bin.from_value,
+            'to_value': bin.to_value,
+            'count': bin.count
         }])
         self.assertEqual(len(data), 0)
 
 
-class TestBucketSerializer(TestCase):
+class TestBinSerializer(TestCase):
     def test_serialize_one(self):
-        bucket = BucketFactory()
-        serializer = BucketSerializer(instance=bucket)
+        bin = BinFactory()
+        serializer = BinSerializer(instance=bin)
         data = serializer.data
 
-        self.assertEqual(Decimal(data.pop('from_value')), bucket.from_value)
-        self.assertEqual(Decimal(data.pop('to_value')), bucket.to_value)
-        self.assertEqual(data.pop('count'), bucket.count)
+        self.assertEqual(Decimal(data.pop('from_value')), bin.from_value)
+        self.assertEqual(Decimal(data.pop('to_value')), bin.to_value)
+        self.assertEqual(data.pop('count'), bin.count)
         self.assertEqual(len(data), 0)
 
 

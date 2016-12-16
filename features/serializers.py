@@ -1,5 +1,5 @@
-from rest_framework.serializers import ModelSerializer, JSONField, RelatedField
-from features.models import Feature, Bucket, Histogram, Slice
+from rest_framework.serializers import ModelSerializer, JSONField
+from features.models import Feature, Bin, Histogram, Slice
 
 
 class FeatureSerializer(ModelSerializer):
@@ -8,18 +8,18 @@ class FeatureSerializer(ModelSerializer):
         fields = ('id', 'name', 'relevancy', 'redundancy', 'rank', 'is_target')
 
 
-class BucketSerializer(ModelSerializer):
+class BinSerializer(ModelSerializer):
     class Meta:
-        model = Bucket
+        model = Bin
         fields = ('from_value', 'to_value', 'count')
 
 
 class HistogramSerializer(ModelSerializer):
-    buckets = BucketSerializer(read_only=True, many=True)
+    bin_set = BinSerializer(read_only=True, many=True)
 
     class Meta:
         model = Histogram
-        fields = ('id', 'buckets')
+        fields = ('id', 'bin_set')
 
 
 class SliceSerializer(ModelSerializer):

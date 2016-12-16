@@ -1,17 +1,15 @@
 version: "2"
 
 services:
-  redis:
-    image: redis:lastest
+  queue:
+    image: rabbitmq:latest
     networks:
       - predots
 
   web:
     build: ./
-    links:
-      - redis
     depends_on:
-      - redis
+      - queue
     networks:
       - predots
     volumes:
@@ -19,6 +17,18 @@ services:
     ports:
       - "8000:8000"
     command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      DJANGO_SETTINGS_MODULE: predots.settings
+
+  worker:
+    build: ./
+    depends_on:
+      - queue
+    networks:
+      - predots
+    volumes:
+      - .:/code
+    command: "celery worker --app=predots"
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
 
