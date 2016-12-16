@@ -21,6 +21,7 @@ class Histogram(models.Model):
 
 class Bucket(models.Model):
     histogram = models.ForeignKey(Histogram, on_delete=models.CASCADE)
+    # TODO: Make sure from_value < to_value
     from_value = models.DecimalField(max_digits=10, decimal_places=5)
     to_value = models.DecimalField(max_digits=10, decimal_places=5)
     count = models.IntegerField()
@@ -30,5 +31,5 @@ class Slice(models.Model):
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
     from_value = models.DecimalField(max_digits=10, decimal_places=5)
     to_value = models.DecimalField(max_digits=10, decimal_places=5)
-    marginal_distribution = JSONField()
-    conditional_distribution = JSONField()
+    marginal_distribution = JSONField(default=[])
+    conditional_distribution = JSONField(default=[])
