@@ -50,6 +50,4 @@ class TestBuildHistogramTask(TestCase):
         bins = histogram.bin_set
         self.assertEqual(bins.count(), len(bin_values))
         for bin_obj in bins.all():
-            print(bin_obj.from_value)
-            print(bin_obj.to_value)
             self.assertIn(bin_obj.count, bin_values)
