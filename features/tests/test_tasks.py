@@ -1,9 +1,9 @@
 from django.test import TestCase
-from features.tasks import initialize_from_dataset, build_histogram
-from features.models import Feature, Histogram, Bin
+from features.tasks import initialize_from_dataset, downsample_feature, build_histogram
+from features.models import Feature, Histogram, Sample
 import pandas as pd
 import numpy as np
-
+from decimal import Decimal
 
 def build_test_file():
     test_file = 'test_file.csv'
@@ -53,3 +53,20 @@ class TestBuildHistogramTask(TestCase):
             print(bin_obj.from_value)
             print(bin_obj.to_value)
             self.assertIn(bin_obj.count, bin_values)
+
+
+class TestDownsampleTask(TestCase):
+    def test_downsample_feature(self):
+        test_file, feature_names = build_test_file()
+        feature_name = feature_names[0]
+        feature = Feature.objects.create(name=feature_name)
+        factor = 5
+
+        downsample_feature(test_file, feature_name, factor)
+
+        samples = Sample.objects.filter(feature=feature)
+
+        # Test that samples get created from 10 datapoints
+        self.assertEqual(samples.count(), 10/factor)
+        self.assertEqual([sample.value for sample in samples],
+                         [Decimal('0.00000'), Decimal('-0.00162')])

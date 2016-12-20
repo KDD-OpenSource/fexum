@@ -15,6 +15,11 @@ class Feature(models.Model):
         self.is_target = True
 
 
+class Sample(models.Model):
+    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
+    value = models.DecimalField(max_digits=10, decimal_places=5)
+
+
 class Histogram(models.Model):
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
 
