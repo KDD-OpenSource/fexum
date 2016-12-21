@@ -1,6 +1,6 @@
 from django.test import TestCase
-from features.tasks import initialize_from_dataset, downsample_feature, build_histogram
-from features.models import Feature, Histogram, Sample
+from features.tasks import initialize_from_dataset, build_histogram, calculate_feature_statistics
+from features.models import Feature, Histogram, Bin, Sample
 import pandas as pd
 import numpy as np
 from decimal import Decimal
@@ -50,8 +50,6 @@ class TestBuildHistogramTask(TestCase):
         bins = histogram.bin_set
         self.assertEqual(bins.count(), len(bin_values))
         for bin_obj in bins.all():
-            print(bin_obj.from_value)
-            print(bin_obj.to_value)
             self.assertIn(bin_obj.count, bin_values)
 
 
@@ -70,3 +68,20 @@ class TestDownsampleTask(TestCase):
         self.assertEqual(samples.count(), 10/factor)
         self.assertEqual([sample.value for sample in samples],
                          [Decimal('0.00000'), Decimal('-0.00162')])
+
+        
+class TestCalculateFeatureStatistics(TestCase):
+    def test_calculate_feature_statistics(self):
+        test_file, feature_names = build_test_file()
+        feature_name = feature_names[0]
+        Feature.objects.create(name=feature_name)
+
+        calculate_feature_statistics(test_file, feature_name)
+
+        feature = Feature.objects.get(name=feature_name)
+
+        self.assertEqual(feature.mean, Decimal('0.37200'))
+        self.assertEqual(feature.variance, Decimal('1.27569'))
+        self.assertEqual(feature.min, Decimal('-1.24479'))
+        self.assertEqual(feature.max, Decimal('2.24540'))
+
