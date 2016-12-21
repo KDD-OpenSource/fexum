@@ -1,8 +1,8 @@
 from rest_framework.test import APITestCase
-from features.tests.factories import FeatureFactory
+from features.tests.factories import FeatureFactory, BinFactory, SliceFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND
-from features.serializers import FeatureSerializer
+from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer
 from features.models import Feature
 
 
@@ -39,3 +39,43 @@ class TestSelectTargetView(APITestCase):
 
     def test_select_target_already_selected(self):
         pass
+
+
+class TestFeatureSamplesView(APITestCase):
+    pass
+
+
+class TestFeatureHistogramView(APITestCase):
+    def test_retrieve_histogram(self):
+        hbin = BinFactory()
+
+        url = reverse('feature-histogram', args=[hbin.histogram.feature.name])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), [BinSerializer(instance=hbin).data])
+
+    def test_retrieve_histogram_not_found(self):
+        url = reverse('feature-histogram', args=['Some_feature_name'])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})
+
+
+class TestFeatureSlicesView(APITestCase):
+    def test_retrieve_slices(self):
+        fslice = SliceFactory()
+
+        url = reverse('feature-slices', args=[fslice.feature.name])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), [SliceSerializer(instance=fslice).data])
+
+    def test_retrieve_slices_not_found(self):
+        url = reverse('feature-slices', args=['Some_feature_name'])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})
