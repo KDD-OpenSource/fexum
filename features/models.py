@@ -8,6 +8,10 @@ class Feature(models.Model):
     redundancy = models.DecimalField(max_digits=6, decimal_places=5, blank=True, null=True)
     rank = models.IntegerField(unique=True, blank=True, null=True)
     is_target = models.BooleanField(default=False) # Never use directly
+    mean = models.DecimalField(max_digits=6, decimal_places=5, blank=True, null=True)
+    variance = models.DecimalField(max_digits=6, decimal_places=5, blank=True, null=True)
+    min = models.DecimalField(max_digits=6, decimal_places=5, blank=True, null=True)
+    max = models.DecimalField(max_digits=6, decimal_places=5, blank=True, null=True)
 
     def select_as_target(self):
         # TODO: Fix that no target is selected if validation for self failed

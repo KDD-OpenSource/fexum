@@ -17,6 +17,10 @@ class TestFeatureSerializer(TestCase):
         self.assertEqual(data.pop('redundancy'), feature.redundancy)
         self.assertEqual(data.pop('rank'), feature.rank)
         self.assertEqual(data.pop('is_target'), feature.is_target)
+        self.assertEqual(data.pop('min'), feature.min)
+        self.assertEqual(data.pop('max'), feature.max)
+        self.assertEqual(data.pop('mean'), feature.mean)
+        self.assertEqual(data.pop('variance'), feature.variance)
         self.assertEqual(len(data), 0)
 
 
