@@ -5,7 +5,8 @@ from features.models import Feature, Bin, Histogram, Slice
 class FeatureSerializer(ModelSerializer):
     class Meta:
         model = Feature
-        fields = ('id', 'name', 'relevancy', 'redundancy', 'rank', 'is_target')
+        fields = ('id', 'name', 'relevancy', 'redundancy', 'rank', 'is_target', 'mean', 'variance',
+                  'min', 'max')
 
 
 class BinSerializer(ModelSerializer):
