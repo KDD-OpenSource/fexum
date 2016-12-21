@@ -16,7 +16,6 @@ class SelectTargetView(APIView):
     def post(self, _, feature_name):
         feature = get_object_or_404(Feature, name=feature_name)
         feature.select_as_target()
-        feature.save()
         serializer = FeatureSerializer(instance=feature)
         return Response(serializer.data)
 

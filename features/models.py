@@ -13,6 +13,7 @@ class Feature(models.Model):
         # TODO: Fix that no target is selected if validation for self failed
         Feature.objects.all().update(is_target=False)
         self.is_target = True
+        self.save()
 
 
 class Histogram(models.Model):
