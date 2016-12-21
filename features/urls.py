@@ -5,7 +5,8 @@ from features.views import FeatureListView, SelectTargetView, FeatureSamplesView
 
 urlpatterns = [
     url(r'^features$', FeatureListView.as_view(), name='feature-list'),
-    url(r'^features/target$', SelectTargetView.as_view(), name='target-select'),
+    url(r'^features/(?P<feature_name>[a-zA-Z1-9_]+)/select$', SelectTargetView.as_view(),
+        name='target-select'),
     url(r'^features/(?P<feature_name>[a-zA-Z1-9_]+)/samples$', FeatureSamplesView.as_view(),
         name='feature-samples'),
     url(r'^features/(?P<feature_name>[a-zA-Z1-9_]+)/histogram$', FeatureHistogramView.as_view(),

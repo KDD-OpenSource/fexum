@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from features.models import Feature
 from features.serializers import FeatureSerializer
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 
 
 class FeatureListView(APIView):
@@ -12,7 +13,12 @@ class FeatureListView(APIView):
 
 
 class SelectTargetView(APIView):
-    pass
+    def post(self, _, feature_name, *args, **kwargs):
+        feature = get_object_or_404(Feature, name=feature_name)
+        feature.select_as_target()
+        feature.save()
+        serializer = FeatureSerializer(instance=feature)
+        return Response(serializer.data)
 
 
 class FeatureSamplesView(APIView):

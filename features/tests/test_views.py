@@ -1,8 +1,9 @@
 from rest_framework.test import APITestCase
 from features.tests.factories import FeatureFactory
 from django.urls import reverse
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 from features.serializers import FeatureSerializer
+from features.models import Feature
 
 
 class TestFeatureListView(APITestCase):
@@ -14,3 +15,27 @@ class TestFeatureListView(APITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(), [FeatureSerializer(instance=feature).data])
+
+
+class TestSelectTargetView(APITestCase):
+    def test_select_target(self):
+        feature = FeatureFactory()
+        self.assertFalse(feature.is_target)
+
+        url = reverse('target-select', args=[feature.name])
+        response = self.client.post(url)
+        feature.refresh_from_db()
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), FeatureSerializer(instance=feature).data)
+        self.assertEqual(Feature.objects.get(is_target=True).name, feature.name)
+
+    def test_select_target_not_found(self):
+        url = reverse('target-select', args=['Some_feature_name'])
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(),  {'detail': 'Not found.'})
+
+    def test_select_target_already_selected(self):
+        pass
