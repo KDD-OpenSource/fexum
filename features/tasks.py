@@ -19,8 +19,6 @@ def calculate_feature_statistics(path, feature_name):
     dataframe = pd.read_csv(path, usecols=[feature_name])
     feature_col = dataframe[feature_name]
 
-    print(feature_col)
-
     feature = Feature.objects.get(name=feature_name)
 
     feature.min = np.amin(feature_col)
