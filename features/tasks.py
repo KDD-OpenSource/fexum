@@ -3,6 +3,8 @@ from celery import shared_task
 import pandas as pd
 import numpy as np
 from features.models import Feature, Histogram, Bin
+from features.algorithms import submitter
+import json
 
 
 @shared_task
@@ -43,3 +45,13 @@ def build_histogram(path, feature_name):
         to_value = bin_edges[bin_index + 1]
         Bin.objects.create(histogram=histogram, from_value=from_value, to_value=to_value,
                            count=bin_value)
+
+
+@shared_task
+def calculate_rar(path, target_feature):
+    def callback(parsed):
+        # TODO Use RaR result to update features
+        print("")
+
+    log = submitter.execJob("java -jar rar-mfs_1.0.1.jar csv {path}".format(path), callback)
+    # TODO implement logging

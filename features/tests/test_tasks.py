@@ -68,3 +68,8 @@ class TestCalculateFeatureStatistics(TestCase):
         self.assertEqual(feature.variance, Decimal('1.27569'))
         self.assertEqual(feature.min, Decimal('-1.24479'))
         self.assertEqual(feature.max, Decimal('2.24540'))
+
+
+class TestCalculateRaR(TestCase):
+    def test_calculate_rar(self):
+        # TODO: Implement tests
