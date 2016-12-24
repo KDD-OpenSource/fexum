@@ -5,6 +5,7 @@ import numpy as np
 from features.models import Feature, Histogram, Bin
 from features.algorithms import submitter
 import json
+import logging
 
 
 @shared_task
@@ -47,11 +48,14 @@ def build_histogram(path, feature_name):
                            count=bin_value)
 
 
-@shared_task
-def calculate_rar(path, target_feature):
-    def callback(parsed):
-        # TODO Use RaR result to update features
-        print("")
+def rar_callback(parsed):
+        for feature_result in parsed['results']['feature_ranking']:
+            feature = Feature.objects.get(name=feature_result['name'])
+            feature.rank = feature_result['rank']
+            feature.save()
+            print("Updating feature " + feature_result['name'] + " to rank " + str(feature_result['rank']))
 
-    log = submitter.execJob("java -jar rar-mfs_1.0.1.jar csv {path}".format(path), callback)
-    # TODO implement logging
+
+@shared_task
+def calculate_rar(path, target_index):
+    submitter.execJob("java -jar assets/rar-mfs_1.0.1.jar csv " + path + " -t " + str(target_index), submitter.Algorithms['rar'])

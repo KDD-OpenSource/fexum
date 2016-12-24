@@ -1,34 +1,47 @@
-from flask import Flask, request
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import subprocess
-import shlex
 import threading
-
-# Initialize the Flask application
-app = Flask(__name__)
-
-
-@app.route('/', methods=['POST'])
-def receive_results():
-    parsed = json.loads(request.data)
-    result_id = parsed['job_id']
-    current_jobs[result_id](parsed)
-    del current_jobs[result_id]
+import shlex
+import logging
+from enum import Enum
+from features import tasks
 
 
-app.run(port=8001)
-current_jobs = {}
-job_id = 0
-lock = threading.Lock()
+class Algorithms(Enum):
+    rar = 0
 
 
-def execJob(command, completion):
-    lock.aquire()
-    current_jobs[job_id] = completion
+class AlgoServerHandler(BaseHTTPRequestHandler):
+    def send_ok(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.send_header('charset', 'utf-8')
+        self.end_headers()
+
+    def do_POST(self):
+        content_length = int(self.headers['Content-Length'])
+        parsed = json.loads(self.rfile.read(content_length).decode('utf-8'))
+        result_id = parsed['job_id']
+
+        if result_id == Algorithms['rar'].value:
+            tasks.rar_callback(parsed)
+        self.send_ok()
+        assassin = threading.Thread(target=self.shutdown)
+        assassin.daemon = True
+        assassin.start()
+
+    def shutdown(self):
+        self.server.shutdown()
+        self.server.handle_request()
+
+server = HTTPServer(('127.0.0.1', 8001), AlgoServerHandler)
+
+
+def execJob(command, algorithm):
     args = shlex.split(command)
-    args.extend(['-u', app.host, '-i', job_id])
-    job_id += 1
-    lock.release()
+    args.extend(['-u', ("http://127.0.0.1" + ":8001"), '-i', str(algorithm.value)])
     # Run command
-    output = subprocess.run(command, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    return output.stdout
+    process = subprocess.Popen(args, shell=True)
+    server.serve_forever()
+    return process
