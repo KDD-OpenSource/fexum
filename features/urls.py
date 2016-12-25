@@ -1,11 +1,12 @@
 from django.conf.urls import url
 from features.views import FeatureListView, SelectTargetView, FeatureSamplesView, \
-    FeatureHistogramView, FeatureSlicesView
+    FeatureHistogramView, FeatureSlicesView, TargetDetailView
 
 
 urlpatterns = [
     url(r'^features$', FeatureListView.as_view(), name='feature-list'),
-    url(r'^features/(?P<feature_name>[a-zA-Z1-9_]+)/select$', SelectTargetView.as_view(),
+    url(r'^features/target$', TargetDetailView.as_view(), name='target-detail'),
+    url(r'^features/(?P<feature_name>[a-zA-Z1-9_]+)/target$', SelectTargetView.as_view(),
         name='target-select'),
     url(r'^features/(?P<feature_name>[a-zA-Z1-9_]+)/samples$', FeatureSamplesView.as_view(),
         name='feature-samples'),

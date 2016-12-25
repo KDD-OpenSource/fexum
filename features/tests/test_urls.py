@@ -11,7 +11,7 @@ class TestFeatureListUrl(TestCase):
 class TestTargetSelectUrl(TestCase):
     def test_target_select_url(self):
         url = reverse('target-select', args=['Feature_1'])
-        self.assertEqual(url, '/features/Feature_1/select')
+        self.assertEqual(url, '/features/Feature_1/target')
 
 
 class TestFeatureSamplesUrl(TestCase):
@@ -30,3 +30,9 @@ class TestFeatureSlicesUrl(TestCase):
     def test_feature_slices_url(self):
         url = reverse('feature-slices', args=['Feature_1'])
         self.assertEqual(url, '/features/Feature_1/slices')
+
+
+class TestTargetDetailUrl(TestCase):
+    def test_target_detail_url(self):
+        url = reverse('target-detail')
+        self.assertEqual(url, '/features/target')
