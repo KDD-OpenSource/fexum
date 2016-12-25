@@ -1,5 +1,5 @@
 from factory import DjangoModelFactory, Sequence, SubFactory
-from features.models import Feature, Bin, Histogram, Slice
+from features.models import Feature, Bin, Histogram, Slice, Target
 from factory.fuzzy import FuzzyDecimal, FuzzyInteger
 
 
@@ -8,6 +8,13 @@ class FeatureFactory(DjangoModelFactory):
         model = Feature
 
     name = Sequence(lambda n: 'feature_{0}'.format(n))
+
+
+class TargetFactory(DjangoModelFactory):
+    class Meta:
+        model = Target
+
+    feature = SubFactory(FeatureFactory)
 
 
 class HistogramFactory(DjangoModelFactory):

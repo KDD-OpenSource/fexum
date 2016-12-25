@@ -15,6 +15,21 @@ def initialize_from_dataset(path):
 
 
 @shared_task
+def calculate_feature_statistics(path, feature_name):
+    dataframe = pd.read_csv(path, usecols=[feature_name])
+    feature_col = dataframe[feature_name]
+
+    feature = Feature.objects.get(name=feature_name)
+
+    feature.min = np.amin(feature_col)
+    feature.max = np.amax(feature_col)
+    feature.mean = np.mean(feature_col)
+    feature.variance = np.nanvar(feature_col)
+
+    feature.save()
+
+
+@shared_task
 def build_histogram(path, feature_name):
     # Only read column with that name
     dataframe = pd.read_csv(path, usecols=[feature_name])
