@@ -7,16 +7,25 @@ class Feature(models.Model):
     relevancy = models.DecimalField(max_digits=6, decimal_places=5, blank=True, null=True)
     redundancy = models.DecimalField(max_digits=6, decimal_places=5, blank=True, null=True)
     rank = models.IntegerField(unique=True, blank=True, null=True)
-    is_target = models.BooleanField(default=False) # Never use directly
     mean = models.DecimalField(max_digits=6, decimal_places=5, blank=True, null=True)
     variance = models.DecimalField(max_digits=6, decimal_places=5, blank=True, null=True)
     min = models.DecimalField(max_digits=6, decimal_places=5, blank=True, null=True)
     max = models.DecimalField(max_digits=6, decimal_places=5, blank=True, null=True)
 
-    def select_as_target(self):
-        # TODO: Fix that no target is selected if validation for self failed
-        Feature.objects.all().update(is_target=False)
-        self.is_target = True
+
+class Target(models.Model):
+    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
+
+    def save(self, *args, **kwargs):
+        self.__class__.objects.exclude(id=self.id).delete()
+        super(Target, self).save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        try:
+            return cls.objects.get()
+        except cls.DoesNotExist:
+            return cls()
 
 
 class Histogram(models.Model):
