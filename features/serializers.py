@@ -1,12 +1,20 @@
 from rest_framework.serializers import ModelSerializer, JSONField
-from features.models import Feature, Bin, Histogram, Slice
+from features.models import Feature, Bin, Histogram, Slice, Target
 
 
 class FeatureSerializer(ModelSerializer):
     class Meta:
         model = Feature
-        fields = ('id', 'name', 'relevancy', 'redundancy', 'rank', 'is_target', 'mean', 'variance',
+        fields = ('id', 'name', 'relevancy', 'redundancy', 'rank', 'mean', 'variance',
                   'min', 'max')
+
+
+class TargetSerializer(ModelSerializer):
+    feature = FeatureSerializer(read_only=True, many=False)
+
+    class Meta:
+        model = Target
+        fields = ('feature', )
 
 
 class BinSerializer(ModelSerializer):

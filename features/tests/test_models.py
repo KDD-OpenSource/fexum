@@ -1,19 +1,15 @@
 from django.test import TestCase
-from features.tests.factories import FeatureFactory
+from features.tests.factories import FeatureFactory, TargetFactory
+from features.models import Target
 
 
-class TestFeatureModel(TestCase):
-    def test_select_as_target(self):
-        feature1 = FeatureFactory()
-        feature1.select_as_target()
-        feature1.save()
+class TestTargetModel(TestCase):
+    def test_select_target(self):
+        target = TargetFactory()
+        self.assertEqual(Target.objects.count(), 1)
+        self.assertEqual(Target.objects.get(), target)
 
-        self.assertTrue(feature1.is_target)
-
-        feature2 = FeatureFactory()
-        feature2.select_as_target()
-        feature2.save()
-        feature1.refresh_from_db()
-
-        self.assertTrue(feature2.is_target)
-        self.assertFalse(feature1.is_target)
+        # The creation of a new target replaces the old one
+        target2 = TargetFactory()
+        self.assertEqual(Target.objects.count(), 1)
+        self.assertEqual(Target.objects.get(), target2)

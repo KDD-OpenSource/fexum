@@ -1,7 +1,7 @@
 from django.test import TestCase
-from features.tests.factories import FeatureFactory, BinFactory, SliceFactory
+from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, TargetFactory
 from features.serializers import FeatureSerializer, BinSerializer, HistogramSerializer, \
-    SliceSerializer
+    SliceSerializer, TargetSerializer
 from decimal import Decimal
 
 
@@ -16,7 +16,6 @@ class TestFeatureSerializer(TestCase):
         self.assertEqual(data.pop('relevancy'), feature.relevancy)
         self.assertEqual(data.pop('redundancy'), feature.redundancy)
         self.assertEqual(data.pop('rank'), feature.rank)
-        self.assertEqual(data.pop('is_target'), feature.is_target)
         self.assertEqual(data.pop('min'), feature.min)
         self.assertEqual(data.pop('max'), feature.max)
         self.assertEqual(data.pop('mean'), feature.mean)
@@ -62,4 +61,15 @@ class TestSliceSerializer(TestCase):
         self.assertEqual(Decimal(data.pop('to_value')), a_slice.to_value)
         self.assertEqual(data.pop('marginal_distribution'), a_slice.marginal_distribution)
         self.assertEqual(data.pop('conditional_distribution'), a_slice.conditional_distribution)
+        self.assertEqual(len(data), 0)
+
+
+class TestTargetSerializer(TestCase):
+    def test_serialize_one(self):
+        target = TargetFactory()
+        serializer = TargetSerializer(instance=target)
+        data = serializer.data
+        feature_data = FeatureSerializer(instance=target.feature).data
+
+        self.assertEqual(data.pop('feature'), feature_data)
         self.assertEqual(len(data), 0)
