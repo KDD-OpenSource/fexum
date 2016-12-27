@@ -3,7 +3,7 @@ from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, T
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT
 from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, TargetSerializer
-from features.models import Feature, Target
+from features.models import Target
 
 
 class TestFeatureListView(APITestCase):
@@ -53,7 +53,10 @@ class TestFeatureHistogramView(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), [BinSerializer(instance=hbin).data])
+        data = BinSerializer(instance=hbin).data
+        self.assertEqual(response.json(), [
+            {'count': data['count'], 'to_value': float(data['to_value']),
+             'from_value': float(data['from_value'])}])
 
     def test_retrieve_histogram_not_found(self):
         url = reverse('feature-histogram', args=['Some_feature_name'])
@@ -71,7 +74,11 @@ class TestFeatureSlicesView(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), [SliceSerializer(instance=fslice).data])
+        data = SliceSerializer(instance=fslice).data
+        # Convert decimal to float for comparing serialization
+        data['to_value'] = float(data['to_value'])
+        data['from_value'] = float(data['from_value'])
+        self.assertEqual(response.json(), [data])
 
     def test_retrieve_slices_not_found(self):
         url = reverse('feature-slices', args=['Some_feature_name'])
