@@ -1,5 +1,5 @@
 from django.test import TestCase
-from features.tasks import initialize_from_dataset, build_histogram, calculate_feature_statistics
+from features.tasks import initialize_from_dataset, build_histogram, calculate_feature_statistics, calculate_rar
 from features.models import Feature, Histogram, Bin
 import pandas as pd
 import numpy as np
@@ -68,3 +68,31 @@ class TestCalculateFeatureStatistics(TestCase):
         self.assertEqual(feature.variance, Decimal('1.27569'))
         self.assertEqual(feature.min, Decimal('-1.24479'))
         self.assertEqual(feature.max, Decimal('2.24540'))
+
+
+class TestCalculateRaR(TestCase):
+    def test_calculate_rar_target1(self):
+        test_file, feature_names = build_test_file()
+        (target_feature, other_feature) = (feature_names[-1], feature_names[-2])
+        Feature.objects.create(name=target_feature)
+        Feature.objects.create(name=other_feature)
+        calculate_rar(test_file, target_index=-1)
+        feature1 = Feature.objects.get(name=target_feature)
+        print(feature1.rank)
+        self.assertEqual(feature1.rank, None)
+        feature2 = Feature.objects.get(name=other_feature)
+        print(feature2.rank)
+        self.assertEqual(feature2.rank, 0)
+
+    def test_calculate_rar_target0(self):
+        test_file, feature_names = build_test_file()
+        (target_feature, other_feature) = (feature_names[0], feature_names[1])
+        Feature.objects.create(name=target_feature)
+        Feature.objects.create(name=other_feature)
+        calculate_rar(test_file, target_index=0)
+        feature1 = Feature.objects.get(name=target_feature)
+        print(feature1.rank)
+        self.assertEqual(feature1.rank, None)
+        feature2 = Feature.objects.get(name=other_feature)
+        print(feature2.rank)
+        self.assertEqual(feature2.rank, 0)
