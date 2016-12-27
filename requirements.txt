@@ -8,3 +8,4 @@ numpy
 # Testing
 pytest-django==3.0.0
 factory-boy
+django-extensions
