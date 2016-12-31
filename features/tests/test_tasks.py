@@ -1,6 +1,7 @@
 from django.test import TestCase
-from features.tasks import initialize_from_dataset, downsample_feature, build_histogram, calculate_feature_statistics
-from features.models import Feature, Histogram, Sample, Bin
+from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
+    calculate_feature_statistics
+from features.models import Feature, Histogram, Sample
 import pandas as pd
 import numpy as np
 from decimal import Decimal
@@ -69,6 +70,7 @@ class TestDownsampleTask(TestCase):
         self.assertEqual(samples.count(), 10/factor)
         self.assertEqual([sample.value for sample in samples],
                          [Decimal('0.00000'), Decimal('-0.00162')])
+
 
 class TestCalculateFeatureStatistics(TestCase):
     def test_calculate_feature_statistics(self):
