@@ -1,5 +1,5 @@
 from rest_framework.serializers import ModelSerializer, JSONField
-from features.models import Feature, Bin, Histogram, Slice, Target
+from features.models import Sample, Feature, Bin, Histogram, Slice, Target
 
 
 class FeatureSerializer(ModelSerializer):
@@ -29,6 +29,12 @@ class HistogramSerializer(ModelSerializer):
     class Meta:
         model = Histogram
         fields = ('id', 'bin_set')
+
+
+class SampleSerializer(ModelSerializer):
+    class Meta:
+        model = Sample
+        fields = ('value',)
 
 
 class SliceSerializer(ModelSerializer):

@@ -1,7 +1,8 @@
 from django.test import TestCase
-from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, TargetFactory
+from features.tests.factories import SampleFactory, FeatureFactory, BinFactory, SliceFactory
 from features.serializers import FeatureSerializer, BinSerializer, HistogramSerializer, \
-    SliceSerializer, TargetSerializer
+    SliceSerializer, SampleSerializer, TargetSerializer
+from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, TargetFactory
 from decimal import Decimal
 
 
@@ -61,6 +62,16 @@ class TestSliceSerializer(TestCase):
         self.assertEqual(Decimal(data.pop('to_value')), a_slice.to_value)
         self.assertEqual(data.pop('marginal_distribution'), a_slice.marginal_distribution)
         self.assertEqual(data.pop('conditional_distribution'), a_slice.conditional_distribution)
+        self.assertEqual(len(data), 0)
+
+
+class TestSampleSerializer(TestCase):
+    def test_serialize_one(self):
+        sample = SampleFactory()
+        serializer = SampleSerializer(instance=sample)
+        data = serializer.data
+
+        self.assertEqual(Decimal(data.pop('value')), sample.value)
         self.assertEqual(len(data), 0)
 
 

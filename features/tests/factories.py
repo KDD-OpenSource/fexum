@@ -1,5 +1,5 @@
 from factory import DjangoModelFactory, Sequence, SubFactory
-from features.models import Feature, Bin, Histogram, Slice, Target
+from features.models import Sample, Feature, Bin, Histogram, Slice, Target
 from factory.fuzzy import FuzzyDecimal, FuzzyInteger
 
 
@@ -43,3 +43,11 @@ class SliceFactory(DjangoModelFactory):
     to_value = FuzzyDecimal(0, 200)
     marginal_distribution = [0, 1, 0]
     conditional_distribution = [0, 1, 0]
+
+
+class SampleFactory(DjangoModelFactory):
+    class Meta:
+        model = Sample
+
+    feature = SubFactory(FeatureFactory)
+    value = FuzzyDecimal(0, 200)

@@ -2,7 +2,8 @@ from __future__ import absolute_import, unicode_literals
 from celery import shared_task
 import pandas as pd
 import numpy as np
-from features.models import Feature, Histogram, Bin
+from features.models import Sample, Feature, Histogram, Bin
+from scipy.signal import decimate
 
 
 @shared_task
@@ -43,3 +44,14 @@ def build_histogram(path, feature_name):
         to_value = bin_edges[bin_index + 1]
         Bin.objects.create(histogram=histogram, from_value=from_value, to_value=to_value,
                            count=bin_value)
+
+
+@shared_task
+def downsample_feature(path, feature_name, factor=40000):
+    dataframe = pd.read_csv(path, usecols=[feature_name])
+
+    feature = Feature.objects.get(name=feature_name)
+    sampling = decimate(dataframe[feature_name], factor)
+
+    for value in sampling:
+        Sample.objects.create(feature=feature, value=value)
