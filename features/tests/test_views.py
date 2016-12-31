@@ -1,8 +1,8 @@
 from rest_framework.test import APITestCase
-from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, TargetFactory
+from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, TargetFactory, SampleFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT
-from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, TargetSerializer
+from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, TargetSerializer, SampleSerializer
 from features.models import Target
 
 
@@ -42,7 +42,15 @@ class TestSelectTargetView(APITestCase):
 
 
 class TestFeatureSamplesView(APITestCase):
-    pass
+    def test_retrieve_samples(self):
+        sample = SampleFactory()
+
+        url = reverse('feature-samples', args=[sample.feature.name])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = SampleSerializer(instance=sample).data
+        self.assertEqual(response.json(), [{'value': float(data['value'])}])
 
 
 class TestFeatureHistogramView(APITestCase):

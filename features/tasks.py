@@ -45,6 +45,7 @@ def build_histogram(path, feature_name):
         Bin.objects.create(histogram=histogram, from_value=from_value, to_value=to_value,
                            count=bin_value)
 
+
 @shared_task
 def downsample_feature(path, feature_name, factor=40000):
     dataframe = pd.read_csv(path, usecols=[feature_name])

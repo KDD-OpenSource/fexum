@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
-from features.models import Feature, Histogram, Target
-from features.serializers import FeatureSerializer, BinSerializer, TargetSerializer, SliceSerializer
+from features.models import Feature, Histogram, Target, Sample
+from features.serializers import FeatureSerializer, BinSerializer, TargetSerializer, SampleSerializer, SliceSerializer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
@@ -22,7 +22,10 @@ class SelectTargetView(APIView):
 
 
 class FeatureSamplesView(APIView):
-    pass
+    def get(self, _, feature_name):
+        samples = Sample.objects.filter(feature__name=feature_name).all()
+        serializer = SampleSerializer(instance=samples, many=True)
+        return Response(serializer.data)
 
 
 class FeatureHistogramView(APIView):
