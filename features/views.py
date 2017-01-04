@@ -36,6 +36,7 @@ class FeatureSlicesView(APIView):
 
 class TargetDetailView(APIView):
     def put(self, request):
+        # Proper message for missing pararmter
         feature_name = request.data.get('feature__name', None)
         # Test none
         feature = get_object_or_404(Feature, name=feature_name)
