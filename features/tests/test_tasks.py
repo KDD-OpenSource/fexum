@@ -1,6 +1,6 @@
 from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
-    calculate_feature_statistics
+    calculate_feature_statistics, calculate_rar
 from features.models import Feature, Sample, Bin
 import pandas as pd
 import numpy as np
@@ -82,3 +82,27 @@ class TestCalculateFeatureStatistics(TestCase):
         self.assertEqual(feature.variance, Decimal('1.27569'))
         self.assertEqual(feature.min, Decimal('-1.24479'))
         self.assertEqual(feature.max, Decimal('2.24540'))
+
+
+class TestCalculateRar(TestCase):
+    def test_calculate_rar_(self):
+        test_file, feature_names = build_test_file()
+        feature_name1 = feature_names[0]
+        feature_name2 = feature_names[1]
+
+        # Create two test features
+        Feature.objects.create(name=feature_name1)
+        Feature.objects.create(name=feature_name2)
+
+        # Select first feature as target
+        calculate_rar(test_file, target_index=0)
+
+        # First feature aka the target should have no info
+        feature1 = Feature.object.get(name=feature_name1)
+        self.assertIsNone(feature1.relevancy)
+        self.assertIsNone(feature1.redundancy)
+
+        # Should have info
+        feature2 = Feature.object.get(name=feature_name2)
+        self.assertIsNotNone(feature2.relevancy)
+        self.assertIsNotNone(feature2.redundancy)
