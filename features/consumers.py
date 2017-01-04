@@ -1,15 +1,15 @@
 from channels import Group
 
+GROUP_NAME = 'features'
+
 
 def ws_connect(message):
-    Group("chat").add(message.reply_channel)
+    Group(GROUP_NAME).add(message.reply_channel)
 
 
 def ws_message(message):
-    Group("chat").send({
-        "text": "[user] %s" % message.content['text'],
-    })
+    pass
 
 
 def ws_disconnect(message):
-    Group("chat").discard(message.reply_channel)
+    Group(GROUP_NAME).discard(message.reply_channel)

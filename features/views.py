@@ -13,14 +13,6 @@ class FeatureListView(APIView):
         return Response(serializer.data)
 
 
-class SelectTargetView(APIView):
-    def post(self, _, feature_name):
-        feature = get_object_or_404(Feature, name=feature_name)
-        target = Target.objects.create(feature=feature)
-        serializer = TargetSerializer(instance=target)
-        return Response(serializer.data)
-
-
 class FeatureSamplesView(APIView):
     def get(self, _, feature_name):
         samples = Sample.objects.filter(feature__name=feature_name).all()
@@ -43,13 +35,21 @@ class FeatureSlicesView(APIView):
 
 
 class TargetDetailView(APIView):
+    def put(self, _, feature_name):
+        feature = get_object_or_404(Feature, name=feature_name)
+        target = Target.objects.create(feature=feature)
+        serializer = TargetSerializer(instance=target)
+        return Response(serializer.data)
+
     def get(self, _):
-        target = get_object_or_404(Target)
+        target = Target.objects.get()
+        if target is None:
+            return Response(status=HTTP_204_NO_CONTENT)
         serializer = TargetSerializer(instance=target)
         return Response(serializer.data)
 
     def delete(self, _):
-        target = get_object_or_404(Target)
+        target = Target.objects.get()
         target.delete()
         return Response(status=HTTP_204_NO_CONTENT)
 
