@@ -8,12 +8,6 @@ class TestFeatureListUrl(TestCase):
         self.assertEqual(url, '/api/features')
 
 
-class TestTargetSelectUrl(TestCase):
-    def test_target_select_url(self):
-        url = reverse('target-select', args=['Feature_1'])
-        self.assertEqual(url, '/api/features/Feature_1/target')
-
-
 class TestFeatureSamplesUrl(TestCase):
     def test_feature_samples_url(self):
         url = reverse('feature-samples', args=['Feature_1'])
