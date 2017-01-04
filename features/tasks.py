@@ -2,16 +2,11 @@ from __future__ import absolute_import, unicode_literals
 from celery import shared_task
 import pandas as pd
 import numpy as np
-<<<<<<< HEAD
-from features.models import Sample, Feature, Bin
-from scipy.signal import decimate
-=======
-from features.models import Feature, Histogram, Bin, Slice
+from features.models import Feature, Bin, Slice, Sample
 from subprocess import call
 import json
 from features.consumers import GROUP_NAME
 from channels import Group
->>>>>>> rar-integration
 
 
 @shared_task
@@ -70,7 +65,10 @@ def downsample_feature(path, feature_name):
 
 def calculate_rar(path, target_index):
     JAR_FILE = 'assets/rar-mfs_1.0.1.jar'
-    raw_output = call(['java', '-jar', JAR_FILE, 'csv', path, '-t', target_index])
+    # raw_output = call(['java', '-jar', JAR_FILE, 'csv', path, '-t', target_index])
+    raw_output = call(
+        ['java', '-jar', 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm', JAR_FILE,
+         '--targetIndex', '-1', '--hic'])
     results = json.loads(raw_output)
 
     for idx, feature_data in results.enumerate():
