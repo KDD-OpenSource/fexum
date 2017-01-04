@@ -16,7 +16,7 @@ services:
     networks:
       - predots
 
-  worker:
+  web:
     build: .
     depends_on:
       - queue
@@ -30,7 +30,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
 
-  web_daphne:
+  web_asgi:
     build: ./
     depends_on:
       - postgres
