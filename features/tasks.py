@@ -2,9 +2,11 @@ from __future__ import absolute_import, unicode_literals
 from celery import shared_task
 import pandas as pd
 import numpy as np
-from features.models import Feature, Histogram, Bin
+from features.models import Feature, Histogram, Bin, Slice
 from subprocess import call
 import json
+from features.consumers import GROUP_NAME
+from channels import Group
 
 
 @shared_task
@@ -52,6 +54,24 @@ def calculate_rar(path, target_index):
     # call(['java', '-jar', JAR_FILE, 'csv', path, '-t', target_index])
     JAR_FILE = 'assets/rar-mfs_1.0.1.jar'
     raw_output = call(['java', '-jar', JAR_FILE, '--help'])
-    output = json.loads(raw_output)
+    results = json.loads(raw_output)
+
+    for idx, feature_data in results.enumerate():
+        feature = Feature.objects.get(name=feature_data['name'])
+        feature.rank = idx
+        feature.score = feature_data['result']['score']
+        feature.save()
+
+        for slice_data in feature_data['scoredBlocks']:
+            slice_obj = Slice()
+            slice_obj.marginal_distribution = slice_data['normalizedMarginalDistribution']
+            slice_obj.conditional_distribution = slice_data['normalizedConditionalDistribution']
+            slice_obj.score = slice_data['score']
+            slice_obj.from_value = slice_data['featureRanges']['start']
+            slice_obj.to_value = slice_data['featureRanges']['end']
+            slice_obj.save()
 
     # TODO: Send message on save signal, not here?
+    Group(GROUP_NAME).send({'text': json.dumps({'event_name': 'relevancy-update', 'payload': {}})})
+
+
