@@ -73,5 +73,3 @@ def calculate_rar(path, target_index):
 
     # TODO: Send message on save signal, not here?
     Group(GROUP_NAME).send({'text': json.dumps({'event_name': 'relevancy-update', 'payload': {}})})
-
-
