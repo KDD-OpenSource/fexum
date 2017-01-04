@@ -35,7 +35,9 @@ class FeatureSlicesView(APIView):
 
 
 class TargetDetailView(APIView):
-    def put(self, _):
+    def put(self, request):
+        feature_name = request.data.get('feature__name', None)
+        # Test none
         feature = get_object_or_404(Feature, name=feature_name)
         target = Target.objects.create(feature=feature)
         serializer = TargetSerializer(instance=target)
