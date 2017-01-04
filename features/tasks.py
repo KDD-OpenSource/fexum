@@ -22,10 +22,10 @@ def calculate_feature_statistics(path, feature_name):
 
     feature = Feature.objects.get(name=feature_name)
 
-    feature.min = np.amin(feature_col)
-    feature.max = np.amax(feature_col)
-    feature.mean = np.mean(feature_col)
-    feature.variance = np.nanvar(feature_col)
+    feature.min = np.amin(feature_col).item()
+    feature.max = np.amax(feature_col).item()
+    feature.mean = np.mean(feature_col).item()
+    feature.variance = np.nanvar(feature_col).item()
 
     feature.save()
 
