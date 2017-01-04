@@ -1,6 +1,11 @@
 version: "2"
 
 services:
+  postgres:
+    image: postgres:9.4
+    networks:
+      - predots
+
   queue:
     image: rabbitmq:latest
     networks:
@@ -10,6 +15,7 @@ services:
     build: ./
     depends_on:
       - queue
+      - postgres
     networks:
       - predots
     volumes:
@@ -24,6 +30,7 @@ services:
     build: ./
     depends_on:
       - queue
+      - postgres
     networks:
       - predots
     volumes:

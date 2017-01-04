@@ -2,10 +2,12 @@ Django==1.10.3
 djangorestframework==3.5.2
 jsonfield==1.0.3
 celery==4.0.2
+psycopg2==2.6.2
 
-#scipy
-#pandas
-#numpy
+# Disable these for docker envs
+# scipy
+# pandas
+# numpy
 
 # Testing
 pytest-django==3.0.0
