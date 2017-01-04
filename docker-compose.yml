@@ -59,5 +59,17 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
 
+  flower:
+    build: ./
+    depends_on:
+      - queue
+    networks:
+      - predots
+    volumes:
+      - .:/code
+    command: "flower --conf=celeryconfig.py"
+    environment:
+      DJANGO_SETTINGS_MODULE: predots.settings
+
 networks:
   predots:
