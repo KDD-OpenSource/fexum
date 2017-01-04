@@ -35,7 +35,7 @@ class FeatureSlicesView(APIView):
 
 
 class TargetDetailView(APIView):
-    def put(self, _, feature_name):
+    def put(self, _):
         feature = get_object_or_404(Feature, name=feature_name)
         target = Target.objects.create(feature=feature)
         serializer = TargetSerializer(instance=target)
