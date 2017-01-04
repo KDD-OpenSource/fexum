@@ -1,6 +1,11 @@
 version: "2"
 
 services:
+  redis:
+    image: redis:alpine
+    networks:
+      - predots
+
   postgres:
     image: postgres:9.4
     networks:
@@ -11,11 +16,26 @@ services:
     networks:
       - predots
 
-  web:
-    build: ./
+  worker:
+    build: .
     depends_on:
       - queue
+      - redis
       - postgres
+    networks:
+      - predots
+    volumes:
+      - .:/code
+    command: python manage.py runworker
+    environment:
+      DJANGO_SETTINGS_MODULE: predots.settings
+
+  web_daphne:
+    build: ./
+    depends_on:
+      - postgres
+      - redis
+      - queue
     networks:
       - predots
     volumes:

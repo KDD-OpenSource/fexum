@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_extensions',
     'rest_framework',
+    'channels'
     'features',
 ]
 
@@ -133,10 +134,20 @@ CELERY_BROKER_URL = 'amqp://guest:guest@queue'
 #: Only add pickle to this list if your broker is secured
 #: from unwanted access (see userguide/security.html)
 CELERY_ACCEPT_CONTENT = ['json']
-#CELERY_RESULT_BACKEND = 'db+sqlite:///results.sqlite'
+# CELERY_RESULT_BACKEND = 'db+sqlite:///results.sqlite'
 CELERY_TASK_SERIALIZER = 'json'
 
 
 REST_FRAMEWORK = {
     'COERCE_DECIMAL_TO_STRING': False
+}
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'asgi_redis.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [('redis', 6379)],
+        },
+        'ROUTING': 'predots.routing.channel_routing',
+    },
 }
