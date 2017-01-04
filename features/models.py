@@ -33,12 +33,8 @@ class Sample(models.Model):
     value = models.FloatField()
 
 
-class Histogram(models.Model):
-    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
-
-
 class Bin(models.Model):
-    histogram = models.ForeignKey(Histogram, on_delete=models.CASCADE)
+    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
     # TODO: Make sure from_value < to_value
     from_value = models.FloatField()
     to_value = models.FloatField()

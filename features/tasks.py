@@ -36,13 +36,12 @@ def build_histogram(path, feature_name):
     dataframe = pd.read_csv(path, usecols=[feature_name])
 
     feature = Feature.objects.get(name=feature_name)
-    histogram = Histogram.objects.create(feature=feature)
 
     bins, bin_edges = np.histogram(dataframe[feature_name], bins='auto')
     for bin_index, bin_value in enumerate(bins):
         from_value = bin_edges[bin_index]
         to_value = bin_edges[bin_index + 1]
-        Bin.objects.create(histogram=histogram, from_value=from_value, to_value=to_value,
+        Bin.objects.create(feature=feature, from_value=from_value, to_value=to_value,
                            count=bin_value)
 
 

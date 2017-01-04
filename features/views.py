@@ -1,5 +1,5 @@
 from rest_framework.views import APIView
-from features.models import Feature, Histogram, Target, Sample
+from features.models import Feature, Bin, Target, Sample
 from features.serializers import FeatureSerializer, BinSerializer, TargetSerializer, SampleSerializer, SliceSerializer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -22,7 +22,8 @@ class FeatureSamplesView(APIView):
 
 class FeatureHistogramView(APIView):
     def get(self, _, feature_name):
-        bins = get_object_or_404(Histogram, feature__name=feature_name).bin_set
+        feature = get_object_or_404(Feature, name=feature_name)
+        bins = Bin.objects.filter(feature=feature).order_by('id').all()
         serializer = BinSerializer(instance=bins, many=True)
         return Response(serializer.data)
 
