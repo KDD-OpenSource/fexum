@@ -1,6 +1,7 @@
 from django.test import TestCase
-from features.tasks import initialize_from_dataset, build_histogram, calculate_feature_statistics, calculate_rar
-from features.models import Feature, Histogram, Bin
+from features.tasks import initialize_from_dataset, build_histogram, calculate_feature_statistics, \
+    calculate_rar
+from features.models import Feature, Histogram
 import pandas as pd
 import numpy as np
 from decimal import Decimal
@@ -70,29 +71,25 @@ class TestCalculateFeatureStatistics(TestCase):
         self.assertEqual(feature.max, Decimal('2.24540'))
 
 
-class TestCalculateRaR(TestCase):
-    def test_calculate_rar_target1(self):
+class TestCalculateRar(TestCase):
+    def test_calculate_rar_(self):
         test_file, feature_names = build_test_file()
-        (target_feature, other_feature) = (feature_names[-1], feature_names[-2])
-        Feature.objects.create(name=target_feature)
-        Feature.objects.create(name=other_feature)
-        calculate_rar(test_file, target_index=-1)
-        feature1 = Feature.objects.get(name=target_feature)
-        print(feature1.rank)
-        self.assertEqual(feature1.rank, None)
-        feature2 = Feature.objects.get(name=other_feature)
-        print(feature2.rank)
-        self.assertEqual(feature2.rank, 0)
+        feature_name1 = feature_names[0]
+        feature_name2 = feature_names[1]
 
-    def test_calculate_rar_target0(self):
-        test_file, feature_names = build_test_file()
-        (target_feature, other_feature) = (feature_names[0], feature_names[1])
-        Feature.objects.create(name=target_feature)
-        Feature.objects.create(name=other_feature)
+        # Create two test features
+        Feature.objects.create(name=feature_name1)
+        Feature.objects.create(name=feature_name2)
+
+        # Select first feature as target
         calculate_rar(test_file, target_index=0)
-        feature1 = Feature.objects.get(name=target_feature)
-        print(feature1.rank)
-        self.assertEqual(feature1.rank, None)
-        feature2 = Feature.objects.get(name=other_feature)
-        print(feature2.rank)
-        self.assertEqual(feature2.rank, 0)
+
+        # First feature aka the target should have no info
+        feature1 = Feature.object.get(name=feature_name1)
+        self.assertIsNone(feature1.relevancy)
+        self.assertIsNone(feature1.redundancy)
+
+        # Should have info
+        feature2 = Feature.object.get(name=feature_name2)
+        self.assertIsNotNone(feature2.relevancy)
+        self.assertIsNotNone(feature2.redundancy)

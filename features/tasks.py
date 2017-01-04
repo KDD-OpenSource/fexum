@@ -3,9 +3,8 @@ from celery import shared_task
 import pandas as pd
 import numpy as np
 from features.models import Feature, Histogram, Bin
-from features.algorithms import submitter
+from subprocess import call
 import json
-import logging
 
 
 @shared_task
@@ -48,14 +47,11 @@ def build_histogram(path, feature_name):
                            count=bin_value)
 
 
-def rar_callback(parsed):
-        for feature_result in parsed['results']['feature_ranking']:
-            feature = Feature.objects.get(name=feature_result['name'])
-            feature.rank = feature_result['rank']
-            feature.save()
-            print("Updating feature " + feature_result['name'] + " to rank " + str(feature_result['rank']))
-
-
 @shared_task
 def calculate_rar(path, target_index):
-    submitter.execJob("java -jar assets/rar-mfs_1.0.1.jar csv " + path + " -t " + str(target_index), submitter.Algorithms['rar'])
+    # call(['java', '-jar', JAR_FILE, 'csv', path, '-t', target_index])
+    JAR_FILE = 'assets/rar-mfs_1.0.1.jar'
+    raw_output = call(['java', '-jar', JAR_FILE, '--help'])
+    output = json.loads(raw_output)
+
+    # TODO: Send message on save signal, not here?
