@@ -82,7 +82,7 @@ WSGI_APPLICATION = 'predots.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
+        'NAME': 'feature_atlas',
         'USER': 'postgres',
         'PASSWORD': '',
         'HOST': 'postgres',

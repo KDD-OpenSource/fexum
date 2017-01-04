@@ -2,7 +2,7 @@ from channels import Group
 
 GROUP_NAME = 'features'
 
-
+# Test
 def ws_connect(message):
     Group(GROUP_NAME).add(message.reply_channel)
 
