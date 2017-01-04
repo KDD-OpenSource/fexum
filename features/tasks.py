@@ -51,9 +51,8 @@ def build_histogram(path, feature_name):
 
 @shared_task
 def calculate_rar(path, target_index):
-    # call(['java', '-jar', JAR_FILE, 'csv', path, '-t', target_index])
     JAR_FILE = 'assets/rar-mfs_1.0.1.jar'
-    raw_output = call(['java', '-jar', JAR_FILE, '--help'])
+    raw_output = call(['java', '-jar', JAR_FILE, 'csv', path, '-t', target_index])
     results = json.loads(raw_output)
 
     for idx, feature_data in results.enumerate():
