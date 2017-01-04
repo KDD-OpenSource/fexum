@@ -63,11 +63,15 @@ services:
     build: ./
     depends_on:
       - queue
+      - web
+      - web_asgi
     networks:
       - predots
     volumes:
       - .:/code
-    command: "flower --conf=celeryconfig.py"
+    ports:
+      - "5555:5555"
+    command: "celery flower -A predots --address=0.0.0.0"
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
 
