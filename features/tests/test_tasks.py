@@ -1,7 +1,7 @@
 from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
     calculate_feature_statistics
-from features.models import Feature, Histogram, Sample
+from features.models import Feature, Sample, Bin
 import pandas as pd
 import numpy as np
 from decimal import Decimal
@@ -39,19 +39,15 @@ class TestBuildHistogramTask(TestCase):
     def test_build_histogram(self):
         test_file, feature_names = build_test_file()
         feature_name = feature_names[0]
-        Feature.objects.create(name=feature_name)
+        feature = Feature.objects.create(name=feature_name)
         bin_values = [3, 1, 4, 0, 2]
 
         build_histogram(test_file, feature_name)
 
-        # Get created histogram
-        histogram = Histogram.objects.get(feature__name=feature_name)
-        self.assertEqual(histogram.feature.name, feature_name)
-
         # Rudementary check bins only for its values
-        bins = histogram.bin_set
-        self.assertEqual(bins.count(), len(bin_values))
-        for bin_obj in bins.all():
+        self.assertEqual(Bin.objects.count(), len(bin_values))
+        for bin_obj in Bin.objects.all():
+            self.assertEqual(bin_obj.feature, feature)
             self.assertIn(bin_obj.count, bin_values)
 
 

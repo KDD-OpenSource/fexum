@@ -57,7 +57,7 @@ class TestFeatureHistogramView(APITestCase):
     def test_retrieve_histogram(self):
         hbin = BinFactory()
 
-        url = reverse('feature-histogram', args=[hbin.histogram.feature.name])
+        url = reverse('feature-histogram', args=[hbin.feature.name])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
