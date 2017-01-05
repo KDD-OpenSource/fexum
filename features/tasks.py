@@ -63,7 +63,7 @@ def downsample_feature(path, feature_name):
         Sample.objects.create(feature=feature, value=value)
 
 
-def calculate_rar(path, target_index=None):
+def calculate_rar(path):
     JAR_FILE = 'assets/rar-mfs_1.0.1.jar'
     process = Popen(
         ['java', '-jar', JAR_FILE, 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm', path,
@@ -77,8 +77,9 @@ def calculate_rar(path, target_index=None):
         feature.relevancy = feature_data['result']['score']
         feature.save()
 
-        for slice_data in feature_data['scoredBlocks']:
+        for slice_data in feature_data['result']['scoredBlocks']:
             slice_obj = Slice()
+            slice_obj.feature = Feature.objects.get(name=feature_data['name'])
             slice_obj.marginal_distribution = slice_data['normalizedMarginalDistribution']
             slice_obj.conditional_distribution = slice_data['normalizedConditionalDistribution']
             slice_obj.score = slice_data['score']
