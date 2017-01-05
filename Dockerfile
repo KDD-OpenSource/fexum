@@ -1,4 +1,4 @@
-FROM nikriek/python3-ml:latest
+FROM nikriek/python3-java-ml:latest
 ENV PYTHONUNBUFFERED 1
 
 COPY requirements.txt /setup/
