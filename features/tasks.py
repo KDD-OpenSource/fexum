@@ -67,8 +67,7 @@ def calculate_rar(path, target_index):
     JAR_FILE = 'assets/rar-mfs_1.0.1.jar'
     # raw_output = call(['java', '-jar', JAR_FILE, 'csv', path, '-t', target_index])
     raw_output = call(
-        ['java', '-jar', 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm', JAR_FILE,
-         '--targetIndex', '-1', '--hic'])
+        ['java', '-jar', 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm', JAR_FILE, '--hics'])
     results = json.loads(raw_output)
 
     for idx, feature_data in results.enumerate():
