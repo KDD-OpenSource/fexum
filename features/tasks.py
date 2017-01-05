@@ -3,7 +3,7 @@ from celery import shared_task
 import pandas as pd
 import numpy as np
 from features.models import Feature, Bin, Slice, Sample
-from subprocess import call
+from subprocess import Popen, PIPE
 import json
 from features.consumers import GROUP_NAME
 from channels import Group
@@ -65,9 +65,10 @@ def downsample_feature(path, feature_name):
 
 def calculate_rar(path, target_index=None):
     JAR_FILE = 'assets/rar-mfs_1.0.1.jar'
-    # raw_output = call(['java', '-jar', JAR_FILE, 'csv', path, '-t', target_index])
-    raw_output = call(
-        ['java', '-jar', JAR_FILE, 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm', path, '--hics'])
+    process = Popen(
+        ['java', '-jar', JAR_FILE, 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm', path,
+         '--hics'], stdout=PIPE)
+    raw_output, err = process.communicate()
     results = json.loads(raw_output)
 
     for idx, feature_data in results.enumerate():
