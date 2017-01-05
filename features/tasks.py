@@ -63,11 +63,11 @@ def downsample_feature(path, feature_name):
         Sample.objects.create(feature=feature, value=value)
 
 
-def calculate_rar(path, target_index):
+def calculate_rar(path, target_index=None):
     JAR_FILE = 'assets/rar-mfs_1.0.1.jar'
     # raw_output = call(['java', '-jar', JAR_FILE, 'csv', path, '-t', target_index])
     raw_output = call(
-        ['java', '-jar', 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm', JAR_FILE, '--hics'])
+        ['java', '-jar', JAR_FILE, 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm', path, '--hics'])
     results = json.loads(raw_output)
 
     for idx, feature_data in results.enumerate():
