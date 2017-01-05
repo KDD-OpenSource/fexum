@@ -11,6 +11,7 @@ class Feature(models.Model):
     variance = models.FloatField(blank=True, null=True)
     min = models.FloatField(blank=True, null=True)
     max = models.FloatField(blank=True, null=True)
+    score = models.FloatField(blank=True, null=True)
 
 
 class Target(models.Model):
@@ -44,6 +45,7 @@ class Bin(models.Model):
 class Slice(models.Model):
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
     from_value = models.FloatField()
+    score = models.FloatField()
     to_value = models.FloatField()
     marginal_distribution = JSONField(default=[])
     conditional_distribution = JSONField(default=[])

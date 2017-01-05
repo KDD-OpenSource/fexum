@@ -6,7 +6,7 @@ class FeatureSerializer(ModelSerializer):
     class Meta:
         model = Feature
         fields = ('name', 'relevancy', 'redundancy', 'rank', 'mean', 'variance',
-                  'min', 'max')
+                  'min', 'max', 'score')
 
 
 class TargetSerializer(ModelSerializer):
@@ -35,4 +35,4 @@ class SliceSerializer(ModelSerializer):
 
     class Meta:
         model = Slice
-        fields = ('from_value', 'to_value', 'marginal_distribution', 'conditional_distribution')
+        fields = ('from_value', 'score', 'to_value', 'marginal_distribution', 'conditional_distribution')
