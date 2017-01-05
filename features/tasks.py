@@ -71,7 +71,7 @@ def calculate_rar(path, target_index=None):
     raw_output, err = process.communicate()
     results = json.loads(raw_output)
 
-    for idx, feature_data in results.enumerate():
+    for idx, feature_data in enumerate(results):
         feature = Feature.objects.get(name=feature_data['name'])
         feature.rank = idx
         feature.relevancy = feature_data['result']['score']
