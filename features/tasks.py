@@ -5,7 +5,7 @@ import numpy as np
 from features.models import Feature, Bin, Slice, Sample
 from subprocess import Popen, PIPE
 import json
-from features.consumers import GROUP_NAME
+from features.channels import GROUP_NAME
 from channels import Group
 
 

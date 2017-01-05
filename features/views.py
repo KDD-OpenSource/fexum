@@ -37,25 +37,17 @@ class FeatureSlicesView(APIView):
 
 class TargetDetailView(APIView):
     def put(self, request):
-        # Proper message for missing pararmter
-        feature_name = request.data.get('feature_name', None)
-        # Test none
-        from features.tasks import calculate_rar
-        calculate_rar('samples.csv')
-        feature = get_object_or_404(Feature, name=feature_name)
-        target = Target.objects.create(feature=feature)
-        serializer = TargetSerializer(instance=target)
+        # TODO: Test
+        target = Target.load()
+        serializer = TargetSerializer(target, data=request.data, partial=True)
         return Response(serializer.data)
 
     def get(self, _):
-        target = Target.objects.get()
-        if target is None:
-            return Response(status=HTTP_204_NO_CONTENT)
+        target = Target.load()
         serializer = TargetSerializer(instance=target)
         return Response(serializer.data)
 
     def delete(self, _):
-        target = Target.objects.get()
-        target.delete()
+        Target.objects.all().delete()
         return Response(status=HTTP_204_NO_CONTENT)
 

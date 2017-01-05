@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'channels',
     'features',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
@@ -53,6 +54,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'predots.urls'
@@ -151,3 +153,5 @@ CHANNEL_LAYERS = {
         'ROUTING': 'predots.routing.channel_routing',
     },
 }
+
+CORS_ORIGIN_ALLOW_ALL = True

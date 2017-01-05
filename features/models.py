@@ -48,12 +48,3 @@ class Slice(models.Model):
     to_value = models.FloatField()
     marginal_distribution = JSONField(default=[])
     conditional_distribution = JSONField(default=[])
-
-
-class Event:
-    def __init__(self, name, payload):
-        self.name = name
-        self.payload = payload
-
-    def as_dict(self):
-        return {'event_name': self.name, 'payload': self.payload}
