@@ -6,7 +6,7 @@ class FeatureSerializer(ModelSerializer):
     class Meta:
         model = Feature
         fields = ('name', 'relevancy', 'redundancy', 'rank', 'mean', 'variance',
-                  'min', 'max', 'score')
+                  'min', 'max')
 
 
 class TargetSerializer(ModelSerializer):

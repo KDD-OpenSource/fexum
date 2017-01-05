@@ -11,7 +11,6 @@ class Feature(models.Model):
     variance = models.FloatField(blank=True, null=True)
     min = models.FloatField(blank=True, null=True)
     max = models.FloatField(blank=True, null=True)
-    score = models.FloatField(blank=True, null=True)
 
 
 class Target(models.Model):

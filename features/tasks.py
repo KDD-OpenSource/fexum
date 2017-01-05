@@ -73,7 +73,7 @@ def calculate_rar(path, target_index=None):
     for idx, feature_data in results.enumerate():
         feature = Feature.objects.get(name=feature_data['name'])
         feature.rank = idx
-        feature.score = feature_data['result']['score']
+        feature.relevancy = feature_data['result']['score']
         feature.save()
 
         for slice_data in feature_data['scoredBlocks']:
