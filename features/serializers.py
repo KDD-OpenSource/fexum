@@ -21,7 +21,6 @@ class TargetSerializer(ModelSerializer):
         feature_name = validated_data['feature']['name']
         feature = Feature.objects.get(name=feature_name)
         instance.feature = feature
-        instance.save()
 
 
 class BinSerializer(ModelSerializer):

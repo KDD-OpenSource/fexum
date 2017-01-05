@@ -4,6 +4,7 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT
 from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, TargetSerializer, SampleSerializer
 from features.models import Target
+from unittest.mock import patch
 
 
 class TestFeatureListView(APITestCase):
@@ -22,19 +23,21 @@ class TestSelectTargetView(APITestCase):
         feature = FeatureFactory()
         self.assertEqual(Target.objects.count(), 0)
 
-        url = reverse('target-select', args=[feature.name])
-        response = self.client.post(url)
+        url = reverse('target-detail')
+        with patch('features.tasks.calculate_rar') as calculate_rar:
+            response = self.client.put(url, data={'feature': {'name': feature.name}}, format='json')
 
-        self.assertEqual(Target.objects.count(), 1)
-        self.assertEqual(Target.objects.get().feature, feature)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), TargetSerializer(instance=Target.objects.get()).data)
+            self.assertEqual(Target.objects.count(), 1)
+            self.assertEqual(Target.objects.get().feature, feature)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(response.json(), TargetSerializer(instance=Target.objects.get()).data)
+            calculate_rar.assert_called_once_with(feature.name)
 
     def test_select_target_feature_not_found(self):
-        url = reverse('target-select', args=['Some_feature_name'])
-        response = self.client.post(url)
+        url = reverse('target-detail')
+        response = self.client.put(url, data={'feature': {'name': 'foobar'}}, format='json')
 
-        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
         self.assertEqual(response.json(),  {'detail': 'Not found.'})
 
     def test_select_target_already_selected(self):
@@ -110,8 +113,8 @@ class TestTargetDetailView(APITestCase):
         url = reverse('target-detail')
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
-        self.assertEqual(response.json(), {'detail': 'Not found.'})
+        self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
+        self.assertEqual(response.content, b'')
 
     def test_delete_target(self):
         TargetFactory()
@@ -127,5 +130,5 @@ class TestTargetDetailView(APITestCase):
         url = reverse('target-detail')
         response = self.client.delete(url)
 
-        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
-        self.assertEqual(response.json(), {'detail': 'Not found.'})
+        self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
+        self.assertEqual(response.content, b'')

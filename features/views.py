@@ -40,6 +40,8 @@ class TargetDetailView(APIView):
         # TODO: Test
         target = Target.load()
         serializer = TargetSerializer(target, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(serializer.data)
 
     def get(self, _):

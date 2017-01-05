@@ -56,16 +56,16 @@ class TestDownsampleTask(TestCase):
         test_file, feature_names = build_test_file()
         feature_name = feature_names[0]
         feature = Feature.objects.create(name=feature_name)
-        factor = 5
 
-        downsample_feature(test_file, feature_name, factor)
+        sample_count = 5
+        downsample_feature(test_file, feature_name, sample_count)
 
         samples = Sample.objects.filter(feature=feature)
 
         # Test that samples get created from 10 datapoints
-        self.assertEqual(samples.count(), 10/factor)
+        self.assertEqual(samples.count(), sample_count)
         self.assertEqual([sample.value for sample in samples],
-                         [Decimal('0.00000'), Decimal('-0.00162')])
+                         [-0.69597425, -0.34861004, -1.24479339, 0.42175655, -0.83270608])
 
 
 class TestCalculateFeatureStatistics(TestCase):
@@ -78,14 +78,14 @@ class TestCalculateFeatureStatistics(TestCase):
 
         feature = Feature.objects.get(name=feature_name)
 
-        self.assertEqual(feature.mean, Decimal('0.37200'))
-        self.assertEqual(feature.variance, Decimal('1.27569'))
-        self.assertEqual(feature.min, Decimal('-1.24479'))
-        self.assertEqual(feature.max, Decimal('2.24540'))
+        self.assertEqual(feature.mean, 0.371998397)
+        self.assertEqual(feature.variance, 1.2756908271439)
+        self.assertEqual(feature.min, -1.24479339)
+        self.assertEqual(feature.max, 2.24539624)
 
 
 class TestCalculateRar(TestCase):
-    def test_calculate_rar_(self):
+    def test_calculate_rar(self):
         test_file, feature_names = build_test_file()
         feature_name1 = feature_names[0]
         feature_name2 = feature_names[1]
@@ -95,10 +95,10 @@ class TestCalculateRar(TestCase):
         Feature.objects.create(name=feature_name2)
 
         # Select first feature as target
-        calculate_rar(test_file, target_index=0)
+        calculate_rar(test_file)
 
         # First feature aka the target should have no info
-        feature1 = Feature.object.get(name=feature_name1)
+        feature1 = Feature.objects.get(name=feature_name1)
         self.assertIsNone(feature1.relevancy)
         self.assertIsNone(feature1.redundancy)
 

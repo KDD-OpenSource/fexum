@@ -7,6 +7,7 @@ from subprocess import Popen, PIPE
 import json
 from features.channels import GROUP_NAME
 from channels import Group
+from math import ceil
 
 
 @shared_task
@@ -49,15 +50,13 @@ def build_histogram(path, feature_name):
 
 
 @shared_task
-def downsample_feature(path, feature_name):
+def downsample_feature(path, feature_name, sample_count):
     dataframe = pd.read_csv(path, usecols=[feature_name])
 
     feature = Feature.objects.get(name=feature_name)
-
     feature_rows = dataframe[feature_name]
     count = feature_rows.count()
-    sample_count = 100
-    sampling = feature_rows[::int(count/sample_count)]
+    sampling = feature_rows[::int(ceil(count/sample_count))]
 
     for value in sampling:
         Sample.objects.create(feature=feature, value=value)
