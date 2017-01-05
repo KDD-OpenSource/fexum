@@ -83,8 +83,8 @@ def calculate_rar(path):
             slice_obj.marginal_distribution = slice_data['normalizedMarginalDistribution']
             slice_obj.conditional_distribution = slice_data['normalizedConditionalDistribution']
             slice_obj.score = slice_data['score']
-            slice_obj.from_value = slice_data['featureRanges']['start']
-            slice_obj.to_value = slice_data['featureRanges']['end']
+            slice_obj.from_value = slice_data['featureRanges'][0]['start']
+            slice_obj.to_value = slice_data['featureRanges'][0]['end']
             slice_obj.save()
 
     # TODO: Send message on save signal, not here?
