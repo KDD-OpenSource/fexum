@@ -40,6 +40,8 @@ class TargetDetailView(APIView):
         # Proper message for missing pararmter
         feature_name = request.data.get('feature_name', None)
         # Test none
+        from features.tasks import calculate_rar
+        calculate_rar('samples.csv')
         feature = get_object_or_404(Feature, name=feature_name)
         target = Target.objects.create(feature=feature)
         serializer = TargetSerializer(instance=target)
