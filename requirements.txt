@@ -7,7 +7,6 @@ channels==0.17.3
 asgi_redis==1.0.0
 daphne
 flower
-django-cors-headers==1.2.0
 
 # Disable these for docker envs
 # scipy
