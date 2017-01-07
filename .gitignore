@@ -93,3 +93,5 @@ ENV/
 db.sqlite3
 *.csv
 
+/predots.sublime-project
+/predots.sublime-workspace

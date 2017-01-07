@@ -1,10 +1,8 @@
-FROM python:3.6-onbuild
+FROM nikriek/python3-java-ml:latest
 ENV PYTHONUNBUFFERED 1
 
 COPY requirements.txt /setup/
-RUN pip3 install --no-cache-dir --global-option=build_ext --global-option="-I/usr/local/include" \
-        -r /setup/requirements.txt \
-        -U pip
+RUN pip3 install -r /setup/requirements.txt
 
 VOLUME /code
 WORKDIR /code

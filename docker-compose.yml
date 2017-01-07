@@ -1,14 +1,40 @@
 version: "2"
 
 services:
+  redis:
+    image: redis:alpine
+    networks:
+      - predots
+
+  postgres:
+    image: postgres:9.4
+    networks:
+      - predots
+
   queue:
     image: rabbitmq:latest
     networks:
       - predots
 
   web:
+    build: .
+    depends_on:
+      - queue
+      - redis
+      - postgres
+    networks:
+      - predots
+    volumes:
+      - .:/code
+    command: python manage.py runworker
+    environment:
+      DJANGO_SETTINGS_MODULE: predots.settings
+
+  web_asgi:
     build: ./
     depends_on:
+      - postgres
+      - redis
       - queue
     networks:
       - predots
@@ -24,11 +50,28 @@ services:
     build: ./
     depends_on:
       - queue
+      - postgres
     networks:
       - predots
     volumes:
       - .:/code
     command: "celery worker --app=predots"
+    environment:
+      DJANGO_SETTINGS_MODULE: predots.settings
+
+  flower:
+    build: ./
+    depends_on:
+      - queue
+      - web
+      - web_asgi
+    networks:
+      - predots
+    volumes:
+      - .:/code
+    ports:
+      - "5555:5555"
+    command: "celery flower -A predots --address=0.0.0.0"
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
 

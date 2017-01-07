@@ -1,6 +1,6 @@
 from factory import DjangoModelFactory, Sequence, SubFactory
-from features.models import Sample, Feature, Bin, Histogram, Slice, Target
-from factory.fuzzy import FuzzyDecimal, FuzzyInteger
+from features.models import Sample, Feature, Bin, Slice, Target
+from factory.fuzzy import FuzzyFloat, FuzzyInteger
 
 
 class FeatureFactory(DjangoModelFactory):
@@ -17,20 +17,13 @@ class TargetFactory(DjangoModelFactory):
     feature = SubFactory(FeatureFactory)
 
 
-class HistogramFactory(DjangoModelFactory):
-    class Meta:
-        model = Histogram
-
-    feature = SubFactory(FeatureFactory)
-
-
 class BinFactory(DjangoModelFactory):
     class Meta:
         model = Bin
 
-    histogram = SubFactory(HistogramFactory)
-    from_value = FuzzyDecimal(-200.0, 0)
-    to_value = FuzzyDecimal(0, 200)
+    feature = SubFactory(FeatureFactory)
+    from_value = FuzzyFloat(-200.0, 0)
+    to_value = FuzzyFloat(0, 200)
     count = FuzzyInteger(1, 1000)
 
 
@@ -39,10 +32,11 @@ class SliceFactory(DjangoModelFactory):
         model = Slice
 
     feature = SubFactory(FeatureFactory)
-    from_value = FuzzyDecimal(-200.0, 0)
-    to_value = FuzzyDecimal(0, 200)
+    from_value = FuzzyFloat(-200.0, 0)
+    to_value = FuzzyFloat(0, 200)
     marginal_distribution = [0, 1, 0]
     conditional_distribution = [0, 1, 0]
+    score = FuzzyFloat(0, 1)
 
 
 class SampleFactory(DjangoModelFactory):
@@ -50,4 +44,4 @@ class SampleFactory(DjangoModelFactory):
         model = Sample
 
     feature = SubFactory(FeatureFactory)
-    value = FuzzyDecimal(0, 200)
+    value = FuzzyFloat(0, 200)

@@ -1,16 +1,16 @@
 from rest_framework.serializers import ModelSerializer, JSONField
-from features.models import Sample, Feature, Bin, Histogram, Slice, Target
+from features.models import Sample, Feature, Bin, Slice, Target
 
 
 class FeatureSerializer(ModelSerializer):
     class Meta:
         model = Feature
-        fields = ('id', 'name', 'relevancy', 'redundancy', 'rank', 'mean', 'variance',
+        fields = ('name', 'relevancy', 'redundancy', 'rank', 'mean', 'variance',
                   'min', 'max')
 
 
 class TargetSerializer(ModelSerializer):
-    feature = FeatureSerializer(read_only=True, many=False)
+    feature = FeatureSerializer(many=False)
 
     class Meta:
         model = Target
@@ -21,14 +21,6 @@ class BinSerializer(ModelSerializer):
     class Meta:
         model = Bin
         fields = ('from_value', 'to_value', 'count')
-
-
-class HistogramSerializer(ModelSerializer):
-    bin_set = BinSerializer(read_only=True, many=True)
-
-    class Meta:
-        model = Histogram
-        fields = ('id', 'bin_set')
 
 
 class SampleSerializer(ModelSerializer):
@@ -43,4 +35,4 @@ class SliceSerializer(ModelSerializer):
 
     class Meta:
         model = Slice
-        fields = ('from_value', 'to_value', 'marginal_distribution', 'conditional_distribution')
+        fields = ('from_value', 'score', 'to_value', 'marginal_distribution', 'conditional_distribution')

@@ -1,6 +1,6 @@
 from django.test import TestCase
 from features.tests.factories import SampleFactory, FeatureFactory, BinFactory, SliceFactory
-from features.serializers import FeatureSerializer, BinSerializer, HistogramSerializer, \
+from features.serializers import FeatureSerializer, BinSerializer, \
     SliceSerializer, SampleSerializer, TargetSerializer
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, TargetFactory
 from decimal import Decimal
@@ -12,7 +12,6 @@ class TestFeatureSerializer(TestCase):
         serializer = FeatureSerializer(instance=feature)
         data = serializer.data
 
-        self.assertEqual(data.pop('id'), feature.id)
         self.assertEqual(data.pop('name'), feature.name)
         self.assertEqual(data.pop('relevancy'), feature.relevancy)
         self.assertEqual(data.pop('redundancy'), feature.redundancy)
@@ -21,22 +20,6 @@ class TestFeatureSerializer(TestCase):
         self.assertEqual(data.pop('max'), feature.max)
         self.assertEqual(data.pop('mean'), feature.mean)
         self.assertEqual(data.pop('variance'), feature.variance)
-        self.assertEqual(len(data), 0)
-
-
-class TestHistogramSerializer(TestCase):
-    def test_serialize_one(self):
-        bin = BinFactory()
-        histogram = bin.histogram
-        serializer = HistogramSerializer(instance=histogram)
-        data = serializer.data
-
-        self.assertEqual(data.pop('id'), histogram.id)
-        self.assertEqual(data.pop('bin_set'), [{
-            'from_value': bin.from_value,
-            'to_value': bin.to_value,
-            'count': bin.count
-        }])
         self.assertEqual(len(data), 0)
 
 
@@ -60,6 +43,7 @@ class TestSliceSerializer(TestCase):
 
         self.assertEqual(Decimal(data.pop('from_value')), a_slice.from_value)
         self.assertEqual(Decimal(data.pop('to_value')), a_slice.to_value)
+        self.assertEqual(Decimal(data.pop('score')), a_slice.score)
         self.assertEqual(data.pop('marginal_distribution'), a_slice.marginal_distribution)
         self.assertEqual(data.pop('conditional_distribution'), a_slice.conditional_distribution)
         self.assertEqual(len(data), 0)
