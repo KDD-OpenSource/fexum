@@ -12,4 +12,4 @@ class EventConsumer(JsonWebsocketConsumer):
         Called to return the list of groups to automatically add/remove
         this connection to/from.
         """
-        return [self.GROUP_NAME]
+        return [GROUP_NAME]

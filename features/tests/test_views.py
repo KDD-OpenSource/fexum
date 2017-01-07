@@ -18,32 +18,6 @@ class TestFeatureListView(APITestCase):
         self.assertEqual(response.json(), [FeatureSerializer(instance=feature).data])
 
 
-class TestSelectTargetView(APITestCase):
-    def test_select_target(self):
-        feature = FeatureFactory()
-        self.assertEqual(Target.objects.count(), 0)
-
-        url = reverse('target-detail')
-        with patch('features.views.calculate_rar.delay') as calculate_rar:
-            response = self.client.put(url, data={'feature': {'name': feature.name}}, format='json')
-
-            self.assertEqual(Target.objects.count(), 1)
-            self.assertEqual(Target.objects.get().feature, feature)
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertEqual(response.json(), TargetSerializer(instance=Target.objects.get()).data)
-            calculate_rar.assert_called_once_with('') # TODO: Replace with actual path
-
-    def test_select_target_feature_not_found(self):
-        url = reverse('target-detail')
-        response = self.client.put(url, data={'feature': {'name': 'foobar'}}, format='json')
-
-        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
-        self.assertEqual(response.json(),  {'detail': 'Not found.'})
-
-    def test_select_target_already_selected(self):
-        pass
-
-
 class TestFeatureSamplesView(APITestCase):
     def test_retrieve_samples(self):
         sample = SampleFactory()
@@ -123,7 +97,7 @@ class TestTargetDetailView(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(), TargetSerializer(instance=target).data)
 
-    def test_retrieve_target_not_found(self):
+    def test_retrieve_target_no_target(self):
         url = reverse('target-detail')
         response = self.client.get(url)
 
@@ -146,3 +120,40 @@ class TestTargetDetailView(APITestCase):
 
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
         self.assertEqual(response.content, b'')
+
+    def test_select_target(self):
+        feature = FeatureFactory()
+        self.assertEqual(Target.objects.count(), 0)
+
+        url = reverse('target-detail')
+        with patch('features.views.calculate_rar.delay') as calculate_rar:
+            response = self.client.put(url, data={'feature': {'name': feature.name}}, format='json')
+
+            self.assertEqual(Target.objects.count(), 1)
+            self.assertEqual(Target.objects.get().feature, feature)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(response.json(), TargetSerializer(instance=Target.objects.get()).data)
+            calculate_rar.assert_called_once_with('')  # TODO: Replace with actual path
+
+    def test_select_target_feature_not_found(self):
+        url = reverse('target-detail')
+        response = self.client.put(url, data={'feature': {'name': 'foobar'}}, format='json')
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})
+
+    def test_select_target_already_selected(self):
+        feature = FeatureFactory()
+        target = TargetFactory()
+        self.assertEqual(Target.objects.count(), 1)
+
+        url = reverse('target-detail')
+        with patch('features.views.calculate_rar.delay') as calculate_rar:
+            response = self.client.put(url, data={'feature': {'name': feature.name}}, format='json')
+
+            self.assertEqual(Target.objects.count(), 1)
+            self.assertEqual(Target.objects.get().feature, feature)
+            self.assertNotEqual(Target.objects.get().feature, target.feature)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(response.json(), TargetSerializer(instance=Target.objects.get()).data)
+            calculate_rar.assert_called_once_with('')
