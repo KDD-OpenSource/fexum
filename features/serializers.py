@@ -10,17 +10,11 @@ class FeatureSerializer(ModelSerializer):
 
 
 class TargetSerializer(ModelSerializer):
-    feature = FeatureSerializer(read_only=True, many=False)
+    feature = FeatureSerializer(many=False)
 
     class Meta:
         model = Target
         fields = ('feature', )
-
-    def update(self, instance, validated_data):
-        # TODO: Test
-        feature_name = validated_data['feature']['name']
-        feature = Feature.objects.get(name=feature_name)
-        instance.feature = feature
 
 
 class BinSerializer(ModelSerializer):

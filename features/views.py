@@ -4,6 +4,7 @@ from features.serializers import FeatureSerializer, BinSerializer, TargetSeriali
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
+from features.tasks import calculate_rar
 
 
 class FeatureListView(APIView):
@@ -37,11 +38,16 @@ class FeatureSlicesView(APIView):
 
 class TargetDetailView(APIView):
     def put(self, request):
-        # TODO: Test
         target = Target.load()
-        serializer = TargetSerializer(target, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
+        feature_name = request.data.get('feature', {}).get('name', None)
+        feature = get_object_or_404(Feature, name=feature_name)
+        target.feature = feature
+        target.save()
+        # TODO: Test
+
+        calculate_rar.delay('')
+
+        serializer = TargetSerializer(target)
         return Response(serializer.data)
 
     def get(self, _):

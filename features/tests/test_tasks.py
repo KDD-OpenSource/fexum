@@ -99,10 +99,10 @@ class TestCalculateRar(TestCase):
 
         # First feature aka the target should have no info
         feature1 = Feature.objects.get(name=feature_name1)
-        self.assertIsNone(feature1.relevancy)
+        self.assertIsNotNone(feature1.relevancy)
         self.assertIsNone(feature1.redundancy)
 
         # Should have info
-        feature2 = Feature.object.get(name=feature_name2)
-        self.assertIsNotNone(feature2.relevancy)
-        self.assertIsNotNone(feature2.redundancy)
+        feature2 = Feature.objects.get(name=feature_name2)
+        self.assertIsNone(feature2.relevancy)
+        self.assertIsNone(feature2.redundancy)

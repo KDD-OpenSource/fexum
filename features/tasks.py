@@ -62,6 +62,7 @@ def downsample_feature(path, feature_name, sample_count):
         Sample.objects.create(feature=feature, value=value)
 
 
+@shared_task
 def calculate_rar(path):
     JAR_FILE = 'assets/rar-mfs_1.0.1.jar'
     process = Popen(
