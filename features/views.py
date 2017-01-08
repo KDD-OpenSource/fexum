@@ -72,10 +72,8 @@ class DatasetViewUploadView(APIView):
         dataset = Dataset.objects.create(name=filename, content=file_obj)
 
         # Start tasks for feature calculation
+        # TODO: Make sure that initialize_from_dataset runs before everything else
         initialize_from_dataset.delay(dataset.id)
-        calculate_feature_statistics.delay(dataset.id)
-        build_histogram.delay(dataset.id)
-        downsample_feature.delay(dataset.id)
 
         serializer = DatasetSerializer(instance=dataset)
 

@@ -12,8 +12,8 @@ import os
 from django.conf import settings
 
 
-def get_dataset(dataset_name)
-    dataset = Dataset.objects.get(name=dataset_name)
+def get_dataset(dataset_id):
+    dataset = Dataset.objects.get(pk=dataset_id)
 
     filename = os.path.join(settings.MEDIA_ROOT, dataset.content.name)
     if not os.path.isfile(filename):
@@ -23,8 +23,8 @@ def get_dataset(dataset_name)
 
 
 @shared_task
-def initialize_from_dataset(dataset_name):
-    filename = get_dataset(dataset_name)
+def initialize_from_dataset(dataset_id):
+    filename = get_dataset(dataset_id)
 
     # Only read first row for header
     dataframe = pd.read_csv(filename, nrows=1)
@@ -34,8 +34,8 @@ def initialize_from_dataset(dataset_name):
 
 
 @shared_task
-def calculate_feature_statistics(dataset_name, feature_name):
-    filename = get_dataset(dataset_name)
+def calculate_feature_statistics(dataset_id, feature_name):
+    filename = get_dataset(dataset_id)
 
     dataframe = pd.read_csv(filename, usecols=[feature_name])
     feature_col = dataframe[feature_name]
@@ -51,8 +51,8 @@ def calculate_feature_statistics(dataset_name, feature_name):
 
 
 @shared_task
-def build_histogram(dataset_name, feature_name):
-    filename = get_dataset(dataset_name)
+def build_histogram(dataset_id, feature_name):
+    filename = get_dataset(dataset_id)
 
     # Only read column with that name
     dataframe = pd.read_csv(filename, usecols=[feature_name])
@@ -68,8 +68,8 @@ def build_histogram(dataset_name, feature_name):
 
 
 @shared_task
-def downsample_feature(dataset_name, feature_name, sample_count):
-    filename = get_dataset(dataset_name)
+def downsample_feature(dataset_id, feature_name, sample_count):
+    filename = get_dataset(dataset_id)
 
     dataframe = pd.read_csv(filename, usecols=[feature_name])
 
@@ -83,8 +83,8 @@ def downsample_feature(dataset_name, feature_name, sample_count):
 
 
 @shared_task
-def calculate_rar(dataset_name):
-    filename = get_dataset(dataset_name)
+def calculate_rar(dataset_id):
+    filename = get_dataset(dataset_id)
 
     JAR_FILE = 'assets/rar-mfs_1.0.1.jar'
     process = Popen(
