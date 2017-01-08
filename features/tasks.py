@@ -5,7 +5,6 @@ import numpy as np
 from features.models import Feature, Bin, Slice, Sample
 from subprocess import Popen, PIPE
 import json
-from features.channels import GROUP_NAME
 from channels import Group
 from math import ceil
 
@@ -88,4 +87,4 @@ def calculate_rar(path):
             slice_obj.save()
 
     # TODO: Send message on save signal, not here?
-    Group(GROUP_NAME).send({'text': json.dumps({'event_name': 'relevancy-update', 'payload': {}})})
+    #Group(GROUP_NAME).send({'text': json.dumps({'event_name': 'relevancy-update', 'payload': {}})})
