@@ -2,26 +2,42 @@ from __future__ import absolute_import, unicode_literals
 from celery import shared_task
 import pandas as pd
 import numpy as np
-from features.models import Feature, Bin, Slice, Sample
+from features.models import Feature, Bin, Slice, Sample, Dataset
 from subprocess import Popen, PIPE
 import json
 from features.channels import GROUP_NAME
 from channels import Group
 from math import ceil
+import os
+from django.conf import settings
+
+
+def get_dataset(dataset_name)
+    dataset = Dataset.objects.get(name=dataset_name)
+
+    filename = os.path.join(settings.MEDIA_ROOT, dataset.content.name)
+    if not os.path.isfile(filename):
+        raise Exception
+
+    return filename
 
 
 @shared_task
-def initialize_from_dataset(path):
+def initialize_from_dataset(dataset_name):
+    filename = get_dataset(dataset_name)
+
     # Only read first row for header
-    dataframe = pd.read_csv(path, nrows=1)
+    dataframe = pd.read_csv(filename, nrows=1)
     headers = list(dataframe.columns.values)
     for header in headers:
         Feature.objects.create(name=header)
 
 
 @shared_task
-def calculate_feature_statistics(path, feature_name):
-    dataframe = pd.read_csv(path, usecols=[feature_name])
+def calculate_feature_statistics(dataset_name, feature_name):
+    filename = get_dataset(dataset_name)
+
+    dataframe = pd.read_csv(filename, usecols=[feature_name])
     feature_col = dataframe[feature_name]
 
     feature = Feature.objects.get(name=feature_name)
@@ -35,9 +51,11 @@ def calculate_feature_statistics(path, feature_name):
 
 
 @shared_task
-def build_histogram(path, feature_name):
+def build_histogram(dataset_name, feature_name):
+    filename = get_dataset(dataset_name)
+
     # Only read column with that name
-    dataframe = pd.read_csv(path, usecols=[feature_name])
+    dataframe = pd.read_csv(filename, usecols=[feature_name])
 
     feature = Feature.objects.get(name=feature_name)
 
@@ -50,8 +68,10 @@ def build_histogram(path, feature_name):
 
 
 @shared_task
-def downsample_feature(path, feature_name, sample_count):
-    dataframe = pd.read_csv(path, usecols=[feature_name])
+def downsample_feature(dataset_name, feature_name, sample_count):
+    filename = get_dataset(dataset_name)
+
+    dataframe = pd.read_csv(filename, usecols=[feature_name])
 
     feature = Feature.objects.get(name=feature_name)
     feature_rows = dataframe[feature_name]
@@ -63,11 +83,13 @@ def downsample_feature(path, feature_name, sample_count):
 
 
 @shared_task
-def calculate_rar(path):
+def calculate_rar(dataset_name):
+    filename = get_dataset(dataset_name)
+
     JAR_FILE = 'assets/rar-mfs_1.0.1.jar'
     process = Popen(
-        ['java', '-jar', JAR_FILE, 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm', path,
-         '--hics'], stdout=PIPE)
+        ['java', '-jar', JAR_FILE, 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm',
+         filename, '--hics'], stdout=PIPE)
     raw_output, err = process.communicate()
     results = json.loads(raw_output)
 

@@ -1,5 +1,5 @@
 from rest_framework.serializers import ModelSerializer, JSONField
-from features.models import Sample, Feature, Bin, Slice, Target
+from features.models import Sample, Feature, Bin, Slice, Target, Dataset
 
 
 class FeatureSerializer(ModelSerializer):
@@ -35,4 +35,11 @@ class SliceSerializer(ModelSerializer):
 
     class Meta:
         model = Slice
-        fields = ('from_value', 'score', 'to_value', 'marginal_distribution', 'conditional_distribution')
+        fields = (
+        'from_value', 'score', 'to_value', 'marginal_distribution', 'conditional_distribution')
+
+
+class DatasetSerializer(ModelSerializer):
+    class Meta:
+        model = Dataset
+        fields = ('name', )

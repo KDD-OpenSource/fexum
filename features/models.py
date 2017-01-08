@@ -2,6 +2,11 @@ from django.db import models
 from jsonfield import JSONField
 
 
+class Dataset(models.Model):
+    name = models.CharField(max_length=255)
+    content = models.FileField(upload_to='datasets/')
+
+
 class Feature(models.Model):
     name = models.CharField(max_length=100, null=False, blank=False, unique=True)
     relevancy = models.FloatField(blank=True, null=True)

@@ -1,6 +1,6 @@
 from django.conf.urls import url
-from features.views import FeatureListView, FeatureSamplesView, \
-    FeatureHistogramView, FeatureSlicesView, TargetDetailView
+from features.views import FeatureListView, FeatureSamplesView, DatasetListView, \
+    FeatureHistogramView, FeatureSlicesView, TargetDetailView, DatasetViewUploadView
 
 
 urlpatterns = [
@@ -11,5 +11,9 @@ urlpatterns = [
     url(r'features/(?P<feature_name>[a-zA-Z0-9_]+)/histogram$', FeatureHistogramView.as_view(),
         name='feature-histogram'),
     url(r'features/(?P<feature_name>[a-zA-Z0-9_]+)/slices$', FeatureSlicesView.as_view(),
-        name='feature-slices')
+        name='feature-slices'),
+    url(r'features/datasets/upload/(?P<filename>[^/]+)$', DatasetViewUploadView.as_view(),
+        name='dataset-upload'),
+    url(r'features/datasets$', DatasetListView.as_view(),
+        name='dataset-list')
 ]

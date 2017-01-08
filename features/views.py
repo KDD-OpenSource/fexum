@@ -1,10 +1,14 @@
 from rest_framework.views import APIView
-from features.models import Feature, Bin, Target, Sample
-from features.serializers import FeatureSerializer, BinSerializer, TargetSerializer, SampleSerializer, SliceSerializer
+from features.models import Feature, Bin, Target, Sample, Dataset
+from features.serializers import FeatureSerializer, BinSerializer, TargetSerializer, \
+    SampleSerializer, SliceSerializer, DatasetSerializer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
 from features.tasks import calculate_rar
+from rest_framework.parsers import FileUploadParser
+from features.tasks import initialize_from_dataset, calculate_feature_statistics, build_histogram, \
+    downsample_feature
 
 
 class FeatureListView(APIView):
@@ -59,3 +63,27 @@ class TargetDetailView(APIView):
         Target.objects.all().delete()
         return Response(status=HTTP_204_NO_CONTENT)
 
+
+class DatasetViewUploadView(APIView):
+    parser_classes = (FileUploadParser,)
+
+    def put(self, request, filename, *args, **kwargs):
+        file_obj = request.FILES['file']
+        dataset = Dataset.objects.create(name=filename, content=file_obj)
+
+        # Start tasks for feature calculation
+        initialize_from_dataset.delay(dataset.id)
+        calculate_feature_statistics.delay(dataset.id)
+        build_histogram.delay(dataset.id)
+        downsample_feature.delay(dataset.id)
+
+        serializer = DatasetSerializer(instance=dataset)
+
+        return Response(serializer.data)
+
+
+class DatasetListView(APIView):
+    def get(self, _):
+        datasets = Dataset.objects.all()
+        serializer = DatasetSerializer(instance=datasets, many=True)
+        return Response(serializer.data)
