@@ -5,7 +5,7 @@ celery==4.0.2
 psycopg2==2.6.2
 channels==0.17.3
 asgi_redis==1.0.0
-daphne
+daphne==0.15.0
 flower==0.9.1
 
 # Disable these for docker envs
