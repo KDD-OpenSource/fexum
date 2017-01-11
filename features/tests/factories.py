@@ -1,6 +1,15 @@
 from factory import DjangoModelFactory, Sequence, SubFactory
-from features.models import Sample, Feature, Bin, Slice, Target
-from factory.fuzzy import FuzzyFloat, FuzzyInteger
+from features.models import Sample, Feature, Bin, Slice, Target, Dataset
+from factory.fuzzy import FuzzyFloat, FuzzyInteger, FuzzyText
+from factory.django import FileField
+
+
+class DatasetFactory(DjangoModelFactory):
+    class Meta:
+        model = Dataset
+
+    name = FuzzyText(suffix='.csv')
+    content = FileField(filename=None)
 
 
 class FeatureFactory(DjangoModelFactory):
@@ -8,6 +17,7 @@ class FeatureFactory(DjangoModelFactory):
         model = Feature
 
     name = Sequence(lambda n: 'feature_{0}'.format(n))
+    dataset = SubFactory(DatasetFactory)
 
 
 class TargetFactory(DjangoModelFactory):

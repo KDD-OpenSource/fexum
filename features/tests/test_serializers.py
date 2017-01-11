@@ -1,8 +1,8 @@
 from django.test import TestCase
-from features.tests.factories import SampleFactory, FeatureFactory, BinFactory, SliceFactory
 from features.serializers import FeatureSerializer, BinSerializer, \
-    SliceSerializer, SampleSerializer, TargetSerializer
-from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, TargetFactory
+    SliceSerializer, SampleSerializer, TargetSerializer, DatasetSerializer
+from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, TargetFactory, \
+    DatasetFactory, SampleFactory
 from decimal import Decimal
 
 
@@ -67,4 +67,14 @@ class TestTargetSerializer(TestCase):
         feature_data = FeatureSerializer(instance=target.feature).data
 
         self.assertEqual(data.pop('feature'), feature_data)
+        self.assertEqual(len(data), 0)
+
+
+class TestDatasetSerializer(TestCase):
+    def test_serialize_one(self):
+        target = DatasetFactory()
+        serializer = DatasetSerializer(instance=target)
+        data = serializer.data
+
+        self.assertEqual(data.pop('name'), target.name)
         self.assertEqual(len(data), 0)

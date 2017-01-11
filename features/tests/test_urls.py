@@ -30,3 +30,15 @@ class TestTargetDetailUrl(TestCase):
     def test_target_detail_url(self):
         url = reverse('target-detail')
         self.assertEqual(url, '/api/features/target')
+
+
+class TestDatasetListUrl(TestCase):
+    def test_target_list_url(self):
+        url = reverse('dataset-list')
+        self.assertEqual(url, '/api/datasets')
+
+
+class TestDatasetUploadUrl(TestCase):
+    def test_target_uplaod_url(self):
+        url = reverse('dataset-upload', args=['a_dataset'])
+        self.assertEqual(url, '/api/datasets/upload/a_dataset')

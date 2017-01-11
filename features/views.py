@@ -67,7 +67,7 @@ class TargetDetailView(APIView):
 class DatasetViewUploadView(APIView):
     parser_classes = (FileUploadParser,)
 
-    def put(self, request, filename, *args, **kwargs):
+    def post(self, request, filename, *args, **kwargs):
         file_obj = request.FILES['file']
         dataset = Dataset.objects.create(name=filename, content=file_obj)
 

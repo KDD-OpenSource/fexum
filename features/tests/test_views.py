@@ -1,8 +1,10 @@
 from rest_framework.test import APITestCase
-from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, TargetFactory, SampleFactory
+from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, TargetFactory, \
+    SampleFactory, DatasetFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT
-from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, TargetSerializer, SampleSerializer
+from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, \
+    TargetSerializer, SampleSerializer, DatasetSerializer
 from features.models import Target
 from unittest.mock import patch
 
@@ -148,7 +150,7 @@ class TestTargetDetailView(APITestCase):
         self.assertEqual(Target.objects.count(), 1)
 
         url = reverse('target-detail')
-        with patch('features.views.calculate_rar.delay') as calculate_rar:
+        with patch('features.views.calculate_rar.delay') as calculate_rar_mock:
             response = self.client.put(url, data={'feature': {'name': feature.name}}, format='json')
 
             self.assertEqual(Target.objects.count(), 1)
@@ -156,4 +158,32 @@ class TestTargetDetailView(APITestCase):
             self.assertNotEqual(Target.objects.get().feature, target.feature)
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(response.json(), TargetSerializer(instance=Target.objects.get()).data)
-            calculate_rar.assert_called_once_with('')
+            calculate_rar_mock.assert_called_once_with('')
+
+
+class TestDatasetListView(APITestCase):
+    def test_retrieve_all_datasets(self):
+        dataset = DatasetFactory()
+
+        url = reverse('dataset-list')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), [DatasetSerializer(instance=dataset).data])
+
+
+class TestDatasetUploadView(APITestCase):
+    def test_upload_dataset(self):
+        dataset_name = 'test.csv'
+
+        url = reverse('dataset-upload', args=[dataset_name])
+        with patch('features.views.initialize_from_dataset.delay') as initialize_from_dataset_mock:
+            with open('test_file.csv') as file_data:
+                response = self.client.post(url, {'file': file_data})
+
+            dataset = Dataset.objects.first()
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(response.json(), DatasetSerializer(instance=dataset).data)
+            self.assertEqual(dataset.name, dataset_name)
+            self.assertEqual(dataset.content, file_data)
+            initialize_from_dataset_mock.assert_called_once_with(dataset.id)

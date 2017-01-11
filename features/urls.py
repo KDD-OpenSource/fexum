@@ -12,8 +12,8 @@ urlpatterns = [
         name='feature-histogram'),
     url(r'features/(?P<feature_name>[a-zA-Z0-9_]+)/slices$', FeatureSlicesView.as_view(),
         name='feature-slices'),
-    url(r'features/datasets/upload/(?P<filename>[^/]+)$', DatasetViewUploadView.as_view(),
+    url(r'datasets/upload/(?P<filename>[^/]+)$', DatasetViewUploadView.as_view(),
         name='dataset-upload'),
-    url(r'features/datasets$', DatasetListView.as_view(),
+    url(r'datasets$', DatasetListView.as_view(),
         name='dataset-list')
 ]

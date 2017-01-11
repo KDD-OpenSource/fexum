@@ -1,13 +1,12 @@
 from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
     calculate_feature_statistics, calculate_rar
-from features.models import Feature, Sample, Bin
+from features.models import Feature, Sample, Bin, Dataset
 import pandas as pd
 import numpy as np
-from decimal import Decimal
 
 
-def build_test_file():
+def build_test_dataset():
     test_file = 'test_file.csv'
     feature_names = ['Col1', 'Col2']
     data = np.array([[-0.69597425, -0.24040447],
@@ -22,6 +21,8 @@ def build_test_file():
                      [0.46184216, 0.41361159]])
     df = pd.DataFrame(data, columns=feature_names)
     df.to_csv(test_file, index=False)
+
+    Dataset.objects.create()
 
     return test_file, feature_names
 

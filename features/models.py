@@ -8,7 +8,11 @@ class Dataset(models.Model):
 
 
 class Feature(models.Model):
-    name = models.CharField(max_length=100, null=False, blank=False, unique=True)
+    class Meta:
+        unique_together = (('name', 'dataset'),)
+
+    name = models.CharField(max_length=100, null=False, blank=False)
+    dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE)
     relevancy = models.FloatField(blank=True, null=True)
     redundancy = models.FloatField(blank=True, null=True)
     rank = models.IntegerField(unique=True, blank=True, null=True)
