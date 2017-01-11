@@ -32,7 +32,9 @@ This is useful when you want to test and create database objects
 ```
 $ docker-compose run web python3 manage.py shell
 >> from features.tasks import *
->> a_test_name.delay(a_task_parameter)
+>> from features.models import *
+>> for feature in Feature.objects.all() 
+   ... a_test_name.delay(feature.name)
 ```
 
 ### Task monitoring
