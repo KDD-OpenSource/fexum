@@ -19,3 +19,8 @@ $ ./docker-install-ubuntu-16.04.sh
 ```
 $ ./start-cluster.sh
 ```
+
+# 3. Start portainer on master
+```
+$ docker run -d -p 9000:9000 portainer/portainer -v "/var/run/docker.sock:/var/run/docker.sock"
+```
