@@ -1,3 +1,9 @@
+# 0. Clone this repo
+```
+$ git clone git@github.com:xasetl/predots.git
+$ cd predots/
+```
+
 # 1. Install Docker on Ubuntu 16.04
 Configure locales by selecting german (de, UTF-8) when prompted
 ```
