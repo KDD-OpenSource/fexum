@@ -20,8 +20,8 @@ WORKDIR /setup
 RUN git clone git@github.com:danthe96/rar-mfs.git
 WORKDIR /setup/rar-mfs
 RUN sbt assembly
-RUN mkdir -p /code/assets/
-RUN cp target/scala-2.11/rar-mfs-assembly-1.0.1.jar /code/assets/rar-mfs.jar
+RUN mkdir /assets
+RUN cp target/scala-2.11/rar-mfs-assembly-1.0.1.jar /assets/rar-mfs.jar
 
 VOLUME /code
 WORKDIR /code
