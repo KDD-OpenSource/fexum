@@ -43,7 +43,9 @@ class TestSliceSerializer(TestCase):
 
         self.assertEqual(Decimal(data.pop('from_value')), a_slice.from_value)
         self.assertEqual(Decimal(data.pop('to_value')), a_slice.to_value)
-        self.assertEqual(Decimal(data.pop('score')), a_slice.score)
+        self.assertEqual(Decimal(data.pop('deviation')), a_slice.deviation)
+        self.assertEqual(Decimal(data.pop('frequency')), a_slice.frequency)
+        self.assertEqual(Decimal(data.pop('significance')), a_slice.significance)
         self.assertEqual(data.pop('marginal_distribution'), a_slice.marginal_distribution)
         self.assertEqual(data.pop('conditional_distribution'), a_slice.conditional_distribution)
         self.assertEqual(len(data), 0)
