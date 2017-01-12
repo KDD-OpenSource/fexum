@@ -64,7 +64,7 @@ def downsample_feature(path, feature_name, sample_count):
 
 @shared_task
 def calculate_rar(path):
-    JAR_FILE = 'assets/rar-mfs_1.0.1.jar'
+    JAR_FILE = 'assets/rar-mfs.jar'
     process = Popen(
         ['java', '-d64', '-Xms8g', '-Xmx32g', '-jar', JAR_FILE, 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm', path,
          '--hics'], stdout=PIPE)
