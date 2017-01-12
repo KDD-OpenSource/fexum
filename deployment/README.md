@@ -12,7 +12,10 @@ $ sudo dpkg-reconfigure locales
 
 Run docker installation from script
 ```
-$ docker-install-ubuntu-16.04.sh
+$ ./docker-install-ubuntu-16.04.sh
 ```
 
-# 2. Initalize Swarm cluster
+# 2. Start cluster 
+```
+$ ./start-cluster.sh
+```
