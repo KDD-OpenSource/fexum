@@ -75,5 +75,22 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
 
+
+  nginx:
+    restart: always
+    image: nginx
+    volumes:
+      - ./deployment/nginx.conf:/etc/nginx/conf.d/nginx.conf
+    depends_on:
+      - web_asgi
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      - NGINX_HOST=""
+    command: /bin/bash -c "envsubst '$$NGINX_HOST' < /etc/nginx/conf.d/nginx.conf > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+    networks:
+      - predots
+
 networks:
   predots:
