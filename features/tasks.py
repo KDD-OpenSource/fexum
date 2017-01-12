@@ -82,7 +82,9 @@ def calculate_rar(path):
             slice_obj.feature = Feature.objects.get(name=feature_data['name'])
             slice_obj.marginal_distribution = slice_data['normalizedMarginalDistribution']
             slice_obj.conditional_distribution = slice_data['normalizedConditionalDistribution']
-            slice_obj.score = slice_data['score']
+            slice_obj.deviation = slice_data['deviation']
+            slice_obj.frequency = slice_data['frequency']
+            slice_obj.significance = slice_data['significance']
             slice_obj.from_value = slice_data['featureRanges'][0]['start']
             slice_obj.to_value = slice_data['featureRanges'][0]['end']
             slice_obj.save()

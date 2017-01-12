@@ -36,7 +36,9 @@ class SliceFactory(DjangoModelFactory):
     to_value = FuzzyFloat(0, 200)
     marginal_distribution = [0, 1, 0]
     conditional_distribution = [0, 1, 0]
-    score = FuzzyFloat(0, 1)
+    deviation = FuzzyFloat(0, 1)
+    frequency = FuzzyFloat(0, 1)
+    significance = FuzzyFloat(0, 1)
 
 
 class SampleFactory(DjangoModelFactory):

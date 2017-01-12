@@ -76,7 +76,9 @@ class TestFeatureSlicesView(APITestCase):
         self.assertEqual(first_obj.pop('marginal_distribution'), data['marginal_distribution'])
         self.assertAlmostEqual(first_obj.pop('to_value'), data['to_value'])
         self.assertAlmostEqual(first_obj.pop('from_value'), data['from_value'])
-        self.assertAlmostEqual(first_obj.pop('score'), data['score'])
+        self.assertAlmostEqual(first_obj.pop('deviation'), data['deviation'])
+        self.assertAlmostEqual(first_obj.pop('frequency'), data['frequency'])
+        self.assertAlmostEqual(first_obj.pop('significance'), data['significance'])
         self.assertEqual(len(first_obj), 0)
 
     def test_retrieve_slices_not_found(self):
