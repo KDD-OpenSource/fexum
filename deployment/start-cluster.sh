@@ -8,9 +8,11 @@ WORKER_NODES=("bp4" "bp5")
 JOIN_TOKEN=""
 
 function setup_master_node() {
-  echo "Setting up master at $MASTER_NODE";
+  echo "Setting up master at $MASTER_NODE...";
   JOIN_TOKEN=$(ssh $USERNAME@$MASTER_NODE 'docker swarm init &> /dev/null; docker swarm join-token manager -q >&1');
   echo "Join token is $JOIN_TOKEN";
+  
+  echo "Starting NFS server..."
 }
 
 function setup_worker_node() {
