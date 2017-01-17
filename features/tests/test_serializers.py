@@ -11,7 +11,8 @@ class TestFeatureSerializer(TestCase):
         feature = FeatureFactory()
         serializer = FeatureSerializer(instance=feature)
         data = serializer.data
-
+        
+        self.assertEqual(data.pop('id'), feature.id)
         self.assertEqual(data.pop('name'), feature.name)
         self.assertEqual(data.pop('relevancy'), feature.relevancy)
         self.assertEqual(data.pop('redundancy'), feature.redundancy)
