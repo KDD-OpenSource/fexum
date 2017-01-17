@@ -12,8 +12,9 @@ from features.tasks import initialize_from_dataset, calculate_feature_statistics
 
 
 class FeatureListView(APIView):
-    def get(self, *args, **kwargs):
-        features = Feature.objects.all()
+    def get(self, _, dataset_name):
+        dataset = get_object_or_404(Dataset, name=dataset_name)
+        features = Feature.objects.filter(dataset=dataset).all()
         serializer = FeatureSerializer(instance=features, many=True)
         return Response(serializer.data)
 
