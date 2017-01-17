@@ -10,9 +10,16 @@ sudo apt-get install linux-image-extra-$(uname -r) linux-image-extra-virtual -y
 sudo apt-get install docker-engine -y
 sudo service docker start
 
+# Configure docker for non sudo mode
 sudo groupadd docker
 sudo usermod -aG docker $USER
 newgrp docker
 
+# Install docker-compose
 sudo apt-get install python-pip -y
 pip install docker-compose
+
+# Install netshare for shared file system
+sudo apt-get install -y nfs-common
+wget https://github.com/ContainX/docker-volume-netshare/releases/download/v0.33/docker-volume-netshare_0.33_amd64.deb
+sudo dpkg -i docker-volume-netshare_0.33_amd64.deb
