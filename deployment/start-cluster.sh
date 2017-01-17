@@ -3,8 +3,8 @@
 USERNAME="user"
 
 SWARM_PORT=2377
-MASTER_NODE="172.16.18.127"
-WORKER_NODES=("bp4" "bp5")
+MASTER_NODE="BP2016MUE1WS07.hpi.uni-potsdam.d"
+WORKER_NODES=("BP2016MUE1WS04.hpi.uni-potsdam.de" "BP2016MUE1WS05.hpi.uni-potsdam.de")
 JOIN_TOKEN=""
 
 function setup_master_node() {
