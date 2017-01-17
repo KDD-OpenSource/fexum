@@ -83,13 +83,12 @@ def downsample_feature(dataset_id, feature_name, sample_count):
 
 
 @shared_task
-def calculate_rar(dataset_id):
+def calculate_rar(path):
     filename = get_dataset(dataset_id)
-
-    JAR_FILE = 'assets/rar-mfs_1.0.1.jar'
+    JAR_FILE = '/assets/rar-mfs.jar'
     process = Popen(
-        ['java', '-jar', JAR_FILE, 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm',
-         filename, '--hics'], stdout=PIPE)
+        ['java', '-d64', '-Xms8g', '-Xmx32g', '-jar', JAR_FILE, 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm', filename,
+         '--hics'], stdout=PIPE)
     raw_output, err = process.communicate()
     results = json.loads(raw_output)
 
@@ -104,7 +103,9 @@ def calculate_rar(dataset_id):
             slice_obj.feature = Feature.objects.get(name=feature_data['name'])
             slice_obj.marginal_distribution = slice_data['normalizedMarginalDistribution']
             slice_obj.conditional_distribution = slice_data['normalizedConditionalDistribution']
-            slice_obj.score = slice_data['score']
+            slice_obj.deviation = slice_data['deviation']
+            slice_obj.frequency = slice_data['frequency']
+            slice_obj.significance = slice_data['significance']
             slice_obj.from_value = slice_data['featureRanges'][0]['start']
             slice_obj.to_value = slice_data['featureRanges'][0]['end']
             slice_obj.save()

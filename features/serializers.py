@@ -35,8 +35,7 @@ class SliceSerializer(ModelSerializer):
 
     class Meta:
         model = Slice
-        fields = (
-        'from_value', 'score', 'to_value', 'marginal_distribution', 'conditional_distribution')
+        fields = ('from_value', 'deviation', 'frequency', 'significance', 'to_value', 'marginal_distribution', 'conditional_distribution')
 
 
 class DatasetSerializer(ModelSerializer):
