@@ -5,5 +5,4 @@ from features.bindings import RelevancyBinding
 
 channel_routing = [
     route_class(Demultiplexer, path='^/binding'),
-    route('binding.relevancy', RelevancyBinding.consumer)
 ]
