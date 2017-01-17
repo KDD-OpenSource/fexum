@@ -12,7 +12,7 @@ $ sudo dpkg-reconfigure locales
 
 Run docker installation from script
 ```
-$ ./docker-install-ubuntu-16.04.sh
+$ ./ubuntu-setup.sh
 ```
 
 # 2. Start cluster 
