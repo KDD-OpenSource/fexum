@@ -24,7 +24,7 @@ class TestFeatureSamplesView(APITestCase):
     def test_retrieve_samples(self):
         sample = SampleFactory()
 
-        url = reverse('feature-samples', args=[sample.feature.name])
+        url = reverse('feature-samples', args=[sample.feature.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -39,7 +39,7 @@ class TestFeatureHistogramView(APITestCase):
     def test_retrieve_histogram(self):
         hbin = BinFactory()
 
-        url = reverse('feature-histogram', args=[hbin.feature.name])
+        url = reverse('feature-histogram', args=[hbin.feature.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -65,7 +65,7 @@ class TestFeatureSlicesView(APITestCase):
     def test_retrieve_slices(self):
         fslice = SliceFactory()
 
-        url = reverse('feature-slices', args=[fslice.feature.name])
+        url = reverse('feature-slices', args=[fslice.feature.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
