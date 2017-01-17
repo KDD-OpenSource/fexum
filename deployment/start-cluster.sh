@@ -3,7 +3,7 @@
 USERNAME="user"
 
 SWARM_PORT=2377
-MASTER_NODE="BP2016MUE1WS07.hpi.uni-potsdam.d"
+MASTER_NODE="BP2016MUE1WS07.hpi.uni-potsdam.de"
 WORKER_NODES=("BP2016MUE1WS04.hpi.uni-potsdam.de" "BP2016MUE1WS05.hpi.uni-potsdam.de")
 JOIN_TOKEN=""
 
