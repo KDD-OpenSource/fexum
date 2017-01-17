@@ -10,7 +10,7 @@ Configure locales by selecting german (de, UTF-8) when prompted
 $ sudo dpkg-reconfigure locales
 ```
 
-Run docker installation from script
+Setup Docker, Docker Compose and NFS:
 ```
 $ ./ubuntu-setup.sh
 ```
