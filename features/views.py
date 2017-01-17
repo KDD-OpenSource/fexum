@@ -19,23 +19,23 @@ class FeatureListView(APIView):
 
 
 class FeatureSamplesView(APIView):
-    def get(self, _, feature_name):
-        samples = Sample.objects.filter(feature__name=feature_name).all()
+    def get(self, _, feature_id):
+        samples = Sample.objects.filter(feature_id=feature_id).all()
         serializer = SampleSerializer(instance=samples, many=True)
         return Response(serializer.data)
 
 
 class FeatureHistogramView(APIView):
-    def get(self, _, feature_name):
-        feature = get_object_or_404(Feature, name=feature_name)
+    def get(self, _, feature_id):
+        feature = get_object_or_404(Feature, id=feature_id)
         bins = Bin.objects.filter(feature=feature).order_by('id').all()
         serializer = BinSerializer(instance=bins, many=True)
         return Response(serializer.data)
 
 
 class FeatureSlicesView(APIView):
-    def get(self, _, feature_name):
-        slices = get_object_or_404(Feature, name=feature_name).slice_set
+    def get(self, _, feature_id):
+        slices = get_object_or_404(Feature, id=feature_id).slice_set
         serializer = SliceSerializer(instance=slices, many=True)
         return Response(serializer.data)
 
@@ -43,8 +43,8 @@ class FeatureSlicesView(APIView):
 class TargetDetailView(APIView):
     def put(self, request):
         target = Target.load()
-        feature_name = request.data.get('feature', {}).get('name', None)
-        feature = get_object_or_404(Feature, name=feature_name)
+        feature_id = request.data.get('feature', {}).get('id', None)
+        feature = get_object_or_404(Feature, id=feature_id)
         target.feature = feature
         target.save()
         # TODO: Test
