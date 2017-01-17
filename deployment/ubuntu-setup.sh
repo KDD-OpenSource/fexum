@@ -21,6 +21,7 @@ pip install docker-compose
 
 # Install netshare for shared file system
 sudo apt-get install -y nfs-common
+sudo apt-get install nfs-kernel-server
 wget https://github.com/ContainX/docker-volume-netshare/releases/download/v0.33/docker-volume-netshare_0.33_amd64.deb
 sudo dpkg -i docker-volume-netshare_0.33_amd64.deb
 sudo service docker-volume-netshare start
