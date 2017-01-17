@@ -5,9 +5,9 @@ from features.channels import EventConsumer
 
 class TestEventConsumer(ChannelTestCase):
     def test_send_relevancy_update(self):
-        with apply_routes([route_class(EventConsumer, path='/socket')]):
+        with apply_routes([route_class(EventConsumer, path='/binding')]):
             client = Client()
-            client.consume('websocket.connect', {'path': '/socket'})
+            client.consume('websocket.connect', {'path': '/binding'})
         
             Group("features").send({"text": 'a_text'})
         
