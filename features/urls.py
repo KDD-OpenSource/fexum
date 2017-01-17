@@ -4,8 +4,8 @@ from features.views import FeatureListView, FeatureSamplesView, DatasetListView,
 
 
 urlpatterns = [
-    url(r'features$', FeatureListView.as_view(), name='feature-list'),
-    url(r'features/target$', TargetDetailView.as_view(), name='target-detail'),
+    url(r'dataset/(?P<dataset_name>[a-zA-Z0-9_]+)$', FeatureListView.as_view(), name='feature-list'),
+    url(r'datasets/(?P<dataset_name>[a-zA-Z0-9_]+)$/target$', TargetDetailView.as_view(), name='target-detail'),
     url(r'features/(?P<feature_id>[a-zA-Z0-9_]+)/samples$', FeatureSamplesView.as_view(),
         name='feature-samples'),
     url(r'features/(?P<feature_id>[a-zA-Z0-9_]+)/histogram$', FeatureHistogramView.as_view(),
