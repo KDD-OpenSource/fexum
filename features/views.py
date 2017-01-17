@@ -55,13 +55,14 @@ class TargetDetailView(APIView):
         serializer = TargetSerializer(target)
         return Response(serializer.data)
 
-    def get(self, _):
-        target = Target.load()
+    def get(self, _, dataset_name):
+        target = get_object_or_404(Target, dataset__name=dataset_name)
         serializer = TargetSerializer(instance=target)
         return Response(serializer.data)
 
     def delete(self, _):
-        Target.objects.all().delete()
+        target = get_object_or_404(Target, dataset__name=dataset_name)
+        target.delete()
         return Response(status=HTTP_204_NO_CONTENT)
 
 
