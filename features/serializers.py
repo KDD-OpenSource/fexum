@@ -5,7 +5,7 @@ from features.models import Sample, Feature, Bin, Slice, Target, Dataset
 class FeatureSerializer(ModelSerializer):
     class Meta:
         model = Feature
-        fields = ('name', 'relevancy', 'redundancy', 'rank', 'mean', 'variance',
+        fields = ('id', 'name', 'relevancy', 'redundancy', 'rank', 'mean', 'variance',
                   'min', 'max')
 
 
