@@ -1,10 +1,19 @@
 #!/bin/bash
 
+# Hosts
+# 172.16.19.193	BP1
+# 172.16.19.196	BP2
+# 172.16.16.97	BP3
+# 172.16.19.237	BP4
+# 172.16.19.197	BP5
+# 172.16.19.199	BP6
+# 172.16.18.127	BP7
+
 USERNAME="user"
 
 SWARM_PORT=2377
-MASTER_NODE="BP2016MUE1WS07.hpi.uni-potsdam.de"
-WORKER_NODES=("BP2016MUE1WS04.hpi.uni-potsdam.de" "BP2016MUE1WS05.hpi.uni-potsdam.de")
+MASTER_NODE="172.16.18.127"
+WORKER_NODES=("172.16.19.237", "172.16.19.197")
 JOIN_TOKEN=""
 
 function setup_master_node() {
