@@ -24,11 +24,11 @@ class Feature(models.Model):
 
 class Target(models.Model):
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
-
-    def save(self, *args, **kwargs):
-        self.__class__.objects.exclude(id=self.id).delete()
-        super(Target, self).save(*args, **kwargs)
-
+    dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE)
+    
+    class Meta:
+        unique_together = (('feature', 'dataset'),)
+        
     @classmethod
     def load(cls):
         try:
