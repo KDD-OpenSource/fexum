@@ -28,7 +28,7 @@ function setup_master_node() {
 function setup_nfs_master() {
   echo "Setting up NFS server..."
   
-  ssh $USERNAME@$MASTER_NODE << EOF
+  ssh $USERNAME@$MASTER_NODE << 'EOSSH'
     # Create mounting point and make it non superuser accessible
     sudo mkdir $NFS_MOUNT_DIR -p
     sudo chown nobody:nogroup /var/nfs/general
@@ -47,17 +47,17 @@ function setup_nfs_master() {
     for worker in $WORKER_NODES; do
       sudo ufw allow from $worker to any port nfs
     done
-  EOF
+  EOSSH
   
   echo "Done setting up NFS server..."
 }
 
 function setup_nfs_client() {
   for worker in $WORKER_NODES; do
-      ssh $USERNAME@$worker << EOF
+      ssh $USERNAME@$worker << 'EOSSH'
         sudo mkdir -p $MOUNT_DIR
         sudo mount $MASTER_NODE:$MOUNT_DIR $MOUNT_DIR
-      EOF
+      EOSSH
   done
 }
 
