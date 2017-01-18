@@ -36,7 +36,7 @@ function setup_nfs_master() {
     # Setup options in settings file 
     nfs_options = ""
     for worker in $WORKER_NODES; do
-      nfs_options = "$nfs_options\n$NFS_MOUNT_DIR $worker(rw,sync,no_subtree_check)"
+      nfs_options .= "\n$NFS_MOUNT_DIR $worker(rw,sync,no_subtree_check)"
     done
     sudo echo nfs_options > /etc/exports
   
