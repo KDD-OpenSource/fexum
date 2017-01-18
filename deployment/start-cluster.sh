@@ -78,7 +78,7 @@ function setup_swarm_services() {
     if [[ $GIT_URL =~ $regex ]]
       cd "${BASH_REMATCH[1]}"
       docker-compose bundle
-      docker deploy 
+      docker deploy ${BASH_REMATCH[1]}.dba
     else
       echo "Folder not found!"
     fi
