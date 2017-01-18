@@ -71,7 +71,7 @@ function setup_worker_node() {
   done
 }
 
-function setup_swarm_services() {
+function deploy_services() {
   regex=".*\/([a-zA-Z0-0_-]+).git"
   ssh $USERNAME@$MASTER_NODE /bin/bash << EOSSH
     git clone $GIT_URL
