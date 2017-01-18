@@ -67,6 +67,3 @@ function setup_worker_node() {
     ssh $USERNAME@$worker "docker swarm join --token $JOIN_TOKEN $MASTER_NODE:$SWARM_PORT";
   done
 }
-
-setup_master_node
-setup_worker_node
