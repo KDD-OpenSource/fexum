@@ -13,7 +13,7 @@ USERNAME="user"
 
 SWARM_PORT=2377
 MASTER_NODE="172.16.18.127"
-WORKER_NODES=("172.16.19.237", "172.16.19.197")
+WORKER_NODES=("172.16.19.237" "172.16.19.197")
 JOIN_TOKEN=""
 
 NFS_MOUNT_DIR="/var/nfs/general"
@@ -28,23 +28,25 @@ function setup_master_node() {
 function setup_nfs_master() {
   echo "Setting up NFS server..."
   
+  # Setup options for settings file
+  nfs_options="$NFS_MOUNT_DIR"
+  for worker in "${WORKER_NODES[@]}"; do
+      nfs_options+=" $worker(rw,sync,no_subtree_check)"
+  done
+  
   ssh $USERNAME@$MASTER_NODE /bin/bash << EOSSH
     # Create mounting point and make it non superuser accessible
     sudo mkdir $NFS_MOUNT_DIR -p
     sudo chown nobody:nogroup /var/nfs/general
-  
-    # Setup options in settings file 
-    nfs_options = "$NFS_MOUNT_DIR"
-    for worker in $WORKER_NODES; do
-      nfs_options .= " $worker(rw,sync,no_subtree_check)"
-    done
-    sudo echo nfs_options > /etc/exports
+    
+    # Setup options in settings file
+    echo "$nfs_options" | sudo dd of=/etc/exports
   
     # Restart to make changes happen
     sudo systemctl restart nfs-kernel-server
   
     # Setup firewall
-    for worker in $WORKER_NODES; do
+    for worker in "${WORKER_NODES[@]}"; do
       sudo ufw allow from $worker to any port nfs
     done
 EOSSH
@@ -53,7 +55,7 @@ EOSSH
 }
 
 function setup_nfs_client() {
-  for worker in $WORKER_NODES; do
+  for worker in "${WORKER_NODES[@]}"; do
       ssh $USERNAME@$worker /bin/bash << EOSSH
         sudo mkdir -p $MOUNT_DIR
         sudo mount $MASTER_NODE:$MOUNT_DIR $MOUNT_DIR
@@ -62,7 +64,7 @@ EOSSH
 }
 
 function setup_worker_node() {
-  for worker in $WORKER_NODES; do
+  for worker in "${WORKER_NODES[@]}"; do
     echo "Setting up worker at $worker";
     ssh $USERNAME@$worker "docker swarm join --token $JOIN_TOKEN $MASTER_NODE:$SWARM_PORT";
   done
