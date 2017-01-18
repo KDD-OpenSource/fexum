@@ -47,7 +47,7 @@ function setup_nfs_master() {
     for worker in $WORKER_NODES; do
       sudo ufw allow from $worker to any port nfs
     done
-  EOSSH
+EOSSH
   
   echo "Done setting up NFS server..."
 }
@@ -57,7 +57,7 @@ function setup_nfs_client() {
       ssh $USERNAME@$worker << 'EOSSH'
         sudo mkdir -p $MOUNT_DIR
         sudo mount $MASTER_NODE:$MOUNT_DIR $MOUNT_DIR
-      EOSSH
+EOSSH
   done
 }
 
