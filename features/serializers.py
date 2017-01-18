@@ -37,12 +37,21 @@ class DatasetSerializer(ModelSerializer):
 
 
 class SessionSerializer(ModelSerializer):
-    target = PrimaryKeyRelatedField(many=False, read_only=True) # TODO: Make writable
+    target = PrimaryKeyRelatedField(many=False, read_only=True)
     dataset = PrimaryKeyRelatedField(many=False, read_only=False, queryset=Dataset.objects.all())
 
     class Meta:
         model = Session
         fields = ('id', 'dataset', 'target')
+
+
+class SessionTargetSerializer(ModelSerializer):
+    # TODO: Filter by dataset
+    target = PrimaryKeyRelatedField(many=False, read_only=False, queryset=Feature.objects.all())
+
+    class Meta:
+        model = Session
+        fields = ('target',)
 
 
 class RarResultSerializer(ModelSerializer):

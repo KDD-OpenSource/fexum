@@ -1,5 +1,5 @@
 from django.test import TestCase
-from features.serializers import FeatureSerializer, BinSerializer, \
+from features.serializers import FeatureSerializer, BinSerializer, SessionTargetSerializer, \
     SliceSerializer, SampleSerializer, DatasetSerializer, SessionSerializer, RarResultSerializer
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
     DatasetFactory, SampleFactory, SessionFactory, RarResultFactory
@@ -94,3 +94,14 @@ class TestRarResultsSerializer(TestCase):
         self.assertEqual(data.pop('redundancy'), rar_result.redundancy)
         self.assertEqual(data.pop('rank'), rar_result.rank)
         self.assertEqual(len(data), 0)
+
+
+class TestSessionTargetSerializer(TestCase):
+    def test_serialize_one(self):
+        session = SessionFactory()
+        serializer = SessionTargetSerializer(instance=session)
+        data = serializer.data
+
+        self.assertEqual(data.pop('target'), session.target.id)
+        self.assertEqual(len(data), 0)
+

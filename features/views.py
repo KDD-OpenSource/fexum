@@ -1,7 +1,8 @@
 from rest_framework.views import APIView
 from features.models import Feature, Bin, Sample, Dataset, Session, RarResult, Slice
 from features.serializers import FeatureSerializer, BinSerializer, SessionSerializer, \
-    SampleSerializer, SliceSerializer, DatasetSerializer, RarResultSerializer
+    SampleSerializer, SliceSerializer, DatasetSerializer, RarResultSerializer, \
+    SessionTargetSerializer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
@@ -38,9 +39,9 @@ class SessionListView(APIView):
 
 
 class SessionDetailView(APIView):
-    def get(self, _):
+    def get(self, _, session_id):
         user = get_user()
-        session = get_object_or_404(Session, user=user)
+        session = get_object_or_404(Session, pk=session_id, user=user)
         serializer = SessionSerializer(instance=session)
         return Response(serializer.data)
 
@@ -49,14 +50,13 @@ class TargetDetailView(APIView):
     def put(self, request, session_id):
         user = get_user()
         session = get_object_or_404(Session, pk=session_id, user=user)
-        target_id = request.data.get('target', None)
-        target = get_object_or_404(Feature, pk=target_id)
-        session.save(target=target)
-        # TODO: Test
+        serializer = SessionTargetSerializer(instance=session, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
         calculate_rar.delay(dataset_id=session.dataset.id)
 
-        return Response(status=HTTP_204_NO_CONTENT)
+        return Response(serializer.data)
 
     def delete(self, _, session_id):
         user = get_user()
