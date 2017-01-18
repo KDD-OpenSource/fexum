@@ -2,43 +2,57 @@ from django.urls import reverse
 from django.test import TestCase
 
 
-class TestFeatureListUrl(TestCase):
-    def test_feature_list_url(self):
-        url = reverse('feature-list')
-        self.assertEqual(url, '/api/features')
+class TestSessionListUrl(TestCase):
+    def test_session_list_url(self):
+        url = reverse('session-list')
+        self.assertEqual(url, '/api/sessions')
 
 
-class TestFeatureSamplesUrl(TestCase):
-    def test_feature_samples_url(self):
-        url = reverse('feature-samples', args=['Feature_1'])
-        self.assertEqual(url, '/api/features/Feature_1/samples')
+class TestSessionTargetsDetailUrl(TestCase):
+    def test_session_targets_detail_url(self):
+        url = reverse('session-targets-detail', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
+        self.assertEqual(url, '/api/sessions/391ec5ac-f741-45c9-855a-7615c89ce129/target')
 
 
-class TestFeatureHistogramUrl(TestCase):
-    def test_feature_histogram_url(self):
-        url = reverse('feature-histogram', args=['Feature_1'])
-        self.assertEqual(url, '/api/features/Feature_1/histogram')
-
-
-class TestFeatureSlicesUrl(TestCase):
-    def test_feature_slices_url(self):
-        url = reverse('feature-slices', args=['Feature_1'])
-        self.assertEqual(url, '/api/features/Feature_1/slices')
-
-
-class TestTargetDetailUrl(TestCase):
-    def test_target_detail_url(self):
-        url = reverse('target-detail')
-        self.assertEqual(url, '/api/features/target')
-
-
-class TestDatasetListUrl(TestCase):
-    def test_target_list_url(self):
+class TestDatasetListView(TestCase):
+    def test_dataset_list_url(self):
         url = reverse('dataset-list')
         self.assertEqual(url, '/api/datasets')
 
 
 class TestDatasetUploadUrl(TestCase):
-    def test_target_uplaod_url(self):
+    def test_target_upload_url(self):
         url = reverse('dataset-upload', args=['a_dataset'])
         self.assertEqual(url, '/api/datasets/upload/a_dataset')
+
+
+class TestDatasetFeaturesListUrl(TestCase):
+    def test_feature_list_url(self):
+        url = reverse('dataset-features-list', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
+        self.assertEqual(url, '/api/datasets/391ec5ac-f741-45c9-855a-7615c89ce129/features')
+
+
+class TestFeatureSamplesUrl(TestCase):
+    def test_feature_samples_url(self):
+        url = reverse('feature-samples', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
+        self.assertEqual(url, '/api/features/391ec5ac-f741-45c9-855a-7615c89ce129/samples')
+
+
+class TestFeatureHistogramsUrl(TestCase):
+    def test_feature_histograms_url(self):
+        url = reverse('feature-histograms', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
+        self.assertEqual(url, '/api/features/391ec5ac-f741-45c9-855a-7615c89ce129/histogram')
+
+
+class TestFeatureSlicesUrl(TestCase):
+    def test_feature_slices_url(self):
+        url = reverse('session-feature-slices', args=['391ec5ac-f741-45c9-855a-7615c89ce129',
+                                                       '391ec5ac-f741-45c9-855a-7615c89ce128'])
+        self.assertEqual(url,'/api/sessions/391ec5ac-f741-45c9-855a-7615c89ce129/' +
+                         'features/391ec5ac-f741-45c9-855a-7615c89ce128/slices')
+
+
+class TestSessionFeatureRarResultsUrl(TestCase):
+    def test_session_feature_rar_results_url(self):
+        url = reverse('session-feature-rar_results', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
+        self.assertEqual(url, '/api/sessions/391ec5ac-f741-45c9-855a-7615c89ce129/rar_results')

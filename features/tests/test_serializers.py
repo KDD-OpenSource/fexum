@@ -1,8 +1,8 @@
 from django.test import TestCase
 from features.serializers import FeatureSerializer, BinSerializer, \
-    SliceSerializer, SampleSerializer, TargetSerializer, DatasetSerializer
-from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, TargetFactory, \
-    DatasetFactory, SampleFactory
+    SliceSerializer, SampleSerializer, DatasetSerializer, SessionSerializer, RarResultSerializer
+from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
+    DatasetFactory, SampleFactory, SessionFactory, RarResultFactory
 from decimal import Decimal
 
 
@@ -12,11 +12,8 @@ class TestFeatureSerializer(TestCase):
         serializer = FeatureSerializer(instance=feature)
         data = serializer.data
         
-        self.assertEqual(data.pop('id'), feature.id)
+        self.assertEqual(data.pop('id'), str(feature.id))
         self.assertEqual(data.pop('name'), feature.name)
-        self.assertEqual(data.pop('relevancy'), feature.relevancy)
-        self.assertEqual(data.pop('redundancy'), feature.redundancy)
-        self.assertEqual(data.pop('rank'), feature.rank)
         self.assertEqual(data.pop('min'), feature.min)
         self.assertEqual(data.pop('max'), feature.max)
         self.assertEqual(data.pop('mean'), feature.mean)
@@ -62,22 +59,38 @@ class TestSampleSerializer(TestCase):
         self.assertEqual(len(data), 0)
 
 
-class TestTargetSerializer(TestCase):
+class TestDatasetSerializer(TestCase):
     def test_serialize_one(self):
-        target = TargetFactory()
-        serializer = TargetSerializer(instance=target)
+        dataset = DatasetFactory()
+        serializer = DatasetSerializer(instance=dataset)
         data = serializer.data
-        feature_data = FeatureSerializer(instance=target.feature).data
 
-        self.assertEqual(data.pop('feature'), feature_data)
+        self.assertEqual(data.pop('id'), str(dataset.id))
+        self.assertEqual(data.pop('name'), dataset.name)
         self.assertEqual(len(data), 0)
 
 
-class TestDatasetSerializer(TestCase):
+class TestSessionSerializer(TestCase):
     def test_serialize_one(self):
-        target = DatasetFactory()
-        serializer = DatasetSerializer(instance=target)
+        session = SessionFactory()
+        serializer = SessionSerializer(instance=session)
         data = serializer.data
 
-        self.assertEqual(data.pop('name'), target.name)
+        self.assertEqual(data.pop('id'), str(session.id))
+        self.assertEqual(data.pop('dataset'), session.dataset.id)
+        self.assertEqual(data.pop('target'), session.target.id)
+        self.assertEqual(len(data), 0)
+
+
+class TestRarResultsSerializer(TestCase):
+    def test_serialize_one(self):
+        rar_result = RarResultFactory()
+        serializer = RarResultSerializer(instance=rar_result)
+        data = serializer.data
+
+        self.assertEqual(data.pop('id'), str(rar_result.id))
+        self.assertEqual(data.pop('feature'), rar_result.feature.id)
+        self.assertEqual(data.pop('relevancy'), rar_result.relevancy)
+        self.assertEqual(data.pop('redundancy'), rar_result.redundancy)
+        self.assertEqual(data.pop('rank'), rar_result.rank)
         self.assertEqual(len(data), 0)

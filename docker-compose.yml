@@ -4,7 +4,7 @@ volumes:
   data:
     driver: nfs
     driver_opts:
-      share: host:/share
+      share: /var/nfs/general:/share
       
 services:
   redis:
@@ -29,11 +29,9 @@ services:
       - redis
       - postgres
     networks:
-      - predots
-    
+      - predots    
     volumes:
       - .:/code
-      - data:/code/media
     command: python manage.py runworker
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
@@ -63,7 +61,6 @@ services:
       - predots
     volumes:
       - .:/code
-      - data:/code/media
     command: "celery worker --app=predots"
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings

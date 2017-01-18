@@ -1,7 +1,20 @@
 from factory import DjangoModelFactory, Sequence, SubFactory
-from features.models import Sample, Feature, Bin, Slice, Target, Dataset
+from features.models import Sample, Feature, Bin, Slice, Dataset, Session, RarResult
 from factory.fuzzy import FuzzyFloat, FuzzyInteger, FuzzyText
 from factory.django import FileField
+from django.conf import settings
+
+
+class UserFactory(DjangoModelFactory):
+    class Meta:
+        model = settings.AUTH_USER_MODEL
+
+
+class SessionFactory(DjangoModelFactory):
+    class Meta:
+        model = Session
+
+    user = SubFactory(UserFactory)
 
 
 class DatasetFactory(DjangoModelFactory):
@@ -18,13 +31,10 @@ class FeatureFactory(DjangoModelFactory):
 
     name = Sequence(lambda n: 'feature_{0}'.format(n))
     dataset = SubFactory(DatasetFactory)
-
-
-class TargetFactory(DjangoModelFactory):
-    class Meta:
-        model = Target
-
-    feature = SubFactory(FeatureFactory)
+    min = FuzzyFloat(0, 1)
+    max = FuzzyFloat(0, 1)
+    mean = FuzzyFloat(0, 1)
+    variance = FuzzyFloat(0, 1)
 
 
 class BinFactory(DjangoModelFactory):
@@ -57,3 +67,13 @@ class SampleFactory(DjangoModelFactory):
 
     feature = SubFactory(FeatureFactory)
     value = FuzzyFloat(0, 200)
+
+
+class RarResultFactory(DjangoModelFactory):
+    class Meta:
+        model = RarResult
+
+    feature = SubFactory(FeatureFactory)
+    relevancy = FuzzyFloat(0, 200)
+    relevancy = FuzzyFloat(0, 200)
+    rank = FuzzyInteger(0, 100)

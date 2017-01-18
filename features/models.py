@@ -1,48 +1,58 @@
 from django.db import models
 from jsonfield import JSONField
+from django.conf import settings
+import uuid
+
+
+class Session(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    target = models.ForeignKey('Feature', on_delete=models.CASCADE)
+    dataset = models.ForeignKey('Dataset', on_delete=models.CASCADE)
+    # TODO: Validation: target.dataset = dataset
 
 
 class Dataset(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     content = models.FileField(upload_to='datasets/')
+
+
+class RarResult(models.Model):
+    class Meta:
+        unique_together = (('target', 'feature'),)
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    relevancy = models.FloatField(blank=True, null=True)
+    redundancy = models.FloatField(blank=True, null=True)
+    rank = models.IntegerField(unique=True, blank=True, null=True)
+    target = models.ForeignKey('Feature', on_delete=models.CASCADE,
+                               related_name='target_rar_results')
+    feature = models.ForeignKey('Feature', on_delete=models.CASCADE)
+    # TODO: Validation: target.dataset = feature.dataset
 
 
 class Feature(models.Model):
     class Meta:
         unique_together = (('name', 'dataset'),)
 
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100, null=False, blank=False)
     dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE)
-    relevancy = models.FloatField(blank=True, null=True)
-    redundancy = models.FloatField(blank=True, null=True)
-    rank = models.IntegerField(unique=True, blank=True, null=True)
     mean = models.FloatField(blank=True, null=True)
     variance = models.FloatField(blank=True, null=True)
     min = models.FloatField(blank=True, null=True)
     max = models.FloatField(blank=True, null=True)
 
 
-class Target(models.Model):
-    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
-    dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE)
-    
-    class Meta:
-        unique_together = (('feature', 'dataset'),)
-        
-    @classmethod
-    def load(cls):
-        try:
-            return cls.objects.get()
-        except cls.DoesNotExist:
-            return cls()
-
-
 class Sample(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
     value = models.FloatField()
 
 
 class Bin(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
     # TODO: Make sure from_value < to_value
     from_value = models.FloatField()
@@ -51,7 +61,8 @@ class Bin(models.Model):
 
 
 class Slice(models.Model):
-    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    rar_result = models.ForeignKey(RarResult, on_delete=models.CASCADE)
     from_value = models.FloatField()
     deviation = models.FloatField()
     significance = models.FloatField()

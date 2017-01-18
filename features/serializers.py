@@ -1,20 +1,11 @@
-from rest_framework.serializers import ModelSerializer, JSONField
-from features.models import Sample, Feature, Bin, Slice, Target, Dataset
+from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRelatedField
+from features.models import Sample, Feature, Bin, Slice, Session, Dataset
 
 
 class FeatureSerializer(ModelSerializer):
     class Meta:
         model = Feature
-        fields = ('id', 'name', 'relevancy', 'redundancy', 'rank', 'mean', 'variance',
-                  'min', 'max')
-
-
-class TargetSerializer(ModelSerializer):
-    feature = FeatureSerializer(many=False)
-
-    class Meta:
-        model = Target
-        fields = ('feature', )
+        fields = ('id', 'name', 'mean', 'variance', 'min', 'max',)
 
 
 class BinSerializer(ModelSerializer):
@@ -35,10 +26,28 @@ class SliceSerializer(ModelSerializer):
 
     class Meta:
         model = Slice
-        fields = ('from_value', 'deviation', 'frequency', 'significance', 'to_value', 'marginal_distribution', 'conditional_distribution')
+        fields = ('from_value', 'deviation', 'frequency', 'significance', 'to_value',
+                  'marginal_distribution', 'conditional_distribution')
 
 
 class DatasetSerializer(ModelSerializer):
     class Meta:
         model = Dataset
-        fields = ('name', )
+        fields = ('id', 'name')
+
+
+class SessionSerializer(ModelSerializer):
+    target = PrimaryKeyRelatedField(many=False, read_only=True) # TODO: Make writable
+    dataset = PrimaryKeyRelatedField(many=False, read_only=True)
+
+    class Meta:
+        model = Session
+        fields = ('id', 'dataset', 'target')
+
+
+class RarResultSerializer(ModelSerializer):
+    feature = PrimaryKeyRelatedField(many=False, read_only=True)
+
+    class Meta:
+        model = Session
+        fields = ('id', 'feature', 'relevancy', 'redundancy', 'rank')

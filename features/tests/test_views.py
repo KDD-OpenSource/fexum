@@ -1,11 +1,10 @@
 from rest_framework.test import APITestCase
-from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, TargetFactory, \
+from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
     SampleFactory, DatasetFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT
 from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, \
-    TargetSerializer, SampleSerializer, DatasetSerializer
-from features.models import Target
+    SampleSerializer, DatasetSerializer
 from unittest.mock import patch
 
 

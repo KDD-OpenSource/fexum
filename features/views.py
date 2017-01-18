@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
-from features.models import Feature, Bin, Target, Sample, Dataset
-from features.serializers import FeatureSerializer, BinSerializer, TargetSerializer, \
+from features.models import Feature, Bin, Sample, Dataset
+from features.serializers import FeatureSerializer, BinSerializer, \
     SampleSerializer, SliceSerializer, DatasetSerializer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -9,6 +9,13 @@ from features.tasks import calculate_rar
 from rest_framework.parsers import FileUploadParser
 from features.tasks import initialize_from_dataset, calculate_feature_statistics, build_histogram, \
     downsample_feature
+
+
+class DatasetListView(APIView):
+    def get(self, _):
+        datasets = Dataset.objects.all()
+        serializer = DatasetSerializer(instance=datasets, many=True)
+        return Response(serializer.data)
 
 
 class FeatureListView(APIView):
@@ -87,3 +94,14 @@ class DatasetListView(APIView):
         datasets = Dataset.objects.all()
         serializer = DatasetSerializer(instance=datasets, many=True)
         return Response(serializer.data)
+
+
+class SessionListView(APIView):
+    def get(self, _):
+        pass
+
+
+class FeatureRarResultsView(APIView):
+    def get(self, _):
+        pass
+
