@@ -8,6 +8,12 @@ class TestSessionListUrl(TestCase):
         self.assertEqual(url, '/api/sessions')
 
 
+class TestSessionListUrl(TestCase):
+    def test_session_detail_url(self):
+        url = reverse('session-detail', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
+        self.assertEqual(url, '/api/sessions/391ec5ac-f741-45c9-855a-7615c89ce129')
+
+
 class TestSessionTargetsDetailUrl(TestCase):
     def test_session_targets_detail_url(self):
         url = reverse('session-targets-detail', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
@@ -38,9 +44,9 @@ class TestFeatureSamplesUrl(TestCase):
         self.assertEqual(url, '/api/features/391ec5ac-f741-45c9-855a-7615c89ce129/samples')
 
 
-class TestFeatureHistogramsUrl(TestCase):
-    def test_feature_histograms_url(self):
-        url = reverse('feature-histograms', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
+class TestFeatureHistogramUrl(TestCase):
+    def test_feature_histogram_url(self):
+        url = reverse('feature-histogram', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
         self.assertEqual(url, '/api/features/391ec5ac-f741-45c9-855a-7615c89ce129/histogram')
 
 

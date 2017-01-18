@@ -1,18 +1,69 @@
 from rest_framework.test import APITestCase
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
-    SampleFactory, DatasetFactory
+    SampleFactory, DatasetFactory, SessionFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT
 from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, \
-    SampleSerializer, DatasetSerializer
+    SampleSerializer, DatasetSerializer, SessionSerializer
 from unittest.mock import patch
+from features.models import Session, Dataset
+from django.contrib.auth import get_user_model
+
+
+class TestSessionListView(APITestCase):
+    def test_retrieve_session_list(self):
+        session = SessionFactory()
+
+        url = reverse('session-list')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), [SessionSerializer(instance=session).data])
+
+    def test_create_new_session(self):
+        dataset = DatasetFactory()
+
+        data = {'dataset': dataset.id}
+        url = reverse('session-list')
+        response = self.client.post(url, data=data)
+
+        session = Session.objects.first()
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), SessionSerializer(instance=session).data)
+
+        # Test if creation worked
+        self.assertEqual(session.dataset, dataset)
+        self.assertIsNone(session.target)
+        self.assertEqual(session.user, get_user_model().objects.first())
+
+    def test_create_new_session_dataset_missing(self):
+        pass
+
+
+class TestSessionDetailView(APITestCase):
+    def test_retrieve_session_detail(self):
+        session = SessionFactory()
+
+        url = reverse('session-detail', args=[session.id])
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), SessionSerializer(instance=session).data)
+
+    def test_retrieve_session_detail_not_found(self):
+        url = reverse('session-detail', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})
 
 
 class TestFeatureListView(APITestCase):
     def test_retrieve_feature_list(self):
         feature = FeatureFactory()
 
-        url = reverse('feature-list')
+        url = reverse('dataset-features-list', args=[feature.dataset.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -53,7 +104,7 @@ class TestFeatureHistogramView(APITestCase):
         self.assertEqual(len(first_obj), 0)
 
     def test_retrieve_histogram_not_found(self):
-        url = reverse('feature-histogram', args=['Some_feature_name'])
+        url = reverse('feature-histogram', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
@@ -64,7 +115,7 @@ class TestFeatureSlicesView(APITestCase):
     def test_retrieve_slices(self):
         fslice = SliceFactory()
 
-        url = reverse('feature-slices', args=[fslice.feature.id])
+        url = reverse('feature-slices', args=[fslice.rar_result.feature.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -83,7 +134,7 @@ class TestFeatureSlicesView(APITestCase):
         self.assertEqual(len(first_obj), 0)
 
     def test_retrieve_slices_not_found(self):
-        url = reverse('feature-slices', args=['Some_feature_name'])
+        url = reverse('feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
@@ -186,5 +237,5 @@ class TestDatasetUploadView(APITestCase):
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(response.json(), DatasetSerializer(instance=dataset).data)
             self.assertEqual(dataset.name, dataset_name)
-            self.assertEqual(dataset.content, file_data)
-            initialize_from_dataset_mock.assert_called_once_with(dataset.id)
+            self.assertEqual(dataset.content.open.read(), file_data)
+            initialize_from_dataset_mock.assert_called_once_with(dataset_id=dataset.id)

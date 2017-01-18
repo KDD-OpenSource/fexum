@@ -1,5 +1,5 @@
 from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRelatedField
-from features.models import Sample, Feature, Bin, Slice, Session, Dataset
+from features.models import Sample, Feature, Bin, Slice, Session, Dataset, RarResult
 
 
 class FeatureSerializer(ModelSerializer):
@@ -38,7 +38,7 @@ class DatasetSerializer(ModelSerializer):
 
 class SessionSerializer(ModelSerializer):
     target = PrimaryKeyRelatedField(many=False, read_only=True) # TODO: Make writable
-    dataset = PrimaryKeyRelatedField(many=False, read_only=True)
+    dataset = PrimaryKeyRelatedField(many=False, read_only=False, queryset=Dataset.objects.all())
 
     class Meta:
         model = Session
@@ -49,5 +49,5 @@ class RarResultSerializer(ModelSerializer):
     feature = PrimaryKeyRelatedField(many=False, read_only=True)
 
     class Meta:
-        model = Session
+        model = RarResult
         fields = ('id', 'feature', 'relevancy', 'redundancy', 'rank')

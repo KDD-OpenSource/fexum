@@ -34,13 +34,12 @@ def initialize_from_dataset(dataset_id):
 
 
 @shared_task
-def calculate_feature_statistics(dataset_id, feature_name):
+def calculate_feature_statistics(dataset_id, feature_id):
     filename = get_dataset(dataset_id)
+    feature = Feature.objects.get(pk=feature.id)
 
-    dataframe = pd.read_csv(filename, usecols=[feature_name])
-    feature_col = dataframe[feature_name]
-
-    feature = Feature.objects.get(name=feature_name)
+    dataframe = pd.read_csv(filename, usecols=[feature.name])
+    feature_col = dataframe[feature.name]
 
     feature.min = np.amin(feature_col).item()
     feature.max = np.amax(feature_col).item()
@@ -51,15 +50,14 @@ def calculate_feature_statistics(dataset_id, feature_name):
 
 
 @shared_task
-def build_histogram(dataset_id, feature_name):
+def build_histogram(dataset_id, feature_id):
     filename = get_dataset(dataset_id)
+    feature = Feature.objects.get(pk=feature_id)
 
     # Only read column with that name
-    dataframe = pd.read_csv(filename, usecols=[feature_name])
+    dataframe = pd.read_csv(filename, usecols=[feature.name])
 
-    feature = Feature.objects.get(name=feature_name)
-
-    bins, bin_edges = np.histogram(dataframe[feature_name], bins='auto')
+    bins, bin_edges = np.histogram(dataframe[feature.name], bins='auto')
     for bin_index, bin_value in enumerate(bins):
         from_value = bin_edges[bin_index]
         to_value = bin_edges[bin_index + 1]
@@ -68,13 +66,13 @@ def build_histogram(dataset_id, feature_name):
 
 
 @shared_task
-def downsample_feature(dataset_id, feature_name, sample_count):
+def downsample_feature(dataset_id, feature_id, sample_count):
     filename = get_dataset(dataset_id)
+    feature = Feature.objects.get(pk=feature_id)
 
-    dataframe = pd.read_csv(filename, usecols=[feature_name])
+    dataframe = pd.read_csv(filename, usecols=[feature.name])
 
-    feature = Feature.objects.get(name=feature_name)
-    feature_rows = dataframe[feature_name]
+    feature_rows = dataframe[feature.name]
     count = feature_rows.count()
     sampling = feature_rows[::int(ceil(count/sample_count))]
 
@@ -83,7 +81,7 @@ def downsample_feature(dataset_id, feature_name, sample_count):
 
 
 @shared_task
-def calculate_rar(path):
+def calculate_rar(dataset_id):
     filename = get_dataset(dataset_id)
     JAR_FILE = '/assets/rar-mfs.jar'
     process = Popen(

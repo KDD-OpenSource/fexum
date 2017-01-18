@@ -10,13 +10,6 @@ class UserFactory(DjangoModelFactory):
         model = settings.AUTH_USER_MODEL
 
 
-class SessionFactory(DjangoModelFactory):
-    class Meta:
-        model = Session
-
-    user = SubFactory(UserFactory)
-
-
 class DatasetFactory(DjangoModelFactory):
     class Meta:
         model = Dataset
@@ -37,6 +30,15 @@ class FeatureFactory(DjangoModelFactory):
     variance = FuzzyFloat(0, 1)
 
 
+class SessionFactory(DjangoModelFactory):
+    class Meta:
+        model = Session
+
+    user = SubFactory(UserFactory)
+    dataset = SubFactory(DatasetFactory)
+    target = SubFactory(FeatureFactory)
+
+
 class BinFactory(DjangoModelFactory):
     class Meta:
         model = Bin
@@ -45,20 +47,6 @@ class BinFactory(DjangoModelFactory):
     from_value = FuzzyFloat(-200.0, 0)
     to_value = FuzzyFloat(0, 200)
     count = FuzzyInteger(1, 1000)
-
-
-class SliceFactory(DjangoModelFactory):
-    class Meta:
-        model = Slice
-
-    feature = SubFactory(FeatureFactory)
-    from_value = FuzzyFloat(-200.0, 0)
-    to_value = FuzzyFloat(0, 200)
-    marginal_distribution = [0, 1, 0]
-    conditional_distribution = [0, 1, 0]
-    deviation = FuzzyFloat(0, 1)
-    frequency = FuzzyFloat(0, 1)
-    significance = FuzzyFloat(0, 1)
 
 
 class SampleFactory(DjangoModelFactory):
@@ -75,5 +63,20 @@ class RarResultFactory(DjangoModelFactory):
 
     feature = SubFactory(FeatureFactory)
     relevancy = FuzzyFloat(0, 200)
-    relevancy = FuzzyFloat(0, 200)
+    redundancy = FuzzyFloat(0, 200)
     rank = FuzzyInteger(0, 100)
+    target = SubFactory(FeatureFactory)
+
+
+class SliceFactory(DjangoModelFactory):
+    class Meta:
+        model = Slice
+
+    rar_result = SubFactory(RarResultFactory)
+    from_value = FuzzyFloat(-200.0, 0)
+    to_value = FuzzyFloat(0, 200)
+    marginal_distribution = [0, 1, 0]
+    conditional_distribution = [0, 1, 0]
+    deviation = FuzzyFloat(0, 1)
+    frequency = FuzzyFloat(0, 1)
+    significance = FuzzyFloat(0, 1)

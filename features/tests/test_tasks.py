@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 
-def build_test_dataset():
+def build_test_dataset() -> (Dataset, list):
     test_file = 'test_file.csv'
     feature_names = ['Col1', 'Col2']
     data = np.array([[-0.69597425, -0.24040447],
@@ -22,28 +22,28 @@ def build_test_dataset():
     df = pd.DataFrame(data, columns=feature_names)
     df.to_csv(test_file, index=False)
 
-    Dataset.objects.create()
+    dataset = Dataset.objects.create(content=test_file)
 
-    return test_file, feature_names
+    return dataset, feature_names
 
 
 class TestInitializeFromDatasetTask(TestCase):
     def test_initialize_from_dataset(self):
-        test_file, feature_names = build_test_file()
+        dataset, feature_names = build_test_dataset()
 
-        initialize_from_dataset(test_file)
+        initialize_from_dataset(dataset_id=dataset.id)
 
         self.assertEqual(feature_names, [feature.name for feature in Feature.objects.all()])
 
 
 class TestBuildHistogramTask(TestCase):
     def test_build_histogram(self):
-        test_file, feature_names = build_test_file()
+        dataset, feature_names = build_test_dataset()
         feature_name = feature_names[0]
         feature = Feature.objects.create(name=feature_name)
         bin_values = [3, 1, 4, 0, 2]
 
-        build_histogram(test_file, feature_name)
+        build_histogram(dataset_id=dataset.id, feature_id=feature.id)
 
         # Rudementary check bins only for its values
         self.assertEqual(Bin.objects.count(), len(bin_values))
@@ -54,12 +54,12 @@ class TestBuildHistogramTask(TestCase):
 
 class TestDownsampleTask(TestCase):
     def test_downsample_feature(self):
-        test_file, feature_names = build_test_file()
+        dataset, feature_names = build_test_dataset()
         feature_name = feature_names[0]
         feature = Feature.objects.create(name=feature_name)
 
         sample_count = 5
-        downsample_feature(test_file, feature_name, sample_count)
+        downsample_feature(dataset_id=dataset.id, feature_id=feature_name, sample_count=sample_count)
 
         samples = Sample.objects.filter(feature=feature)
 
@@ -71,11 +71,11 @@ class TestDownsampleTask(TestCase):
 
 class TestCalculateFeatureStatistics(TestCase):
     def test_calculate_feature_statistics(self):
-        test_file, feature_names = build_test_file()
+        dataset, feature_names = build_test_dataset()
         feature_name = feature_names[0]
-        Feature.objects.create(name=feature_name)
+        feature = Feature.objects.create(name=feature_name)
 
-        calculate_feature_statistics(test_file, feature_name)
+        calculate_feature_statistics(dataset_id=dataset.id, feature_id=feature.id)
 
         feature = Feature.objects.get(name=feature_name)
 
@@ -87,7 +87,7 @@ class TestCalculateFeatureStatistics(TestCase):
 
 class TestCalculateRar(TestCase):
     def test_calculate_rar(self):
-        test_file, feature_names = build_test_file()
+        dataset, feature_names = build_test_dataset()
         feature_name1 = feature_names[0]
         feature_name2 = feature_names[1]
 
@@ -96,7 +96,7 @@ class TestCalculateRar(TestCase):
         Feature.objects.create(name=feature_name2)
 
         # Select first feature as target
-        calculate_rar(test_file)
+        calculate_rar(dataset_id=dataset.id)
 
         # First feature aka the target should have no info
         feature1 = Feature.objects.get(name=feature_name1)

@@ -1,12 +1,14 @@
 from django.conf.urls import url
 from features.views import FeatureListView, FeatureSamplesView, DatasetListView, \
     FeatureHistogramView, FeatureSlicesView, TargetDetailView, DatasetViewUploadView, \
-    SessionListView, FeatureRarResultsView
+    SessionListView, FeatureRarResultsView, SessionDetailView
 
 
 urlpatterns = [
     # Sessions
     url(r'sessions$', SessionListView.as_view(), name='session-list'),
+    url(r'sessions/(?P<session_id>[a-zA-Z0-9-]+)$', SessionDetailView.as_view(),
+        name='session-detail'),
     url(r'sessions/(?P<session_id>[a-zA-Z0-9-]+)/target$', TargetDetailView.as_view(),
         name='session-targets-detail'),
 
@@ -21,7 +23,7 @@ urlpatterns = [
     url(r'features/(?P<feature_id>[a-zA-Z0-9-]+)/samples$', FeatureSamplesView.as_view(),
         name='feature-samples'),
     url(r'features/(?P<feature_id>[a-zA-Z0-9-]+)/histogram$', FeatureHistogramView.as_view(),
-        name='feature-histograms'),
+        name='feature-histogram'),
 
     # Results
     url(r'sessions/(?P<session_id>[a-zA-Z0-9-]+)/features/(?P<feature_id>[a-zA-Z0-9-]+)/slices$',
