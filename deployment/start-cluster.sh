@@ -72,16 +72,13 @@ function setup_worker_node() {
 }
 
 function deploy_services() {
-  regex=".*\/([a-zA-Z0-0_-]+).git"
+  name=$(echo $GIT_URL | cut -d '/' -f 2 | cut -d '.' -f 1)
   ssh $USERNAME@$MASTER_NODE /bin/bash << EOSSH
     git clone $GIT_URL
-    if [[ $GIT_URL =~ $regex ]]
-      cd "${BASH_REMATCH[1]}"
-      docker-compose bundle
-      docker deploy ${BASH_REMATCH[1]}.dba
-    else
-      echo "Folder not found!"
-    fi
+    cd $name
+    git pull
+    docker-compose bundle
+    docker deploy "$name.dba"
 EOSSH
 }
 
