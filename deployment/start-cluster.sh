@@ -18,11 +18,12 @@ JOIN_TOKEN=""
 
 NFS_MOUNT_DIR="/var/nfs/general"
 
+GIT_URL="git@github.com:xasetl/predots.git" 
+
 function setup_master_node() {
   echo "Setting up master at $MASTER_NODE...";
   JOIN_TOKEN=$(ssh $USERNAME@$MASTER_NODE 'docker swarm init &> /dev/null; docker swarm join-token manager -q >&1');
   echo "Join token is $JOIN_TOKEN";
-  
 }
 
 function setup_nfs_master() {
@@ -69,3 +70,18 @@ function setup_worker_node() {
     ssh $USERNAME@$worker "docker swarm join --token $JOIN_TOKEN $MASTER_NODE:$SWARM_PORT";
   done
 }
+
+function setup_swarm_services() {
+  regex=".*\/([a-zA-Z0-0_-]+).git"
+  ssh $USERNAME@$MASTER_NODE /bin/bash << EOSSH
+    git clone $GIT_URL
+    if [[ $GIT_URL =~ $regex ]]
+      cd "${BASH_REMATCH[1]}"
+      docker-compose bundle
+      docker deploy 
+    else
+      echo "Folder not found!"
+    fi
+EOSSH
+}
+
