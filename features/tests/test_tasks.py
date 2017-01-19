@@ -3,7 +3,7 @@ from features.tasks import initialize_from_dataset, build_histogram, downsample_
     calculate_feature_statistics, calculate_rar
 from features.models import Feature, Sample, Bin, Dataset, RarResult, Slice
 from features.tests.factories import FeatureFactory, DatasetFactory
-
+from unittest.mock import patch, call
 
 def _build_test_dataset() -> Dataset:
     dataset = DatasetFactory()
@@ -19,7 +19,20 @@ class TestInitializeFromDatasetTask(TestCase):
         dataset = DatasetFactory()
         feature_names = ['Col1', 'Col2']
 
-        initialize_from_dataset(dataset_id=dataset.id)
+        # TODO: Fuck nesting
+        with patch('features.tasks.build_histogram.delay') as build_histogram_mock:
+            with patch('features.tasks.downsample_feature.delay') as downsample_feature_mock:
+                with patch('features.tasks.calculate_feature_statistics.delay') \
+                        as calculate_feature_statistics_mock:
+                    initialize_from_dataset(dataset_id=dataset.id)
+
+                    # Make sure that we call the preprocessing task for each feature
+                    features = Feature.objects.filter(name__in=feature_names).all()
+                    kalls = [call(feature_id=feature.id) for feature in features]
+
+                    build_histogram_mock.assert_has_calls(kalls, any_order=True)
+                    calculate_feature_statistics_mock.assert_has_calls(kalls, any_order=True)
+                    downsample_feature_mock.assert_has_calls(kalls, any_order=True)
 
         self.assertEqual(feature_names, [feature.name for feature in Feature.objects.all()])
 

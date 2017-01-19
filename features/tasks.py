@@ -17,17 +17,6 @@ def _get_dataset_and_file(dataset_id) -> (Dataset, str):
 
 
 @shared_task
-def initialize_from_dataset(dataset_id):
-    dataset, filename = _get_dataset_and_file(dataset_id)
-
-    # Only read first row for header
-    dataframe = pd.read_csv(filename, nrows=1)
-    headers = list(dataframe.columns.values)
-    for header in headers:
-        Feature.objects.create(name=header, dataset=dataset)
-
-
-@shared_task
 def calculate_feature_statistics(feature_id):
     feature = Feature.objects.get(pk=feature_id)
     _, filename = _get_dataset_and_file(feature.dataset.id)
@@ -60,7 +49,7 @@ def build_histogram(feature_id):
 
 
 @shared_task
-def downsample_feature(feature_id, sample_count):
+def downsample_feature(feature_id, sample_count=1000):
     feature = Feature.objects.get(pk=feature_id)
     _, filename = _get_dataset_and_file(feature.dataset.id)
 
@@ -112,3 +101,19 @@ def calculate_rar(target_id):
 
     # TODO: Send message on save signal, not here?
     Group(GROUP_NAME).send({'text': json.dumps({'event_name': 'relevancy-update', 'payload': {}})})
+
+
+@shared_task
+def initialize_from_dataset(dataset_id):
+    dataset, filename = _get_dataset_and_file(dataset_id)
+
+    # Only read first row for header
+    dataframe = pd.read_csv(filename, nrows=1)
+    headers = list(dataframe.columns.values)
+    for header in headers:
+        feature = Feature.objects.create(name=header, dataset=dataset)
+
+        # Chaining with Celery would be more beautiful...
+        calculate_feature_statistics.delay(feature_id=feature.id)
+        build_histogram.delay(feature_id=feature.id)
+        downsample_feature.delay(feature_id=feature.id)
