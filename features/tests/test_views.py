@@ -111,11 +111,11 @@ class TestTargetDetailView(APITestCase):
         with patch('features.views.calculate_rar.delay') as calculate_rar:
             response = self.client.put(url, data={'target': target.id}, format='json')
 
+            self.assertEqual(response.status_code, HTTP_200_OK)
+
             session = Session.objects.get(id=session.id)
             data = SessionTargetSerializer(instance=session).data
-
             self.assertEqual(session.target, target)
-            self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(response.json(), {'target': str(data['target'])})
             calculate_rar.assert_called_once_with(target_id=target.id)
 
@@ -139,7 +139,8 @@ class TestTargetDetailView(APITestCase):
         response = self.client.put(url, data={'target': target.id}, format='json')
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.json(), {})
+        self.assertEqual(response.json(),
+                         {'non_field_errors': ['Target must be from the same dataset.']})
 
 
 class TestDatasetListView(APITestCase):

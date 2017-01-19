@@ -1,5 +1,6 @@
 from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRelatedField
 from features.models import Sample, Feature, Bin, Slice, Session, Dataset, RarResult
+from rest_framework.validators import ValidationError
 
 
 class FeatureSerializer(ModelSerializer):
@@ -46,12 +47,16 @@ class SessionSerializer(ModelSerializer):
 
 
 class SessionTargetSerializer(ModelSerializer):
-    # TODO: Filter by dataset
     target = PrimaryKeyRelatedField(many=False, read_only=False, queryset=Feature.objects.all())
 
     class Meta:
         model = Session
         fields = ('target',)
+
+    def validate(self, data):
+        if data.get('target').dataset != self.instance.dataset:
+            raise ValidationError('Target must be from the same dataset.')
+        return data
 
 
 class RarResultSerializer(ModelSerializer):

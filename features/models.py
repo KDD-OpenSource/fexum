@@ -12,7 +12,6 @@ class Session(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     target = models.ForeignKey('Feature', on_delete=models.CASCADE, blank=True, null=True)
     dataset = models.ForeignKey('Dataset', on_delete=models.CASCADE)
-    # TODO: Validation: target.dataset = dataset
 
 
 class Dataset(models.Model):
