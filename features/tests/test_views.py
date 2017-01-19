@@ -1,11 +1,12 @@
 from rest_framework.test import APITestCase
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
-    SampleFactory, DatasetFactory, SessionFactory
+    SampleFactory, DatasetFactory, SessionFactory, RarResultFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, \
     HTTP_400_BAD_REQUEST
 from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, \
-    SampleSerializer, DatasetSerializer, SessionSerializer, SessionTargetSerializer
+    SampleSerializer, DatasetSerializer, SessionSerializer, SessionTargetSerializer, \
+    RarResultSerializer
 from unittest.mock import patch
 from features.models import Session, Dataset
 from django.contrib.auth import get_user_model
@@ -285,7 +286,29 @@ class TestFeatureSlicesView(APITestCase):
 
 class TestFeatureRarResultsView(APITestCase):
     def test_retrieve_rar_results(self):
-        pass
+        rar_result = RarResultFactory()
+        session = SessionFactory(target=rar_result.target, dataset=rar_result.feature.dataset)
+
+        url = reverse('session-feature-rar_results', args=[session.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        data = RarResultSerializer(instance=rar_result).data
+        json_data = response.json()
+        first_obj = json_data.pop(0)
+        self.assertEqual(len(json_data), 0)
+        self.assertEqual(first_obj.pop('id'), str(data['id']))
+        self.assertEqual(first_obj.pop('feature'), str(data['feature']))
+        self.assertAlmostEqual(first_obj.pop('relevancy'), data['relevancy'])
+        self.assertAlmostEqual(first_obj.pop('redundancy'), data['redundancy'])
+        self.assertEqual(first_obj.pop('rank'), data['rank'])
+        self.assertEqual(len(first_obj), 0)
 
     def test_retrieve_rar_session_not_found(self):
-        pass
+        url = reverse('session-feature-rar_results', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})
+

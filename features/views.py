@@ -125,6 +125,7 @@ class FeatureRarResultsView(APIView):
     def get(self, _, session_id):
         user = get_user()
         session = get_object_or_404(Session, pk=session_id, user=user)
-        rar_results = RarResult.objects.filter(feature__dataset=session.dataset)
+        rar_results = RarResult.objects.filter(feature__dataset=session.dataset,
+                                               target=session.target)
         serializer = RarResultSerializer(instance=rar_results, many=True)
         return Response(serializer.data)
