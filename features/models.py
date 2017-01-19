@@ -18,17 +18,17 @@ class Session(models.Model):
 class Dataset(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
-    content = models.FileField(upload_to='datasets/')
+    content = models.FileField()
 
 
 class RarResult(models.Model):
     class Meta:
-        unique_together = (('target', 'feature'),)
+        unique_together = (('target', 'feature', 'rank'),)
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    relevancy = models.FloatField(blank=True, null=True)
+    relevancy = models.FloatField()
     redundancy = models.FloatField(blank=True, null=True)
-    rank = models.IntegerField(unique=True, blank=True, null=True)
+    rank = models.IntegerField()
     target = models.ForeignKey('Feature', on_delete=models.CASCADE,
                                related_name='target_rar_results')
     feature = models.ForeignKey('Feature', on_delete=models.CASCADE)

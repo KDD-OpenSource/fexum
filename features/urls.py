@@ -14,8 +14,7 @@ urlpatterns = [
 
     # Datasets
     url(r'datasets$', DatasetListView.as_view(), name='dataset-list'),
-    url(r'datasets/upload/(?P<filename>[^/]+)$', DatasetViewUploadView.as_view(),
-        name='dataset-upload'),
+    url(r'datasets/upload$', DatasetViewUploadView.as_view(), name='dataset-upload'),
     url(r'datasets/(?P<dataset_id>[a-zA-Z0-9-]+)/features$', FeatureListView.as_view(),
         name='dataset-features-list'),
 

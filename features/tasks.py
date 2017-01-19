@@ -2,41 +2,35 @@ from __future__ import absolute_import, unicode_literals
 from celery import shared_task
 import pandas as pd
 import numpy as np
-from features.models import Feature, Bin, Slice, Sample, Dataset
+from features.models import Feature, Bin, Slice, Sample, Dataset, RarResult
 from subprocess import Popen, PIPE
 import json
 from features.channels import GROUP_NAME
 from channels import Group
 from math import ceil
-import os
-from django.conf import settings
 
 
-def get_dataset(dataset_id):
+def _get_dataset_and_file(dataset_id) -> (Dataset, str):
     dataset = Dataset.objects.get(pk=dataset_id)
-
-    filename = os.path.join(settings.MEDIA_ROOT, dataset.content.name)
-    if not os.path.isfile(filename):
-        raise Exception
-
-    return filename
+    filename = dataset.content.path
+    return dataset, filename
 
 
 @shared_task
 def initialize_from_dataset(dataset_id):
-    filename = get_dataset(dataset_id)
+    dataset, filename = _get_dataset_and_file(dataset_id)
 
     # Only read first row for header
     dataframe = pd.read_csv(filename, nrows=1)
     headers = list(dataframe.columns.values)
     for header in headers:
-        Feature.objects.create(name=header)
+        Feature.objects.create(name=header, dataset=dataset)
 
 
 @shared_task
-def calculate_feature_statistics(dataset_id, feature_id):
-    filename = get_dataset(dataset_id)
-    feature = Feature.objects.get(pk=feature.id)
+def calculate_feature_statistics(feature_id):
+    feature = Feature.objects.get(pk=feature_id)
+    _, filename = _get_dataset_and_file(feature.dataset.id)
 
     dataframe = pd.read_csv(filename, usecols=[feature.name])
     feature_col = dataframe[feature.name]
@@ -50,9 +44,9 @@ def calculate_feature_statistics(dataset_id, feature_id):
 
 
 @shared_task
-def build_histogram(dataset_id, feature_id):
-    filename = get_dataset(dataset_id)
+def build_histogram(feature_id):
     feature = Feature.objects.get(pk=feature_id)
+    _, filename = _get_dataset_and_file(feature.dataset.id)
 
     # Only read column with that name
     dataframe = pd.read_csv(filename, usecols=[feature.name])
@@ -66,9 +60,9 @@ def build_histogram(dataset_id, feature_id):
 
 
 @shared_task
-def downsample_feature(dataset_id, feature_id, sample_count):
-    filename = get_dataset(dataset_id)
+def downsample_feature(feature_id, sample_count):
     feature = Feature.objects.get(pk=feature_id)
+    _, filename = _get_dataset_and_file(feature.dataset.id)
 
     dataframe = pd.read_csv(filename, usecols=[feature.name])
 
@@ -81,8 +75,11 @@ def downsample_feature(dataset_id, feature_id, sample_count):
 
 
 @shared_task
-def calculate_rar(dataset_id):
-    filename = get_dataset(dataset_id)
+def calculate_rar(target_id):
+    target = Feature.objects.get(pk=target_id)
+    _, filename = _get_dataset_and_file(target.dataset.id)
+
+    # Execute Rar
     JAR_FILE = '/assets/rar-mfs.jar'
     process = Popen(
         ['java', '-d64', '-Xms8g', '-Xmx32g', '-jar', JAR_FILE, 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm', filename,
@@ -90,14 +87,19 @@ def calculate_rar(dataset_id):
     raw_output, err = process.communicate()
     results = json.loads(raw_output)
 
+    # Parse and save results
     for idx, feature_data in enumerate(results):
-        feature = Feature.objects.get(name=feature_data['name'])
-        feature.rank = idx
-        feature.relevancy = feature_data['result']['score']
-        feature.save()
+        feature = Feature.objects.get(dataset=target.dataset, name=feature_data['name'])
+        rar_result = RarResult.objects.create(
+            feature=feature,
+            target=target,
+            rank=idx,
+            relevancy=feature_data['result']['score']
+        )
 
         for slice_data in feature_data['result']['scoredBlocks']:
             slice_obj = Slice()
+            slice_obj.rar_result = rar_result
             slice_obj.feature = Feature.objects.get(name=feature_data['name'])
             slice_obj.marginal_distribution = slice_data['normalizedMarginalDistribution']
             slice_obj.conditional_distribution = slice_data['normalizedConditionalDistribution']

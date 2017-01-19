@@ -32,7 +32,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('name', models.CharField(max_length=255)),
-                ('content', models.FileField(upload_to='datasets/')),
+                ('content', models.FileField()),
             ],
         ),
         migrations.CreateModel(

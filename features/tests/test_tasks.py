@@ -1,35 +1,23 @@
 from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
     calculate_feature_statistics, calculate_rar
-from features.models import Feature, Sample, Bin, Dataset
-import pandas as pd
-import numpy as np
+from features.models import Feature, Sample, Bin, Dataset, RarResult, Slice
+from features.tests.factories import FeatureFactory, DatasetFactory
 
 
-def build_test_dataset() -> (Dataset, list):
-    test_file = 'test_file.csv'
+def _build_test_dataset() -> Dataset:
+    dataset = DatasetFactory()
     feature_names = ['Col1', 'Col2']
-    data = np.array([[-0.69597425, -0.24040447],
-                     [0.78175798, 0.24011319],
-                     [-0.34861004, -1.33975821],
-                     [0.77591563, -0.6162023],
-                     [-1.24479339, 0.74163977],
-                     [2.15539917, -0.35207171],
-                     [0.42175655, -0.38909846],
-                     [2.24539624, -1.20669404],
-                     [-0.83270608, -0.04607436],
-                     [0.46184216, 0.41361159]])
-    df = pd.DataFrame(data, columns=feature_names)
-    df.to_csv(test_file, index=False)
+    for feature_name in feature_names:
+        FeatureFactory(name=feature_name, dataset=dataset)
 
-    dataset = Dataset.objects.create(content=test_file)
-
-    return dataset, feature_names
+    return dataset
 
 
 class TestInitializeFromDatasetTask(TestCase):
     def test_initialize_from_dataset(self):
-        dataset, feature_names = build_test_dataset()
+        dataset = DatasetFactory()
+        feature_names = ['Col1', 'Col2']
 
         initialize_from_dataset(dataset_id=dataset.id)
 
@@ -38,12 +26,12 @@ class TestInitializeFromDatasetTask(TestCase):
 
 class TestBuildHistogramTask(TestCase):
     def test_build_histogram(self):
-        dataset, feature_names = build_test_dataset()
-        feature_name = feature_names[0]
-        feature = Feature.objects.create(name=feature_name)
+        dataset = _build_test_dataset()
+        feature = Feature.objects.get(dataset=dataset, name='Col1')
+
         bin_values = [3, 1, 4, 0, 2]
 
-        build_histogram(dataset_id=dataset.id, feature_id=feature.id)
+        build_histogram(feature_id=feature.id)
 
         # Rudementary check bins only for its values
         self.assertEqual(Bin.objects.count(), len(bin_values))
@@ -54,12 +42,11 @@ class TestBuildHistogramTask(TestCase):
 
 class TestDownsampleTask(TestCase):
     def test_downsample_feature(self):
-        dataset, feature_names = build_test_dataset()
-        feature_name = feature_names[0]
-        feature = Feature.objects.create(name=feature_name)
+        dataset = _build_test_dataset()
+        feature = Feature.objects.get(dataset=dataset, name='Col1')
 
         sample_count = 5
-        downsample_feature(dataset_id=dataset.id, feature_id=feature_name, sample_count=sample_count)
+        downsample_feature(feature_id=feature.id, sample_count=sample_count)
 
         samples = Sample.objects.filter(feature=feature)
 
@@ -71,13 +58,12 @@ class TestDownsampleTask(TestCase):
 
 class TestCalculateFeatureStatistics(TestCase):
     def test_calculate_feature_statistics(self):
-        dataset, feature_names = build_test_dataset()
-        feature_name = feature_names[0]
-        feature = Feature.objects.create(name=feature_name)
+        dataset = _build_test_dataset()
+        feature = Feature.objects.get(dataset=dataset, name='Col1')
 
-        calculate_feature_statistics(dataset_id=dataset.id, feature_id=feature.id)
+        calculate_feature_statistics(feature_id=feature.id)
 
-        feature = Feature.objects.get(name=feature_name)
+        feature = Feature.objects.get(id=feature.id)
 
         self.assertEqual(feature.mean, 0.371998397)
         self.assertEqual(feature.variance, 1.2756908271439)
@@ -87,23 +73,20 @@ class TestCalculateFeatureStatistics(TestCase):
 
 class TestCalculateRar(TestCase):
     def test_calculate_rar(self):
-        dataset, feature_names = build_test_dataset()
-        feature_name1 = feature_names[0]
-        feature_name2 = feature_names[1]
-
-        # Create two test features
-        Feature.objects.create(name=feature_name1)
-        Feature.objects.create(name=feature_name2)
+        dataset = _build_test_dataset()
+        feature = Feature.objects.get(dataset=dataset, name='Col1')
+        target = Feature.objects.get(dataset=dataset, name='Col2')
 
         # Select first feature as target
-        calculate_rar(dataset_id=dataset.id)
+        calculate_rar(target_id=target.id)
 
-        # First feature aka the target should have no info
-        feature1 = Feature.objects.get(name=feature_name1)
-        self.assertIsNotNone(feature1.relevancy)
-        self.assertIsNone(feature1.redundancy)
+        self.assertEqual(RarResult.objects.count(), 1,
+                         msg='Should only contain result for the one feature')
+        rar_result = RarResult.objects.first()
 
-        # Should have info
-        feature2 = Feature.objects.get(name=feature_name2)
-        self.assertIsNone(feature2.relevancy)
-        self.assertIsNone(feature2.redundancy)
+        self.assertIsNotNone(rar_result.relevancy)
+        self.assertIsNone(rar_result.redundancy)
+        self.assertIsNotNone(rar_result.rank)
+        self.assertEqual(rar_result.target, target)
+        self.assertEqual(rar_result.feature, feature)
+        self.assertEqual(Slice.objects.filter(rar_result=rar_result).count(), 6)

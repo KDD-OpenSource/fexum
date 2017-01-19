@@ -28,8 +28,8 @@ class TestDatasetListView(TestCase):
 
 class TestDatasetUploadUrl(TestCase):
     def test_target_upload_url(self):
-        url = reverse('dataset-upload', args=['a_dataset'])
-        self.assertEqual(url, '/api/datasets/upload/a_dataset')
+        url = reverse('dataset-upload')
+        self.assertEqual(url, '/api/datasets/upload')
 
 
 class TestDatasetFeaturesListUrl(TestCase):

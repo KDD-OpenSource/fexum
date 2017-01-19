@@ -7,19 +7,18 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
 from features.tasks import calculate_rar
-from rest_framework.parsers import FileUploadParser
+from rest_framework.parsers import MultiPartParser, FormParser
 from features.tasks import initialize_from_dataset, calculate_feature_statistics, build_histogram, \
     downsample_feature
 from django.contrib.auth import get_user_model
 
 
-# Helper if we only want one user, TODO: replace with request.user
+# Helper to mock an authenticated user, TODO: replace with request.user
 def get_user():
     try:
         user = get_user_model().objects.get()
     except get_user_model().DoesNotExist:
         user = get_user_model().objects.create()
-
     return user
 
 
@@ -54,7 +53,7 @@ class TargetDetailView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        calculate_rar.delay(dataset_id=session.dataset.id)
+        calculate_rar.delay(target_id=serializer.instance.target.id)
 
         return Response(serializer.data)
 
@@ -74,18 +73,17 @@ class DatasetListView(APIView):
 
 
 class DatasetViewUploadView(APIView):
-    parser_classes = (FileUploadParser,)
+    parser_classes = (MultiPartParser, FormParser,)
 
-    def post(self, request, filename, *args, **kwargs):
+    def put(self, request):
         file_obj = request.FILES['file']
-        dataset = Dataset.objects.create(name=filename, content=file_obj)
+        dataset = Dataset.objects.create(name=file_obj.name, content=file_obj)
 
         # Start tasks for feature calculation
         # TODO: Make sure that initialize_from_dataset runs before everything else
         initialize_from_dataset.delay(dataset_id=dataset.id)
 
         serializer = DatasetSerializer(instance=dataset)
-
         return Response(serializer.data)
 
 

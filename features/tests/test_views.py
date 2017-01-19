@@ -9,7 +9,7 @@ from features.serializers import FeatureSerializer, BinSerializer, SliceSerializ
 from unittest.mock import patch
 from features.models import Session, Dataset
 from django.contrib.auth import get_user_model
-
+import os
 
 class TestSessionListView(APITestCase):
     def test_retrieve_session_list(self):
@@ -19,7 +19,14 @@ class TestSessionListView(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), [SessionSerializer(instance=session).data])
+
+        json_data = response.json()
+        data = SessionSerializer(instance=session).data
+        first_obj = json_data.pop(0)
+        self.assertEqual(len(json_data), 0)
+        self.assertEqual(first_obj.pop('id'), str(data['id']))
+        self.assertEqual(first_obj.pop('dataset'), str(data['dataset']))
+        self.assertEqual(first_obj.pop('target'), str(data['target']))
 
     def test_create_new_session(self):
         dataset = DatasetFactory()
@@ -109,7 +116,7 @@ class TestTargetDetailView(APITestCase):
             self.assertEqual(session.target, target)
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(response.json(), {'target': str(data['target'])})
-            calculate_rar.assert_called_once_with(dataset_id=session.dataset.id)
+            calculate_rar.assert_called_once_with(target_id=target.id)
 
     def test_select_target_feature_not_found(self):
         target = FeatureFactory()
@@ -147,18 +154,19 @@ class TestDatasetListView(APITestCase):
 
 class TestDatasetUploadView(APITestCase):
     def test_upload_dataset(self):
-        dataset_name = 'test.csv'
+        file_name = 'test_file.csv'
 
-        url = reverse('dataset-upload', args=[dataset_name])
+        url = reverse('dataset-upload')
         with patch('features.views.initialize_from_dataset.delay') as initialize_from_dataset_mock:
-            with open('test_file.csv') as file_data:
-                response = self.client.post(url, {'file': file_data})
+            with open(file_name) as file_data:
+                response = self.client.put(url, {'file': file_data}, format='multipart')
 
             dataset = Dataset.objects.first()
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(response.json(), DatasetSerializer(instance=dataset).data)
-            self.assertEqual(dataset.name, dataset_name)
-            self.assertEqual(dataset.content.open.read(), file_data)
+            self.assertEqual(dataset.name, file_name)
+            with open(file_name, 'rb') as file_data:
+                self.assertEqual(dataset.content.read(), file_data.read())
             initialize_from_dataset_mock.assert_called_once_with(dataset_id=dataset.id)
 
 
@@ -170,7 +178,17 @@ class TestFeatureListView(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), [FeatureSerializer(instance=feature).data])
+        json_data = response.json()
+        data = FeatureSerializer(instance=feature).data
+        self.assertEqual(len(json_data), 1)
+        first_obj = json_data.pop(0)
+        self.assertAlmostEqual(first_obj.pop('min'), data['min'])
+        self.assertAlmostEqual(first_obj.pop('mean'), data['mean'])
+        self.assertAlmostEqual(first_obj.pop('max'),  data['max'])
+        self.assertAlmostEqual(first_obj.pop('variance'),  data['variance'])
+        self.assertEqual(first_obj.pop('id'), data['id'])
+        self.assertEqual(first_obj.pop('name'), data['name'])
+        self.assertEqual(len(first_obj), 0)
 
     def test_retrieve_feature_list_dataset_not_found(self):
         url = reverse('dataset-features-list', args=['5781ca8a-3c7d-46b4-897e-90d80e938258'])
@@ -224,11 +242,14 @@ class TestFeatureHistogramView(APITestCase):
 class TestFeatureSlicesView(APITestCase):
     def test_retrieve_slices(self):
         fslice = SliceFactory()
+        session = SessionFactory(target=fslice.rar_result.target)
 
-        url = reverse('feature-slices', args=[fslice.rar_result.feature.id])
+        url = reverse('session-feature-slices',
+                      args=[session.id, fslice.rar_result.feature.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
+
         data = SliceSerializer(instance=fslice).data
         json_data = response.json()
         self.assertEqual(len(json_data), 1)
@@ -244,14 +265,18 @@ class TestFeatureSlicesView(APITestCase):
         self.assertEqual(len(first_obj), 0)
 
     def test_retrieve_slices_feature_not_found(self):
-        url = reverse('feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+        session = SessionFactory()
+
+        url = reverse('session-feature-slices',
+                      args=[session.id, '7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
     def test_retrieve_slices_session_not_found(self):
-        url = reverse('feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+        url = reverse('session-feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e',
+                                                      '8a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
