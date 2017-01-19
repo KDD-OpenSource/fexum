@@ -5,6 +5,7 @@ from features.models import Feature, Sample, Bin, Dataset, RarResult, Slice
 from features.tests.factories import FeatureFactory, DatasetFactory
 from unittest.mock import patch, call
 
+
 def _build_test_dataset() -> Dataset:
     dataset = DatasetFactory()
     feature_names = ['Col1', 'Col2']

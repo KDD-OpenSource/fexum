@@ -8,8 +8,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
 from features.tasks import calculate_rar
 from rest_framework.parsers import MultiPartParser, FormParser
-from features.tasks import initialize_from_dataset, calculate_feature_statistics, build_histogram, \
-    downsample_feature
+from features.tasks import initialize_from_dataset
 from django.contrib.auth import get_user_model
 
 
@@ -76,11 +75,11 @@ class DatasetViewUploadView(APIView):
     parser_classes = (MultiPartParser, FormParser,)
 
     def put(self, request):
+        print(request.FILES)
         file_obj = request.FILES['file']
         dataset = Dataset.objects.create(name=file_obj.name, content=file_obj)
 
         # Start tasks for feature calculation
-        # TODO: Make sure that initialize_from_dataset runs before everything else
         initialize_from_dataset.delay(dataset_id=dataset.id)
 
         serializer = DatasetSerializer(instance=dataset)

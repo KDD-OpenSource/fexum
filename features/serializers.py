@@ -55,7 +55,7 @@ class SessionTargetSerializer(ModelSerializer):
 
     def validate(self, data):
         if data.get('target').dataset != self.instance.dataset:
-            raise ValidationError('Target must be from the same dataset.')
+            raise ValidationError({'target': 'Target must be from the same dataset.'})
         return data
 
 
