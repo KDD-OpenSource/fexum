@@ -10,6 +10,10 @@ sudo apt-get install linux-image-extra-$(uname -r) linux-image-extra-virtual -y
 sudo apt-get install docker-engine -y
 sudo service docker start
 
+# Enable experimental version
+sudo touch /etc/docker/deamon.json
+echo '{"experimental": true}' | sudo dd of=/etc/docker/deamon.json
+
 # Configure docker for non sudo mode
 sudo groupadd docker
 sudo usermod -aG docker $USER
