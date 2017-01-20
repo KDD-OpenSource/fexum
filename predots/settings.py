@@ -151,3 +151,6 @@ CHANNEL_LAYERS = {
         'ROUTING': 'predots.routing.channel_routing',
     },
 }
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

@@ -1,20 +1,12 @@
-from rest_framework.serializers import ModelSerializer, JSONField
-from features.models import Sample, Feature, Bin, Slice, Target
+from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRelatedField
+from features.models import Sample, Feature, Bin, Slice, Session, Dataset, RarResult
+from rest_framework.validators import ValidationError
 
 
 class FeatureSerializer(ModelSerializer):
     class Meta:
         model = Feature
-        fields = ('name', 'relevancy', 'redundancy', 'rank', 'mean', 'variance',
-                  'min', 'max')
-
-
-class TargetSerializer(ModelSerializer):
-    feature = FeatureSerializer(many=False)
-
-    class Meta:
-        model = Target
-        fields = ('feature', )
+        fields = ('id', 'name', 'mean', 'variance', 'min', 'max',)
 
 
 class BinSerializer(ModelSerializer):
@@ -35,4 +27,41 @@ class SliceSerializer(ModelSerializer):
 
     class Meta:
         model = Slice
-        fields = ('from_value', 'deviation', 'frequency', 'significance', 'to_value', 'marginal_distribution', 'conditional_distribution')
+        fields = ('from_value', 'deviation', 'frequency', 'significance', 'to_value',
+                  'marginal_distribution', 'conditional_distribution')
+
+
+class DatasetSerializer(ModelSerializer):
+    class Meta:
+        model = Dataset
+        fields = ('id', 'name')
+
+
+class SessionSerializer(ModelSerializer):
+    target = PrimaryKeyRelatedField(many=False, read_only=True)
+    dataset = PrimaryKeyRelatedField(many=False, read_only=False, queryset=Dataset.objects.all())
+
+    class Meta:
+        model = Session
+        fields = ('id', 'dataset', 'target')
+
+
+class SessionTargetSerializer(ModelSerializer):
+    target = PrimaryKeyRelatedField(many=False, read_only=False, queryset=Feature.objects.all())
+
+    class Meta:
+        model = Session
+        fields = ('target',)
+
+    def validate(self, data):
+        if data.get('target').dataset != self.instance.dataset:
+            raise ValidationError({'target': 'Target must be from the same dataset.'})
+        return data
+
+
+class RarResultSerializer(ModelSerializer):
+    feature = PrimaryKeyRelatedField(many=False, read_only=True)
+
+    class Meta:
+        model = RarResult
+        fields = ('id', 'feature', 'relevancy', 'redundancy', 'rank')
