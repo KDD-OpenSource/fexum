@@ -77,8 +77,7 @@ function deploy_services() {
     git clone $GIT_URL
     cd $name
     git pull
-    docker-compose bundle
-    docker deploy "$name.dba"
+    docker deploy --compose-file docker-compose.yml predots
 EOSSH
 }
 
