@@ -75,7 +75,6 @@ class DatasetViewUploadView(APIView):
     parser_classes = (MultiPartParser, FormParser,)
 
     def put(self, request):
-        print(request.FILES)
         file_obj = request.FILES['file']
         dataset = Dataset.objects.create(name=file_obj.name, content=file_obj)
 

@@ -22,7 +22,7 @@ class Dataset(models.Model):
 
 class RarResult(models.Model):
     class Meta:
-        unique_together = (('target', 'feature', 'rank'),)
+        unique_together = ('target', 'feature', 'rank')
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     relevancy = models.FloatField()
