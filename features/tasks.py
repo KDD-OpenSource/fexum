@@ -68,6 +68,10 @@ def calculate_rar(target_id):
     target = Feature.objects.get(pk=target_id)
     _, filename = _get_dataset_and_file(target.dataset.id)
 
+    # Return if rar was already calculated for a specific target
+    if RarResult.objects.filter(target=target).exists():
+        return
+
     # Execute Rar
     JAR_FILE = '/assets/rar-mfs.jar'
     process = Popen(

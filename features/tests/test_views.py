@@ -139,7 +139,7 @@ class TestTargetDetailView(APITestCase):
         response = self.client.put(url, data={'target': target.id}, format='json')
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.json(), {'target': 'Target must be from the same dataset.'})
+        self.assertEqual(response.json(), {'target': ['Target must be from the same dataset.']})
 
 
 class TestDatasetListView(APITestCase):

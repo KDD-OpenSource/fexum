@@ -2,7 +2,7 @@ from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
     calculate_feature_statistics, calculate_rar
 from features.models import Feature, Sample, Bin, Dataset, RarResult, Slice
-from features.tests.factories import FeatureFactory, DatasetFactory
+from features.tests.factories import FeatureFactory, DatasetFactory, RarResultFactory
 from unittest.mock import patch, call
 
 
@@ -104,3 +104,18 @@ class TestCalculateRar(TestCase):
         self.assertEqual(rar_result.target, target)
         self.assertEqual(rar_result.feature, feature)
         self.assertEqual(Slice.objects.filter(rar_result=rar_result).count(), 6)
+
+    def test_calculate_rar_catch_if_already_calcalulated_for_target(self):
+        dataset = _build_test_dataset()
+        feature = Feature.objects.get(dataset=dataset, name='Col1')
+        target = Feature.objects.get(dataset=dataset, name='Col2')
+
+        RarResultFactory(target=target, feature=feature)
+
+        self.assertEqual(RarResult.objects.count(), 1,
+                         msg='Should only contain result for the one feature')
+
+        calculate_rar(target_id=target.id)
+
+        self.assertEqual(RarResult.objects.count(), 1,
+                         msg='Should still only contain result for the one feature')
