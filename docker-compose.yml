@@ -29,7 +29,7 @@ services:
       - redis
       - postgres
     networks:
-      - predots    
+      - predots
     volumes:
       - .:/code
     command: python manage.py runworker
