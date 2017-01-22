@@ -3,5 +3,5 @@ from features.consumers import Demultiplexer
 
 
 channel_routing = [
-    route_class(Demultiplexer, path='^/binding'),
+    route_class(Demultiplexer, path='^/bindings/?$'),
 ]

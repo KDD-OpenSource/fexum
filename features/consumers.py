@@ -3,9 +3,9 @@ from features.bindings import RarResultBinding
 
 
 class Demultiplexer(WebsocketDemultiplexer):
-    mapping = {
+    consumers = {
         'rar_result': RarResultBinding.consumer
     }
 
     def connection_groups(self):
-        return ['rar_result-updates',]
+        return ['rar_result-updates']

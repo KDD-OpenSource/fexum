@@ -9,7 +9,7 @@ class RarResultBinding(WebsocketBinding):
 
     @classmethod
     def group_names(cls, *args, **kwargs):
-        return ['rar_result-updates',]
+        return ['rar_result-updates']
 
     def has_permission(self, user, action, pk):
         return True

@@ -6,7 +6,7 @@ from features.tests.factories import RarResultFactory
 class TestIntegerValueBinding(ChannelTestCase):
     def test_outbound_create(self):
         client = HttpClient()
-        client.join_group('rar_result-updates')
+        client.join_group('rarresult-updates')
 
         rar_result = RarResultFactory()
 
