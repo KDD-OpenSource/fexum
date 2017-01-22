@@ -5,7 +5,7 @@ from features.models import RarResult
 class RarResultBinding(WebsocketBinding):
     model = RarResult
     stream = 'rar_result'
-    fields = ['feature', 'relevancy', 'rank']
+    fields = ['feature', 'relevancy', 'redundancy', 'rank']
 
     @classmethod
     def group_names(cls, *args, **kwargs):
