@@ -3,9 +3,9 @@ djangorestframework==3.5.2
 jsonfield==1.0.3
 celery==4.0.2
 psycopg2==2.6.2
-channels==0.17.3
+channels==1.0.2
 asgi_redis==1.0.0
-daphne==0.15.0
+daphne==1.0.1
 flower==0.9.1
 
 # Disable these for docker envs

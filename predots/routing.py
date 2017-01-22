@@ -1,6 +1,7 @@
 from channels.routing import route_class
-from features.channels import EventConsumer
+from features.consumers import Demultiplexer
+
 
 channel_routing = [
-    route_class(EventConsumer, path='^/socket')
+    route_class(Demultiplexer, path='^/bindings/?$'),
 ]
