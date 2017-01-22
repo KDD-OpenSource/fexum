@@ -1,6 +1,5 @@
-from channels.routing import route_class, route
+from channels.routing import route_class
 from features.consumers import Demultiplexer
-from features.bindings import RelevancyBinding
 
 
 channel_routing = [

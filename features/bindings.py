@@ -1,16 +1,15 @@
 from channels.binding.websockets import WebsocketBinding
-from rest_framework.serializers import ModelSerializer
-from features.models import Feature
+from features.models import RarResult
 
 
-class RelevancyBinding(WebsocketBinding):
-    model = Feature
-    stream = 'relevancy'
-    fields = ['name', 'relevancy']
+class RarResultBinding(WebsocketBinding):
+    model = RarResult
+    stream = 'rar_result'
+    fields = ['feature', 'relevancy', 'rank']
 
     @classmethod
     def group_names(cls, *args, **kwargs):
-        return ['binding.values']
+        return ['rar_result-updates',]
 
     def has_permission(self, user, action, pk):
         return True

@@ -1,10 +1,11 @@
 from channels.generic.websockets import WebsocketDemultiplexer
-from features.bindings import RelevancyBinding
+from features.bindings import RarResultBinding
+
 
 class Demultiplexer(WebsocketDemultiplexer):
     mapping = {
-        'relevancy': RelevancyBinding.consumer
+        'rar_result': RarResultBinding.consumer
     }
 
     def connection_groups(self):
-        return ['binding.values']
+        return ['rar_result-updates',]

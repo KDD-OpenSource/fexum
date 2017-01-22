@@ -102,9 +102,6 @@ def calculate_rar(target_id):
             slice_obj.to_value = slice_data['featureRanges'][0]['end']
             slice_obj.save()
 
-    # TODO: Send message on save signal, not here?
-    Group(GROUP_NAME).send({'text': json.dumps({'event_name': 'relevancy-update', 'payload': {}})})
-
     
 @shared_task
 def initialize_from_dataset(dataset_id):

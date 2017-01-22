@@ -1,10 +1,4 @@
 version: "2"
-
-volumes:
-  data:
-    driver: nfs
-    driver_opts:
-      share: /var/nfs/general:/share
       
 services:
   redis:
