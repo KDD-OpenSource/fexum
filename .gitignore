@@ -97,3 +97,5 @@ db.sqlite3
 /predots.sublime-workspace
 
 media/
+._.DS_Store
+.DS_Store
