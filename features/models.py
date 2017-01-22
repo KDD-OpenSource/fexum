@@ -45,6 +45,9 @@ class Feature(models.Model):
     variance = models.FloatField(blank=True, null=True)
     min = models.FloatField(blank=True, null=True)
     max = models.FloatField(blank=True, null=True)
+    
+    def __str__(self):
+        return '[Feature] {0}'.format(self.name)
 
 
 class Sample(models.Model):
