@@ -15,7 +15,7 @@ from django.contrib.auth import get_user_model
 # Helper to mock an authenticated user, TODO: replace with request.user
 def get_user():
     try:
-        user = get_user_model().objects.get()
+        user = get_user_model().objects.first()
     except get_user_model().DoesNotExist:
         user = get_user_model().objects.create()
     return user
