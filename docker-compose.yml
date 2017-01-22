@@ -51,6 +51,7 @@ services:
     depends_on:
       - queue
       - postgres
+      - redis
     networks:
       - predots
     volumes:
