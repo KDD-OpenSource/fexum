@@ -83,7 +83,7 @@ class DatasetViewUploadView(APIView):
 
         # Start tasks for feature calculation
         initialize_from_dataset.delay(dataset_id=dataset.id)
-
+        
         serializer = DatasetSerializer(instance=dataset)
         return Response(serializer.data)
 
