@@ -81,9 +81,8 @@ def calculate_rar(target_id, precomputed_data=None):
         for rar_result in rar_results:
             pre_save.send(RarResult, instance=rar_result)
             post_save.send(RarResult, instance=rar_result)
-            
+
         return
-    print(filename)
 
     # Only execute rar if don't insert data manually
     if precomputed_data is not None:
