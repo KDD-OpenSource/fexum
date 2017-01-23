@@ -17,7 +17,7 @@ RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B
 RUN apt-get update
 RUN apt-get install -y git sbt
 WORKDIR /setup
-RUN git clone git@github.com:danthe96/rar-mfs.git
+RUN git clone git@github.com:KDD-OpenSource/rar-mfs.git
 WORKDIR /setup/rar-mfs
 RUN sbt assembly
 RUN mkdir /assets
