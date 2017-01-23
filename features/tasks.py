@@ -63,21 +63,35 @@ def downsample_feature(feature_id, sample_count=1000):
 
 
 @shared_task
-def calculate_rar(target_id):
+def calculate_rar(target_id, precomputed_data=None):
     target = Feature.objects.get(pk=target_id)
     _, filename = _get_dataset_and_file(target.dataset.id)
 
-    # Return if rar was already calculated for a specific target
-    if RarResult.objects.filter(target=target).exists():
-        return
-
-    # Execute Rar
-    JAR_FILE = '/assets/rar-mfs.jar'
-    process = Popen(
-        ['java', '-d64', '-Xms8g', '-Xmx32g', '-jar', JAR_FILE, 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm', filename,
-         '--hics'], stdout=PIPE)
-    raw_output, err = process.communicate()
-    results = json.loads(raw_output)
+    # Fix bindings in celery context
+    from features.bindings import RarResultBinding
+    RarResultBinding.register()
+   
+    # Only execute rar if don't insert data manually
+    if precomputed_data is not None:
+        results = precomputed_data
+    else:
+        # Execute Rar
+        JAR_FILE = '/assets/rar-mfs.jar'
+        process = Popen([
+            'java',
+            '-d64',
+            '-Xms8g',
+            '-Xmx32g',
+            '-jar', JAR_FILE,
+            'csv',
+            '--samples', '100',
+            '--subsetSize', '5',
+            '--nonorm', filename,
+            '--hics',
+            '--targetName', target.name],
+            stdout=PIPE)
+        raw_output, err = process.communicate()
+        results = json.loads(raw_output)
 
     # Parse and save results
     for idx, feature_data in enumerate(results):

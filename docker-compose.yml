@@ -26,7 +26,7 @@ services:
       - predots
     volumes:
       - .:/code
-    command: python manage.py runworker
+    command: python manage.py runworker -v 2
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
 
