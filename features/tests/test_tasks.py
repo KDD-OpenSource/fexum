@@ -126,3 +126,7 @@ class TestCalculateRar(TestCase):
 
         self.assertEqual(RarResult.objects.count(), 1,
                          msg='Should still only contain result for the one feature')
+
+    def test_calculate_rar_use_precalulated_data(self):
+        # TODO: Write test
+        pass
