@@ -55,9 +55,7 @@ class TargetDetailView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         
-        # Return if rar was already calculated for a specific target
-        if not RarResult.objects.filter(target=target).exists():
-            calculate_rar.delay(target_id=serializer.instance.target.id)
+        calculate_rar.delay(target_id=serializer.instance.target.id)
 
         return Response(serializer.data)
 
