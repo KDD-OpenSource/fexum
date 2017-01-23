@@ -72,6 +72,7 @@ def calculate_rar(target_id, precomputed_data=None):
     from features.bindings import RarResultBinding
     RarResultBinding.register()
     
+    # TODO: Add test
     # Return if rar was already calculated for a specific target
     if not RarResult.objects.filter(target=target).exists():
         rar_results = RarResult.objects.filter(target=target)
@@ -85,6 +86,7 @@ def calculate_rar(target_id, precomputed_data=None):
     
     # Only execute rar if don't insert data manually
     if precomputed_data is not None:
+        # TODO: Add test
         results = precomputed_data
     else:
         # Execute Rar
