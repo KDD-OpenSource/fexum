@@ -74,7 +74,7 @@ def calculate_rar(target_id, precomputed_data=None):
     
     # TODO: Add test
     # Return if rar was already calculated for a specific target
-    if not RarResult.objects.filter(target=target).exists():
+    if RarResult.objects.filter(target=target).exists():
         rar_results = RarResult.objects.filter(target=target)
         
         # Manually trigger notifications
@@ -83,7 +83,8 @@ def calculate_rar(target_id, precomputed_data=None):
             post_save.send(RarResult, instance=rar_result)
             
         return
-    
+    print(filename)
+
     # Only execute rar if don't insert data manually
     if precomputed_data is not None:
         # TODO: Add test
