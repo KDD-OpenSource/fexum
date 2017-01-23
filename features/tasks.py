@@ -7,6 +7,7 @@ from subprocess import Popen, PIPE
 import json
 from channels import Group
 from math import ceil
+from django.db.models.signals import post_save, pre_save
 
 
 def _get_dataset_and_file(dataset_id) -> (Dataset, str):
@@ -70,7 +71,18 @@ def calculate_rar(target_id, precomputed_data=None):
     # Fix bindings in celery context
     from features.bindings import RarResultBinding
     RarResultBinding.register()
-   
+    
+    # Return if rar was already calculated for a specific target
+    if not RarResult.objects.filter(target=target).exists():
+        rar_results = RarResult.objects.filter(target=target)
+        
+        # Manually trigger notifications
+        for rar_result in rar_results:
+            pre_save.send(RarResult, instance=rar_result)
+            post_save.send(RarResult, instance=rar_result)
+            
+        return
+    
     # Only execute rar if don't insert data manually
     if precomputed_data is not None:
         results = precomputed_data
