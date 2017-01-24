@@ -91,11 +91,10 @@ ENV/
 .idea/
 
 db.sqlite3
-*.csv
 
 /predots.sublime-project
 /predots.sublime-workspace
 
-media/
+media/*
 ._.DS_Store
 .DS_Store

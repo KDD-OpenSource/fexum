@@ -115,7 +115,18 @@ class TestCalculateRar(TestCase):
         self.assertEqual(RarResult.objects.count(), 1,
                          msg='Should only contain result for the one feature')
 
-        calculate_rar(target_id=target.id)
+        # Signals are called manually
+        with patch('features.tasks.pre_save.send') as pre_save_signal_mock:
+            with patch('features.tasks.post_save.send') as post_save_signal_mock:
+                calculate_rar(target_id=target.id)
+                existing_rar_result = RarResult.objects.get()
+                pre_save_signal_mock.assert_called_once_with(RarResult, instance=existing_rar_result)
+                post_save_signal_mock.assert_called_once_with(RarResult,
+                                                              instance=existing_rar_result)
 
         self.assertEqual(RarResult.objects.count(), 1,
                          msg='Should still only contain result for the one feature')
+
+    def test_calculate_rar_use_precalulated_data(self):
+        # TODO: Write test
+        pass

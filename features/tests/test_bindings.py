@@ -6,7 +6,7 @@ from features.tests.factories import RarResultFactory
 class TestIntegerValueBinding(ChannelTestCase):
     def test_outbound_create(self):
         client = HttpClient()
-        client.join_group('rarresult-updates')
+        client.join_group('rar_result-updates')
 
         rar_result = RarResultFactory()
 
@@ -14,19 +14,18 @@ class TestIntegerValueBinding(ChannelTestCase):
         received = client.receive()
         self.assertIsNotNone(received)
 
-        self.assertTrue('payload' in received)
-        self.assertTrue('action' in received['payload'])
-        self.assertTrue('data' in received['payload'])
-        self.assertTrue('relevancy' in received['payload']['data'])
-        self.assertTrue('feature' in received['payload']['data'])
-        self.assertTrue('rank' in received['payload']['data'])
+        self.assertEqual(received['payload']['data'].pop('relevancy'), rar_result.relevancy)
+        self.assertEqual(received['payload']['data'].pop('redundancy'), rar_result.redundancy)
+        self.assertEqual(received['payload']['data'].pop('rank'), rar_result.rank)
+        self.assertEqual(received['payload']['data'].pop('feature'), str(rar_result.feature.id))
+        self.assertEqual(received['payload'].pop('data'), {})
 
-        self.assertEqual(received['payload']['action'], 'update')
-        self.assertEqual(received['payload']['model'], 'features.rarresult')
-        self.assertEqual(received['payload']['pk'], str(rar_result.pk))
+        self.assertEqual(received['payload'].pop('action'), 'update')
+        self.assertEqual(received['payload'].pop('model'), 'features.rarresult')
+        self.assertEqual(received['payload'].pop('pk'), str(rar_result.pk))
+        self.assertEqual(received.pop('payload'), {})
 
-        self.assertEqual(received['payload']['data']['relevancy'], rar_result.relevancy)
-        self.assertEqual(received['payload']['data']['rank'], rar_result.rank)
-        self.assertEqual(received['payload']['data']['feature'], str(rar_result.feature.id))
+        self.assertEqual(received.pop('stream'), 'rar_result')
 
+        self.assertEqual(received, {})
         self.assertIsNone(client.receive())

@@ -155,7 +155,7 @@ class TestDatasetListView(APITestCase):
 
 class TestDatasetUploadView(APITestCase):
     def test_upload_dataset(self):
-        file_name = 'test_file.csv'
+        file_name = 'features/tests/test_file.csv'
 
         url = reverse('dataset-upload')
         with patch('features.views.initialize_from_dataset.delay') as initialize_from_dataset_mock:
@@ -165,7 +165,7 @@ class TestDatasetUploadView(APITestCase):
             dataset = Dataset.objects.first()
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(response.json(), DatasetSerializer(instance=dataset).data)
-            self.assertEqual(dataset.name, file_name)
+            self.assertEqual(dataset.name, file_name.split('/')[-1])
             with open(file_name, 'rb') as file_data:
                 self.assertEqual(dataset.content.read(), file_data.read())
             initialize_from_dataset_mock.assert_called_once_with(dataset_id=dataset.id)

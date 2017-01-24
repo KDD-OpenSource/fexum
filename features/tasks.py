@@ -7,6 +7,7 @@ from subprocess import Popen, PIPE
 import json
 from channels import Group
 from math import ceil
+from django.db.models.signals import post_save, pre_save
 
 
 def _get_dataset_and_file(dataset_id) -> (Dataset, str):
@@ -63,21 +64,48 @@ def downsample_feature(feature_id, sample_count=1000):
 
 
 @shared_task
-def calculate_rar(target_id):
+def calculate_rar(target_id, precomputed_data=None):
     target = Feature.objects.get(pk=target_id)
     _, filename = _get_dataset_and_file(target.dataset.id)
 
+    # Fix bindings in celery context
+    from features.bindings import RarResultBinding
+    RarResultBinding.register()
+    
+    # TODO: Add test
     # Return if rar was already calculated for a specific target
     if RarResult.objects.filter(target=target).exists():
+        rar_results = RarResult.objects.filter(target=target)
+        
+        # Manually trigger notifications
+        for rar_result in rar_results:
+            pre_save.send(RarResult, instance=rar_result)
+            post_save.send(RarResult, instance=rar_result)
+
         return
 
-    # Execute Rar
-    JAR_FILE = '/assets/rar-mfs.jar'
-    process = Popen(
-        ['java', '-d64', '-Xms8g', '-Xmx32g', '-jar', JAR_FILE, 'csv', '--samples', '100', '--subsetSize', '5', '--nonorm', filename,
-         '--hics'], stdout=PIPE)
-    raw_output, err = process.communicate()
-    results = json.loads(raw_output)
+    # Only execute rar if don't insert data manually
+    if precomputed_data is not None:
+        # TODO: Add test
+        results = precomputed_data
+    else:
+        # Execute Rar
+        JAR_FILE = '/assets/rar-mfs.jar'
+        process = Popen([
+            'java',
+            '-d64',
+            '-Xms8g',
+            '-Xmx32g',
+            '-jar', JAR_FILE,
+            'csv',
+            '--samples', '100',
+            '--subsetSize', '5',
+            '--nonorm', filename,
+            '--hics',
+            '--targetName', target.name],
+            stdout=PIPE)
+        raw_output, err = process.communicate()
+        results = json.loads(raw_output)
 
     # Parse and save results
     for idx, feature_data in enumerate(results):

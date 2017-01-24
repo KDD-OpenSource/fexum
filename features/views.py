@@ -10,13 +10,16 @@ from features.tasks import calculate_rar
 from rest_framework.parsers import MultiPartParser, FormParser
 from features.tasks import initialize_from_dataset
 from django.contrib.auth import get_user_model
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 # Helper to mock an authenticated user, TODO: replace with request.user
 def get_user():
-    try:
-        user = get_user_model().objects.first()
-    except get_user_model().DoesNotExist:
+    user = get_user_model().objects.first() 
+    if user is None:
         user = get_user_model().objects.create()
     return user
 
@@ -51,7 +54,7 @@ class TargetDetailView(APIView):
         serializer = SessionTargetSerializer(instance=session, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-
+        
         calculate_rar.delay(target_id=serializer.instance.target.id)
 
         return Response(serializer.data)
@@ -80,7 +83,7 @@ class DatasetViewUploadView(APIView):
 
         # Start tasks for feature calculation
         initialize_from_dataset.delay(dataset_id=dataset.id)
-
+        
         serializer = DatasetSerializer(instance=dataset)
         return Response(serializer.data)
 
