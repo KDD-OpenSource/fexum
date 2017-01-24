@@ -103,6 +103,7 @@ class ChunkedDatasetUploadCompleteView(ChunkedUploadCompleteView):
         return {'message': ("You successfully uploaded '%s' (%s bytes)!" %
                             (chunked_upload.filename, chunked_upload.offset))}
 
+      
 class FeatureListView(APIView):
     def get(self, _, dataset_id):
         dataset = get_object_or_404(Dataset, pk=dataset_id)
