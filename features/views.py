@@ -1,5 +1,6 @@
 from rest_framework.views import APIView
-from features.models import Feature, Bin, Sample, Dataset, Session, RarResult, Slice
+from features.models import Feature, Bin, Sample, Dataset, Session, RarResult, Slice, \
+    ChunkedDatasetUpload
 from features.serializers import FeatureSerializer, BinSerializer, SessionSerializer, \
     SampleSerializer, SliceSerializer, DatasetSerializer, RarResultSerializer, \
     SessionTargetSerializer
@@ -7,10 +8,10 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
 from features.tasks import calculate_rar
-from rest_framework.parsers import MultiPartParser, FormParser
 from features.tasks import initialize_from_dataset
 from django.contrib.auth import get_user_model
 import logging
+from chunked_upload.views import ChunkedUploadView, ChunkedUploadCompleteView
 
 
 logger = logging.getLogger(__name__)
@@ -73,21 +74,36 @@ class DatasetListView(APIView):
         serializer = DatasetSerializer(instance=datasets, many=True)
         return Response(serializer.data)
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
-class DatasetViewUploadView(APIView):
-    parser_classes = (MultiPartParser, FormParser,)
+@method_decorator(csrf_exempt, name='dispatch')
+class ChunkedDatasetUploadView(ChunkedUploadView):
+    model = ChunkedDatasetUpload
 
-    def put(self, request):
-        file_obj = request.FILES['file']
-        dataset = Dataset.objects.create(name=file_obj.name, content=file_obj)
+    def check_permissions(self, request):
+        # Allow non authenticated users to make uploads
+        pass
+
+
+class ChunkedDatasetUploadCompleteView(ChunkedUploadCompleteView):
+    model = ChunkedDatasetUpload
+
+    def check_permissions(self, request):
+        # Allow non authenticated users to make uploads
+        pass
+
+    def on_completion(self, uploaded_file, request):
+        dataset = Dataset.objects.create(name=uploaded_file.name, content=uploaded_file)
 
         # Start tasks for feature calculation
         initialize_from_dataset.delay(dataset_id=dataset.id)
-        
-        serializer = DatasetSerializer(instance=dataset)
-        return Response(serializer.data)
 
+    def get_response_data(self, chunked_upload, request):
+        return {'message': ("You successfully uploaded '%s' (%s bytes)!" %
+                            (chunked_upload.filename, chunked_upload.offset))}
 
+      
 class FeatureListView(APIView):
     def get(self, _, dataset_id):
         dataset = get_object_or_404(Dataset, pk=dataset_id)

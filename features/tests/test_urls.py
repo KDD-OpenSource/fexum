@@ -32,6 +32,12 @@ class TestDatasetUploadUrl(TestCase):
         self.assertEqual(url, '/api/datasets/upload')
 
 
+class TestDatasetUploadCompleteUrl(TestCase):
+    def test_target_upload_complete_url(self):
+        url = reverse('dataset-upload-complete')
+        self.assertEqual(url, '/api/datasets/upload/complete')
+
+
 class TestDatasetFeaturesListUrl(TestCase):
     def test_feature_list_url(self):
         url = reverse('dataset-features-list', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])

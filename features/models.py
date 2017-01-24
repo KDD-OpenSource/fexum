@@ -2,6 +2,7 @@ from django.db import models
 from jsonfield import JSONField
 from django.conf import settings
 import uuid
+from chunked_upload.models import ChunkedUpload
 
 
 class Session(models.Model):
@@ -9,6 +10,10 @@ class Session(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     target = models.ForeignKey('Feature', on_delete=models.CASCADE, blank=True, null=True)
     dataset = models.ForeignKey('Dataset', on_delete=models.CASCADE)
+
+
+class ChunkedDatasetUpload(ChunkedUpload):
+    pass
 
 
 class Dataset(models.Model):
