@@ -1,12 +1,12 @@
 from rest_framework.test import APITestCase
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
-    SampleFactory, DatasetFactory, SessionFactory, RarResultFactory
+    SampleFactory, DatasetFactory, SessionFactory, RelevancyResultFactory, RedundancyResultFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, \
     HTTP_400_BAD_REQUEST
 from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, \
     SampleSerializer, DatasetSerializer, SessionSerializer, SessionTargetSerializer, \
-    RarResultSerializer
+    RelevancyResultSerializer, RedundancyResultSerializer
 from unittest.mock import patch
 from features.models import Session, Dataset
 from django.contrib.auth import get_user_model
@@ -284,17 +284,18 @@ class TestFeatureSlicesView(APITestCase):
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
 
-class TestFeatureRarResultsView(APITestCase):
+class TestTargetFeatureRarResultsView(APITestCase):
     def test_retrieve_rar_results(self):
-        rar_result = RarResultFactory()
-        session = SessionFactory(target=rar_result.target, dataset=rar_result.feature.dataset)
+        relevancy_result = RelevancyResultFactory()
+        session = SessionFactory(target=relevancy_result.target,
+                                 dataset=relevancy_result.feature.dataset)
 
         url = reverse('session-feature-rar_results', args=[session.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-        data = RarResultSerializer(instance=rar_result).data
+        data = RelevancyResultSerializer(instance=relevancy_result).data
         json_data = response.json()
         first_obj = json_data.pop(0)
         self.assertEqual(len(json_data), 0)

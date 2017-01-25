@@ -1,12 +1,13 @@
 from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRelatedField
-from features.models import Sample, Feature, Bin, Slice, Session, Dataset, RarResult
+from features.models import Sample, Feature, Bin, Slice, Session, Dataset, RedundancyResult, \
+    RelevancyResult
 from rest_framework.validators import ValidationError
 
 
 class FeatureSerializer(ModelSerializer):
     class Meta:
         model = Feature
-        fields = ('id', 'name', 'mean', 'variance', 'min', 'max',)
+        fields = ('id', 'name', 'mean', 'variance', 'min', 'max', 'is_categorical')
 
 
 class BinSerializer(ModelSerializer):
@@ -27,7 +28,7 @@ class SliceSerializer(ModelSerializer):
 
     class Meta:
         model = Slice
-        fields = ('from_value', 'deviation', 'frequency', 'significance', 'to_value',
+        fields = ('from_value', 'deviation', 'frequency', 'to_value',
                   'marginal_distribution', 'conditional_distribution')
 
 
@@ -59,9 +60,19 @@ class SessionTargetSerializer(ModelSerializer):
         return data
 
 
-class RarResultSerializer(ModelSerializer):
+class RelevancyResultSerializer(ModelSerializer):
     feature = PrimaryKeyRelatedField(many=False, read_only=True)
+    target = PrimaryKeyRelatedField(many=False, read_only=True)
 
     class Meta:
-        model = RarResult
-        fields = ('id', 'feature', 'relevancy', 'redundancy', 'rank')
+        model = RelevancyResult
+        fields = ('id', 'feature', 'relevancy', 'rank', 'target')
+
+
+class RedundancyResultSerializer(ModelSerializer):
+    first_feature = PrimaryKeyRelatedField(many=False, read_only=True)
+    second_feature = PrimaryKeyRelatedField(many=False, read_only=True)
+
+    class Meta:
+        model = RelevancyResult
+        fields = ('id', 'first_feature', 'second_feature', 'redundancy')

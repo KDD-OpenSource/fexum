@@ -20,13 +20,12 @@ class Dataset(models.Model):
         return self.name
 
 
-class RarResult(models.Model):
+class RedundancyResult(models.Model):
     class Meta:
         unique_together = ('target', 'feature', 'rank')
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     relevancy = models.FloatField()
-    redundancy = models.FloatField(blank=True, null=True)
     rank = models.IntegerField()
     target = models.ForeignKey('Feature', on_delete=models.CASCADE,
                                related_name='target_rar_results')
@@ -35,7 +34,20 @@ class RarResult(models.Model):
 
     def __str__(self):
         try:
-            return '{0} for target {1}'.format(self.feature, self.target)
+            return 'Relevancy of {0} for target {1}'.format(self.feature, self.target)
+        except:
+            return 'Processing…'
+
+
+class RelevancyResult(models.Model):
+    first_feature = models.ForeignKey('Feature', on_delete=models.CASCADE)
+    second_feature = models.ForeignKey('Feature', on_delete=models.CASCADE)
+    redundancy = models.FloatField()
+    # TODO: Validate first_feture.dataset = second_feature.dataset
+
+    def __str__(self):
+        try:
+            return 'Redundancy of {0} and {1}'.format(self.first_feature, self.second_feature)
         except:
             return 'Processing…'
 
@@ -51,6 +63,7 @@ class Feature(models.Model):
     variance = models.FloatField(blank=True, null=True)
     min = models.FloatField(blank=True, null=True)
     max = models.FloatField(blank=True, null=True)
+    is_categorical = models.BooleanField()
     
     def __str__(self):
         return '{0} in {1} dataset'.format(self.name, self.dataset)
@@ -73,10 +86,9 @@ class Bin(models.Model):
 
 class Slice(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    rar_result = models.ForeignKey(RarResult, on_delete=models.CASCADE)
+    relevancy_result = models.ForeignKey(RelevancyResult, on_delete=models.CASCADE)
     from_value = models.FloatField()
     deviation = models.FloatField()
-    significance = models.FloatField()
     frequency = models.FloatField()
     to_value = models.FloatField()
     marginal_distribution = JSONField(default=[])

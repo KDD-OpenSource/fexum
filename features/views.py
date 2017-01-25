@@ -1,8 +1,9 @@
 from rest_framework.views import APIView
-from features.models import Feature, Bin, Sample, Dataset, Session, RarResult, Slice
+from features.models import Feature, Bin, Sample, Dataset, Session, RelevancyResult, \
+    RedundancyResult, Slice
 from features.serializers import FeatureSerializer, BinSerializer, SessionSerializer, \
-    SampleSerializer, SliceSerializer, DatasetSerializer, RarResultSerializer, \
-    SessionTargetSerializer
+    SampleSerializer, SliceSerializer, DatasetSerializer, RedundancyResultSerializer, \
+    SessionTargetSerializer, RelevancyResultSerializer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
@@ -128,17 +129,24 @@ class FeatureSlicesView(APIView):
         user = get_user()
         session = get_object_or_404(Session, pk=session_id, user=user)
         feature = get_object_or_404(Feature, pk=feature_id)
-        slices = Slice.objects.filter(rar_result__target=session.target,
-                                      rar_result__feature=feature)
+        slices = Slice.objects.filter(relevancy_result__target=session.target,
+                                      relevancy_result__feature=feature)
         serializer = SliceSerializer(instance=slices, many=True)
         return Response(serializer.data)
 
 
-class FeatureRarResultsView(APIView):
-    def get(self, _, session_id):
-        user = get_user()
-        session = get_object_or_404(Session, pk=session_id, user=user)
-        rar_results = RarResult.objects.filter(feature__dataset=session.dataset,
-                                               target=session.target)
-        serializer = RarResultSerializer(instance=rar_results, many=True)
+class FeatureRelevancyResultsView(APIView):
+    def get(self, _, target_id):
+        target = get_object_or_404(Feature, pk=target_id)
+        relevancy_results = RelevancyResult.objects.filter(target=target)
+        serializer = RelevancyResultSerializer(instance=relevancy_results, many=True)
         return Response(serializer.data)
+
+
+class DatasetRedundancyResults(APIView):
+    def get(self, _, dataset_id):
+        dataset = get_object_or_404(Dataset, pk=dataset_id)
+        redundancy_results = RedundancyResult.objects.filter(dataset=dataset)
+        serializer = RedundancyResultSerializer(instance=redundancy_results, many=True)
+        return Response(serializer.data)
+

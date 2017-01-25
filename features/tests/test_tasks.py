@@ -1,8 +1,8 @@
 from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
     calculate_feature_statistics, calculate_rar
-from features.models import Feature, Sample, Bin, Dataset, RarResult, Slice
-from features.tests.factories import FeatureFactory, DatasetFactory, RarResultFactory
+from features.models import Feature, Sample, Bin, Dataset, Slice
+from features.tests.factories import FeatureFactory, DatasetFactory
 from unittest.mock import patch, call
 
 

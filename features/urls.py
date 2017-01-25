@@ -1,7 +1,7 @@
 from django.conf.urls import url
 from features.views import FeatureListView, FeatureSamplesView, DatasetListView, \
     FeatureHistogramView, FeatureSlicesView, TargetDetailView, DatasetViewUploadView, \
-    SessionListView, FeatureRarResultsView, SessionDetailView
+    SessionListView, FeatureRelevancyResultsView, SessionDetailView, DatasetRedundancyResults
 
 
 urlpatterns = [
@@ -25,10 +25,13 @@ urlpatterns = [
         name='feature-histogram'),
 
     # Results
-    url(r'sessions/(?P<session_id>[a-zA-Z0-9-]+)/features/(?P<feature_id>[a-zA-Z0-9-]+)/slices$',
+    url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/features/(?P<feature_id>[a-zA-Z0-9-]+)/slices$',
         FeatureSlicesView.as_view(),
-        name='session-feature-slices'),
-    url(r'sessions/(?P<session_id>[a-zA-Z0-9-]+)/rar_results$',
-        FeatureRarResultsView.as_view(),
-        name='session-feature-rar_results'),
+        name='target-feature-slices'),
+    url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/relevancy_results$',
+        FeatureRelevancyResultsView.as_view(),
+        name='target-feature-relevancy_results'),
+    url(r'datasets/(?P<dataset_id>[a-zA-Z0-9-]+)/relevancy_results$',
+        DatasetRedundancyResults.as_view(),
+        name='feature-redundancy_results'),
 ]

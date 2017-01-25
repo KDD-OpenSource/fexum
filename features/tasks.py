@@ -2,10 +2,9 @@ from __future__ import absolute_import, unicode_literals
 from celery import shared_task
 import pandas as pd
 import numpy as np
-from features.models import Feature, Bin, Slice, Sample, Dataset, RarResult
+from features.models import Feature, Bin, Slice, Sample, Dataset, RedundancyResult, RelevancyResult
 from subprocess import Popen, PIPE
 import json
-from channels import Group
 from math import ceil
 from django.db.models.signals import post_save, pre_save
 
@@ -69,18 +68,18 @@ def calculate_rar(target_id, precomputed_data=None):
     _, filename = _get_dataset_and_file(target.dataset.id)
 
     # Fix bindings in celery context
-    from features.bindings import RarResultBinding
-    RarResultBinding.register()
+    from features.bindings import RelevancyResultBinding
+    RelevancyResultBinding.register()
     
     # TODO: Add test
     # Return if rar was already calculated for a specific target
-    if RarResult.objects.filter(target=target).exists():
-        rar_results = RarResult.objects.filter(target=target)
+    if RelevancyResult.objects.filter(target=target).exists():
+        relevancy_results = RelevancyResult.objects.filter(target=target)
         
         # Manually trigger notifications
-        for rar_result in rar_results:
-            pre_save.send(RarResult, instance=rar_result)
-            post_save.send(RarResult, instance=rar_result)
+        for relevancy_result in relevancy_results:
+            pre_save.send(RelevancyResult, instance=relevancy_result)
+            post_save.send(RelevancyResult, instance=relevancy_result)
 
         return
 
@@ -107,28 +106,34 @@ def calculate_rar(target_id, precomputed_data=None):
         raw_output, err = process.communicate()
         results = json.loads(raw_output)
 
+    for redundancy_data in results['redundancy']:
+        RedundancyResult.objects.create(
+            first_feature=redundancy_data['feature_1'],
+            second_feature=redundancy_data['feature_2'],
+            redundancy=redundancy_data['redundancy']
+        )
+
     # Parse and save results
-    for idx, feature_data in enumerate(results):
-        feature = Feature.objects.get(dataset=target.dataset, name=feature_data['name'])
-        rar_result = RarResult.objects.create(
+    for idx, relevancy_data in enumerate(results['relevancy']):
+        feature = Feature.objects.get(dataset=target.dataset, name=relevancy_data['name'])
+        relevancy_result = RelevancyResult.objects.create(
             feature=feature,
             target=target,
             rank=idx,
-            relevancy=feature_data['result']['score']
+            relevancy=relevancy_data['result']['score']
         )
 
-        for slice_data in feature_data['result']['scoredBlocks']:
-            slice_obj = Slice()
-            slice_obj.rar_result = rar_result
-            slice_obj.feature = Feature.objects.get(name=feature_data['name'])
-            slice_obj.marginal_distribution = slice_data['normalizedMarginalDistribution']
-            slice_obj.conditional_distribution = slice_data['normalizedConditionalDistribution']
-            slice_obj.deviation = slice_data['deviation']
-            slice_obj.frequency = slice_data['frequency']
-            slice_obj.significance = slice_data['significance']
-            slice_obj.from_value = slice_data['featureRanges'][0]['start']
-            slice_obj.to_value = slice_data['featureRanges'][0]['end']
-            slice_obj.save()
+        for slice_data in relevancy_data['result']['scoredBlocks']:
+            Slice.objects.create(
+                relevancy_result = relevancy_result,
+                feature = Feature.objects.get(name=relevancy_data['name']),
+                marginal_distribution = slice_data['normalizedMarginalDistribution'],
+                conditional_distribution = slice_data['normalizedConditionalDistribution'],
+                deviation = slice_data['deviation'],
+                frequency = slice_data['frequency'],
+                from_value = slice_data['featureRanges'][0]['start'],
+                to_value = slice_data['featureRanges'][0]['end']
+            )
 
     
 @shared_task
