@@ -11,12 +11,15 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from features.tasks import initialize_from_dataset
 from django.contrib.auth import get_user_model
 import logging
+import zipfile
+from features.exceptions import NoCSVInArchiveFoundError
+from django.core.files import File
 
 
 logger = logging.getLogger(__name__)
 
 
-# Helper to mock an authenticated user, TODO: replace with request.user
+# Helper to mock an authenticated user TODO: replace with request.user
 def get_user():
     user = get_user_model().objects.first() 
     if user is None:
@@ -78,12 +81,21 @@ class DatasetViewUploadView(APIView):
     parser_classes = (MultiPartParser, FormParser,)
 
     def put(self, request):
-        file_obj = request.FILES['file']
-        dataset = Dataset.objects.create(name=file_obj.name, content=file_obj)
+        zip_file = request.FILES['file']
+        archive = zipfile.ZipFile(zip_file)
+        try:
+            csv_name = [item for item in archive.namelist() if item.endswith('csv')][0]
+        except IndexError:
+            raise NoCSVInArchiveFoundError
+
+        with archive.open(csv_name) as zip_csv_file:
+            # Convert zipfile handle to Django file handle
+            csv_file = File(zip_csv_file)
+            dataset = Dataset.objects.create(name=zip_csv_file.name, content=csv_file)
 
         # Start tasks for feature calculation
         initialize_from_dataset.delay(dataset_id=dataset.id)
-        
+
         serializer = DatasetSerializer(instance=dataset)
         return Response(serializer.data)
 
