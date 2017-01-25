@@ -189,6 +189,7 @@ class TestFeatureListView(APITestCase):
         self.assertAlmostEqual(first_obj.pop('variance'),  data['variance'])
         self.assertEqual(first_obj.pop('id'), data['id'])
         self.assertEqual(first_obj.pop('name'), data['name'])
+        self.assertEqual(first_obj.pop('is_categorical'), data['is_categorical'])
         self.assertEqual(len(first_obj), 0)
 
     def test_retrieve_feature_list_dataset_not_found(self):
@@ -243,10 +244,9 @@ class TestFeatureHistogramView(APITestCase):
 class TestFeatureSlicesView(APITestCase):
     def test_retrieve_slices(self):
         fslice = SliceFactory()
-        session = SessionFactory(target=fslice.rar_result.target)
 
-        url = reverse('session-feature-slices',
-                      args=[session.id, fslice.rar_result.feature.id])
+        url = reverse('target-feature-slices',
+                      args=[fslice.relevancy_result.target.id, fslice.relevancy_result.feature.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -262,21 +262,20 @@ class TestFeatureSlicesView(APITestCase):
         self.assertAlmostEqual(first_obj.pop('from_value'), data['from_value'])
         self.assertAlmostEqual(first_obj.pop('deviation'), data['deviation'])
         self.assertAlmostEqual(first_obj.pop('frequency'), data['frequency'])
-        self.assertAlmostEqual(first_obj.pop('significance'), data['significance'])
         self.assertEqual(len(first_obj), 0)
 
     def test_retrieve_slices_feature_not_found(self):
-        session = SessionFactory()
+        target = FeatureFactory()
 
-        url = reverse('session-feature-slices',
-                      args=[session.id, '7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+        url = reverse('target-feature-slices',
+                      args=[target.id, '7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
-    def test_retrieve_slices_session_not_found(self):
-        url = reverse('session-feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e',
+    def test_retrieve_slices_target_not_found(self):
+        url = reverse('target-feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e',
                                                       '8a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 

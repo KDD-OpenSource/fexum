@@ -125,11 +125,10 @@ class FeatureHistogramView(APIView):
 
 
 class FeatureSlicesView(APIView):
-    def get(self, _, session_id, feature_id):
-        user = get_user()
-        session = get_object_or_404(Session, pk=session_id, user=user)
+    def get(self, _, target_id, feature_id):
+        target = get_object_or_404(Feature, pk=target_id)
         feature = get_object_or_404(Feature, pk=feature_id)
-        slices = Slice.objects.filter(relevancy_result__target=session.target,
+        slices = Slice.objects.filter(relevancy_result__target=target,
                                       relevancy_result__feature=feature)
         serializer = SliceSerializer(instance=slices, many=True)
         return Response(serializer.data)
