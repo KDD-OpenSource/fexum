@@ -11,6 +11,8 @@ from unittest.mock import patch
 from features.models import Session, Dataset
 from django.contrib.auth import get_user_model
 import os
+import zipfile
+
 
 class TestSessionListView(APITestCase):
     def test_retrieve_session_list(self):
@@ -154,21 +156,50 @@ class TestDatasetListView(APITestCase):
 
 
 class TestDatasetUploadView(APITestCase):
-    def test_upload_dataset(self):
-        file_name = 'features/tests/test_file.csv'
+    file_name = 'features/tests/test_file.csv'
+    url = reverse('dataset-upload')
+    zip_file_name = 'archive.zip'
 
-        url = reverse('dataset-upload')
+    def test_upload_dataset(self):
+        with zipfile.ZipFile(self.zip_file_name, 'w') as zip_file:
+            zip_file.write(self.file_name)
+
         with patch('features.views.initialize_from_dataset.delay') as initialize_from_dataset_mock:
-            with open(file_name) as file_data:
-                response = self.client.put(url, {'file': file_data}, format='multipart')
+            with open(self.zip_file_name, 'rb') as file_data:
+                response = self.client.put(self.url, {'file': file_data}, format='multipart')
 
             dataset = Dataset.objects.first()
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertEqual(response.json(), DatasetSerializer(instance=dataset).data)
-            self.assertEqual(dataset.name, file_name.split('/')[-1])
-            with open(file_name, 'rb') as file_data:
+            self.assertEqual(dataset.name, self.file_name)
+            with open(self.file_name, 'rb') as file_data:
                 self.assertEqual(dataset.content.read(), file_data.read())
             initialize_from_dataset_mock.assert_called_once_with(dataset_id=dataset.id)
+
+    def test_upload_dataset_no_zip_file(self):
+        with open(self.file_name) as file_data:
+            response = self.client.put(self.url, {'file': file_data}, format='multipart')
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json(), {'detail': 'Uploaded file is not a zip file.'})
+
+    def test_upload_dataset_no_csv_in_zip(self):
+        empty_zip_data = b'PK\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' + \
+                         b'\x00\x00\x00\x00\x00\x00\x00'
+        with open(self.zip_file_name, 'w+b') as zip_file:
+            zip_file.write(empty_zip_data)
+
+        with open(self.zip_file_name, 'rb') as zip_file:
+            response = self.client.put(self.url, {'file': zip_file}, format='multipart')
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json(), {'detail': 'No CSV file found in ZIP archive.'})
+
+    def tearDown(self):
+        # Remove that shitty file
+        if os.path.isfile(self.zip_file_name):
+            os.remove(self.zip_file_name)
+            self.assertFalse(os.path.isfile(self.zip_file_name))
 
 
 class TestFeatureListView(APITestCase):
