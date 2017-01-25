@@ -19,7 +19,7 @@ class TestFeatureSerializer(TestCase):
         self.assertEqual(data.pop('max'), feature.max)
         self.assertEqual(data.pop('mean'), feature.mean)
         self.assertEqual(data.pop('variance'), feature.variance)
-        self.assertEqual(data.pop('is_categorical'), feature.variance)
+        self.assertEqual(data.pop('is_categorical'), feature.is_categorical)
         self.assertEqual(len(data), 0)
 
 
@@ -93,6 +93,7 @@ class TestRelevancyResultsSerializer(TestCase):
         self.assertEqual(data.pop('feature'), relevancy_result.feature.id)
         self.assertEqual(data.pop('relevancy'), relevancy_result.relevancy)
         self.assertEqual(data.pop('rank'), relevancy_result.rank)
+        self.assertEqual(data.pop('target'), relevancy_result.target.id)
         self.assertEqual(len(data), 0)
 
 

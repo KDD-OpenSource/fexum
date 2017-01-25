@@ -27,6 +27,8 @@ def calculate_feature_statistics(feature_id):
     feature.max = np.amax(feature_col).item()
     feature.mean = np.mean(feature_col).item()
     feature.variance = np.nanvar(feature_col).item()
+    # TODO: Test
+    feature.is_categorical = np.unique(feature_col).size <= 10
 
     feature.save()
 
@@ -68,9 +70,10 @@ def calculate_rar(target_id, precomputed_data=None):
     _, filename = _get_dataset_and_file(target.dataset.id)
 
     # Fix bindings in celery context
-    from features.bindings import RelevancyResultBinding
+    from features.bindings import RelevancyResultBinding, RedundancyResultBinding
     RelevancyResultBinding.register()
-    
+    RedundancyResultBinding.register()
+
     # TODO: Add test
     # Return if rar was already calculated for a specific target
     if RelevancyResult.objects.filter(target=target).exists():

@@ -29,6 +29,7 @@ class FeatureFactory(DjangoModelFactory):
     max = FuzzyFloat(0, 1)
     mean = FuzzyFloat(0, 1)
     variance = FuzzyFloat(0, 1)
+    is_categorical = False
 
 
 class SessionFactory(DjangoModelFactory):
@@ -81,11 +82,10 @@ class SliceFactory(DjangoModelFactory):
     class Meta:
         model = Slice
 
-    relevancy_result = SubFactory(RelevancyResult)
+    relevancy_result = SubFactory(RelevancyResultFactory)
     from_value = FuzzyFloat(-200.0, 0)
     to_value = FuzzyFloat(0, 200)
     marginal_distribution = [0, 1, 0]
     conditional_distribution = [0, 1, 0]
     deviation = FuzzyFloat(0, 1)
     frequency = FuzzyFloat(0, 1)
-    significance = FuzzyFloat(0, 1)

@@ -284,13 +284,11 @@ class TestFeatureSlicesView(APITestCase):
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
 
-class TestTargetFeatureRarResultsView(APITestCase):
-    def test_retrieve_rar_results(self):
+class TestFeatureRelevancyResultsView(APITestCase):
+    def test_retrieve_relevancy_results(self):
         relevancy_result = RelevancyResultFactory()
-        session = SessionFactory(target=relevancy_result.target,
-                                 dataset=relevancy_result.feature.dataset)
 
-        url = reverse('session-feature-rar_results', args=[session.id])
+        url = reverse('target-feature-relevancy_results', args=[relevancy_result.target.dataset.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -302,14 +300,25 @@ class TestTargetFeatureRarResultsView(APITestCase):
         self.assertEqual(first_obj.pop('id'), str(data['id']))
         self.assertEqual(first_obj.pop('feature'), str(data['feature']))
         self.assertAlmostEqual(first_obj.pop('relevancy'), data['relevancy'])
-        self.assertAlmostEqual(first_obj.pop('redundancy'), data['redundancy'])
         self.assertEqual(first_obj.pop('rank'), data['rank'])
         self.assertEqual(len(first_obj), 0)
 
-    def test_retrieve_rar_session_not_found(self):
-        url = reverse('session-feature-rar_results', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+    def test_retrieve_relevancy_results_target_not_found(self):
+        url = reverse('target-feature-relevancy_results',
+                      args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
+
+class TestFeatureRedundancyResults(APITestCase):
+    def test_retrieve_redundancy_results(self):
+        pass
+
+    def test_retrieve_redundancy_results_dataset_not_found(self):
+        url = reverse('feature-redundancy_results', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})

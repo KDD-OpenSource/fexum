@@ -31,7 +31,7 @@ urlpatterns = [
     url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/relevancy_results$',
         FeatureRelevancyResultsView.as_view(),
         name='target-feature-relevancy_results'),
-    url(r'datasets/(?P<dataset_id>[a-zA-Z0-9-]+)/relevancy_results$',
+    url(r'datasets/(?P<dataset_id>[a-zA-Z0-9-]+)/redundancy_results$',
         DatasetRedundancyResults.as_view(),
         name='feature-redundancy_results'),
 ]

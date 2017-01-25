@@ -20,7 +20,7 @@ class Dataset(models.Model):
         return self.name
 
 
-class RedundancyResult(models.Model):
+class RelevancyResult(models.Model):
     class Meta:
         unique_together = ('target', 'feature', 'rank')
 
@@ -39,9 +39,12 @@ class RedundancyResult(models.Model):
             return 'Processing…'
 
 
-class RelevancyResult(models.Model):
-    first_feature = models.ForeignKey('Feature', on_delete=models.CASCADE)
-    second_feature = models.ForeignKey('Feature', on_delete=models.CASCADE)
+class RedundancyResult(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    first_feature = models.ForeignKey('Feature', on_delete=models.CASCADE,
+                                      related_name='first_features')
+    second_feature = models.ForeignKey('Feature', on_delete=models.CASCADE,
+                                       related_name='second_features')
     redundancy = models.FloatField()
     # TODO: Validate first_feture.dataset = second_feature.dataset
 
@@ -63,7 +66,7 @@ class Feature(models.Model):
     variance = models.FloatField(blank=True, null=True)
     min = models.FloatField(blank=True, null=True)
     max = models.FloatField(blank=True, null=True)
-    is_categorical = models.BooleanField()
+    is_categorical = models.BooleanField(default=False)
     
     def __str__(self):
         return '{0} in {1} dataset'.format(self.name, self.dataset)

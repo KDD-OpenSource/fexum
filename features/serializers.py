@@ -74,5 +74,5 @@ class RedundancyResultSerializer(ModelSerializer):
     second_feature = PrimaryKeyRelatedField(many=False, read_only=True)
 
     class Meta:
-        model = RelevancyResult
+        model = RedundancyResult
         fields = ('id', 'first_feature', 'second_feature', 'redundancy')
