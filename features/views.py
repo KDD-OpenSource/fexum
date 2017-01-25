@@ -13,6 +13,7 @@ from django.contrib.auth import get_user_model
 import logging
 import zipfile
 from features.exceptions import NoCSVInArchiveFoundError
+from django.core.files import File
 
 
 logger = logging.getLogger(__name__)
@@ -87,14 +88,13 @@ class DatasetViewUploadView(APIView):
         except IndexError:
             raise NoCSVInArchiveFoundError
 
-        #with archive.open(csv_name) as csv_file:
-         #   pass
-
-        #dataset = Dataset.objects.create(name=csv_file.name, content=zip_file)
+        with archive.open(csv_name) as zip_csv_file:
+            # Convert zipfile handle to Django file handle
+            csv_file = File(zip_csv_file)
+            dataset = Dataset.objects.create(name=zip_csv_file.name, content=csv_file)
 
         # Start tasks for feature calculation
         initialize_from_dataset.delay(dataset_id=dataset.id)
-
 
         serializer = DatasetSerializer(instance=dataset)
         return Response(serializer.data)
