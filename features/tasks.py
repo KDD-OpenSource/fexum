@@ -49,16 +49,14 @@ def build_histogram(feature_id):
 
 
 @shared_task
-def downsample_feature(feature_id, sample_count=1000):
+def downsample_feature(feature_id, sample_rate=32):
     feature = Feature.objects.get(pk=feature_id)
     _, filename = _get_dataset_and_file(feature.dataset.id)
 
     dataframe = pd.read_csv(filename, usecols=[feature.name])
+    feature_row = dataframe[feature.name]
 
-    feature_rows = dataframe[feature.name]
-    count = feature_rows.count()
-    sampling = feature_rows[::int(ceil(count/sample_count))]
-
+    sampling = feature_row.groupby(np.arange(len(feature_row)) // sample_rate).median()
     for value in sampling:
         Sample.objects.create(feature=feature, value=value)
 

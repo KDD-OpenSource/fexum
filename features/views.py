@@ -12,8 +12,9 @@ from features.tasks import initialize_from_dataset
 from django.contrib.auth import get_user_model
 import logging
 import zipfile
-from features.exceptions import NoCSVInArchiveFoundError
+from features.exceptions import NoCSVInArchiveFoundError, NotZIPFileError
 from django.core.files import File
+from django.utils.datastructures import MultiValueDictKeyError
 
 
 logger = logging.getLogger(__name__)
@@ -81,8 +82,12 @@ class DatasetViewUploadView(APIView):
     parser_classes = (MultiPartParser, FormParser,)
 
     def put(self, request):
-        zip_file = request.FILES['file']
-        archive = zipfile.ZipFile(zip_file)
+        try:
+            zip_file = request.FILES['file']
+            archive = zipfile.ZipFile(zip_file)
+        except (MultiValueDictKeyError, zipfile.BadZipfile):
+            raise NotZIPFileError
+
         try:
             csv_name = [item for item in archive.namelist() if item.endswith('csv')][0]
         except IndexError:
