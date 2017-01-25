@@ -40,6 +40,9 @@ class RelevancyResult(models.Model):
 
 
 class RedundancyResult(models.Model):
+    class Meta:
+        unique_together = ('first_feature', 'second_feature', 'rank')
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     first_feature = models.ForeignKey('Feature', on_delete=models.CASCADE,
                                       related_name='first_features')

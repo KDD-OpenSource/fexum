@@ -318,7 +318,7 @@ class TestFeatureRelevancyResultsView(APITestCase):
     def test_retrieve_relevancy_results(self):
         relevancy_result = RelevancyResultFactory()
 
-        url = reverse('target-feature-relevancy_results', args=[relevancy_result.target.dataset.id])
+        url = reverse('target-feature-relevancy_results', args=[relevancy_result.target.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -329,6 +329,7 @@ class TestFeatureRelevancyResultsView(APITestCase):
         self.assertEqual(len(json_data), 0)
         self.assertEqual(first_obj.pop('id'), str(data['id']))
         self.assertEqual(first_obj.pop('feature'), str(data['feature']))
+        self.assertEqual(first_obj.pop('target'), str(data['target']))
         self.assertAlmostEqual(first_obj.pop('relevancy'), data['relevancy'])
         self.assertEqual(first_obj.pop('rank'), data['rank'])
         self.assertEqual(len(first_obj), 0)

@@ -104,7 +104,7 @@ class TestCalculateRar(TestCase):
         self.assertIsNotNone(relevancy_result.rank)
         self.assertEqual(relevancy_result.target, target)
         self.assertEqual(relevancy_result.feature, feature)
-        self.assertEqual(Slice.objects.filter(rar_result=relevancy_result).count(), 6)
+        self.assertEqual(Slice.objects.filter(relevancy_result=relevancy_result).count(), 6)
 
         # Redundancies
         self.assertEqual(RedundancyResult.objects.count(), 1,
@@ -123,9 +123,9 @@ class TestCalculateRar(TestCase):
         RelevancyResultFactory(target=target, feature=feature)
         RedundancyResultFactory(first_feature=target, second_feature=feature)
 
-        self.assertEqual(RelevancyResultFactory.objects.count(), 1,
+        self.assertEqual(RelevancyResult.objects.count(), 1,
                          msg='Should only contain relevancy result for the one feature')
-        self.assertEqual(RedundancyResultFactory.objects.count(), 1,
+        self.assertEqual(RedundancyResult.objects.count(), 1,
                          msg='Should only contain redundancy result for the one feature')
 
         # Signals are called manually

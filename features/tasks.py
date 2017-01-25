@@ -75,12 +75,17 @@ def calculate_rar(target_id, precomputed_data=None):
     # TODO: Add test
     # Return if rar was already calculated for a specific target
     if RelevancyResult.objects.filter(target=target).exists():
-        relevancy_results = RelevancyResult.objects.filter(target=target)
-        
         # Manually trigger notifications
+
+        relevancy_results = RelevancyResult.objects.filter(target=target)
         for relevancy_result in relevancy_results:
             pre_save.send(RelevancyResult, instance=relevancy_result)
             post_save.send(RelevancyResult, instance=relevancy_result)
+
+        redundancy_results = RedundancyResult.objects.filter(first_feature=target)
+        for redundancy_result in redundancy_results:
+            pre_save.send(RedundancyResult, instance=redundancy_result)
+            post_save.send(RedundancyResult, instance=redundancy_result)
 
         return
 
@@ -107,15 +112,15 @@ def calculate_rar(target_id, precomputed_data=None):
         raw_output, err = process.communicate()
         results = json.loads(raw_output)
 
-    for redundancy_data in results['redundancy']:
+    for redundancy_data in results['redundancies']:
         RedundancyResult.objects.create(
-            first_feature=redundancy_data['feature_1'],
-            second_feature=redundancy_data['feature_2'],
+            first_feature=redundancy_data['feature1'],
+            second_feature=redundancy_data['feature2'],
             redundancy=redundancy_data['redundancy']
         )
 
     # Parse and save results
-    for idx, relevancy_data in enumerate(results['relevancy']):
+    for idx, relevancy_data in enumerate(results['relevancies']):
         feature = Feature.objects.get(dataset=target.dataset, name=relevancy_data['name'])
         relevancy_result = RelevancyResult.objects.create(
             feature=feature,
@@ -127,7 +132,6 @@ def calculate_rar(target_id, precomputed_data=None):
         for slice_data in relevancy_data['result']['scoredBlocks']:
             Slice.objects.create(
                 relevancy_result = relevancy_result,
-                feature = Feature.objects.get(name=relevancy_data['name']),
                 marginal_distribution = slice_data['normalizedMarginalDistribution'],
                 conditional_distribution = slice_data['normalizedConditionalDistribution'],
                 deviation = slice_data['deviation'],
