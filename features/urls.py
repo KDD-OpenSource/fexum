@@ -1,7 +1,8 @@
 from django.conf.urls import url
 from features.views import FeatureListView, FeatureSamplesView, DatasetListView, \
     FeatureHistogramView, FeatureSlicesView, TargetDetailView, DatasetViewUploadView, \
-    SessionListView, FeatureRelevancyResultsView, SessionDetailView, DatasetRedundancyResults
+    SessionListView, FeatureRelevancyResultsView, SessionDetailView, DatasetRedundancyResults, \
+    FilteredSlicesView
 
 
 urlpatterns = [
@@ -26,12 +27,13 @@ urlpatterns = [
 
     # Results
     url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/features/(?P<feature_id>[a-zA-Z0-9-]+)/slices$',
-        FeatureSlicesView.as_view(),
-        name='target-feature-slices'),
+        FeatureSlicesView.as_view(), name='target-feature-slices'),
+    url('targets/(?P<target_id>[a-zA-Z0-9-]+)/slices$', FilteredSlicesView.as_view(),
+        name='target-filtered-slices'),
     url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/relevancy_results$',
         FeatureRelevancyResultsView.as_view(),
         name='target-feature-relevancy_results'),
     url(r'datasets/(?P<dataset_id>[a-zA-Z0-9-]+)/redundancy_results$',
         DatasetRedundancyResults.as_view(),
-        name='feature-redundancy_results'),
+        name='feature-redundancy_results')
 ]

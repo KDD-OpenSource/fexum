@@ -345,10 +345,34 @@ class TestFeatureRelevancyResultsView(APITestCase):
 
 class TestFeatureRedundancyResults(APITestCase):
     def test_retrieve_redundancy_results(self):
-        pass
+        assert False
 
     def test_retrieve_redundancy_results_dataset_not_found(self):
         url = reverse('feature-redundancy_results', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})
+
+
+class TestFilteredSlicesView(APITestCase):
+    def test_retrieve_filtered_slices(self):
+        slice1 = SliceFactory()
+        SliceFactory()
+
+        url = '{0}?feature__in={1}'.format(
+            reverse('target-filtered-slices', args=[slice1.relevancy_result.target.id]),
+            slice1.relevancy_result.feature.id)
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_data = response.json()
+        self.assertEqual(len(response_data), 1)
+        self.assertEqual(response_data[0]['features'][0]['feature'],
+                         str(slice1.relevancy_result.feature.id))
+
+    def test_retrieve_filtered_slices_target_not_found(self):
+        url = reverse('target-filtered-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)

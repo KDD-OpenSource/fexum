@@ -119,3 +119,7 @@ class TestSessionTargetSerializer(TestCase):
         self.assertEqual(data.pop('target'), session.target.id)
         self.assertEqual(len(data), 0)
 
+
+class TestFeatureSliceSerializer(TestCase):
+    def test_serialize_one(self):
+        assert False

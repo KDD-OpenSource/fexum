@@ -3,7 +3,7 @@ from features.models import Feature, Bin, Sample, Dataset, Session, RelevancyRes
     RedundancyResult, Slice
 from features.serializers import FeatureSerializer, BinSerializer, SessionSerializer, \
     SampleSerializer, SliceSerializer, DatasetSerializer, RedundancyResultSerializer, \
-    SessionTargetSerializer, RelevancyResultSerializer
+    SessionTargetSerializer, RelevancyResultSerializer, FeatureSliceSerializer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
@@ -154,3 +154,12 @@ class DatasetRedundancyResults(APIView):
         serializer = RedundancyResultSerializer(instance=redundancy_results, many=True)
         return Response(serializer.data)
 
+
+class FilteredSlicesView(APIView):
+    def get(self, request, target_id):
+        target = get_object_or_404(Feature, pk=target_id)
+        feature_ids = request.query_params.get('feature__in', '').split(',')
+        slices = Slice.objects.filter(relevancy_result__target=target,
+                                      relevancy_result__feature_id__in=feature_ids)
+        serializer = FeatureSliceSerializer(instance=slices, many=True)
+        return Response(serializer.data)

@@ -1,4 +1,5 @@
-from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRelatedField
+from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRelatedField, \
+    SerializerMethodField
 from features.models import Sample, Feature, Bin, Slice, Session, Dataset, RedundancyResult, \
     RelevancyResult
 from rest_framework.validators import ValidationError
@@ -30,6 +31,22 @@ class SliceSerializer(ModelSerializer):
         model = Slice
         fields = ('from_value', 'deviation', 'frequency', 'to_value',
                   'marginal_distribution', 'conditional_distribution')
+
+
+class FeatureSliceSerializer(ModelSerializer):
+    features = SerializerMethodField()
+
+    class Meta:
+        model = Slice
+        fields = ('features', 'deviation', 'frequency')
+
+    def get_features(self, obj):
+        # TODO: Optimized cache?
+        return [{
+            'feature': obj.relevancy_result.feature.id,
+            'from_value': obj.from_value,
+            'to_value': obj.to_value
+        }]
 
 
 class DatasetSerializer(ModelSerializer):
