@@ -1,4 +1,35 @@
 from django.contrib import admin
-from features.models import RarResult
+from features.models import RarResult, Feature
+from django import forms
+from features.tasks import calculate_rar
+import json
 
-admin.site.register(RarResult)
+
+class RarResultsJsonForm(forms.ModelForm):
+    rar_results_json = forms.CharField(label='Rar Result as JSON', widget=forms.Textarea, required=True)
+    target = forms.ModelChoiceField(queryset=Feature.objects.all(), required=True)
+
+    class Meta:
+        model = RarResult
+        fields = ['rar_results_json', 'target']
+
+    def clean(self):
+        cleaned_data = super(RarResultsJsonForm, self).clean()
+        rar_result_json_text = cleaned_data['rar_results_json']
+        try:
+            cleaned_data['rar_results_json'] = json.loads(rar_result_json_text)
+        except Exception as error:
+            raise forms.ValidationError('JSON Error: {0}'.format(error))
+        return cleaned_data
+
+
+class RarResultsJsonAdmin(admin.ModelAdmin):
+    form = RarResultsJsonForm
+
+    def save_model(self, request, obj, form, change):
+        target = form.cleaned_data['target']
+        rar_result_json = form.cleaned_data['rar_results_json']
+        calculate_rar.delay(target_id=target.id, precomputed_data=rar_result_json)
+
+
+admin.site.register(RarResult, RarResultsJsonAdmin)

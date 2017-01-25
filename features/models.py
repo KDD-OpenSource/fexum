@@ -16,6 +16,9 @@ class Dataset(models.Model):
     name = models.CharField(max_length=255)
     content = models.FileField()
 
+    def __str__(self):
+        return self.name
+
 
 class RarResult(models.Model):
     class Meta:
@@ -29,6 +32,12 @@ class RarResult(models.Model):
                                related_name='target_rar_results')
     feature = models.ForeignKey('Feature', on_delete=models.CASCADE)
     # TODO: Validation: target.dataset = feature.dataset
+
+    def __str__(self):
+        try:
+            return '{0} for target {1}'.format(self.feature, self.target)
+        except:
+            return 'Processing…'
 
 
 class Feature(models.Model):
@@ -44,7 +53,7 @@ class Feature(models.Model):
     max = models.FloatField(blank=True, null=True)
     
     def __str__(self):
-        return '[Feature] {0}'.format(self.name)
+        return '{0} in {1} dataset'.format(self.name, self.dataset)
 
 
 class Sample(models.Model):
