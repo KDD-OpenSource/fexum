@@ -30,7 +30,6 @@ class RelevancyResult(models.Model):
     target = models.ForeignKey('Feature', on_delete=models.CASCADE,
                                related_name='target_rar_results')
     feature = models.ForeignKey('Feature', on_delete=models.CASCADE)
-    weight = models.IntegerField()
 
     # TODO: Validation: target.dataset = feature.dataset
 
@@ -51,6 +50,8 @@ class RedundancyResult(models.Model):
     second_feature = models.ForeignKey('Feature', on_delete=models.CASCADE,
                                        related_name='second_features')
     redundancy = models.FloatField()
+    weight = models.IntegerField()
+
     # TODO: Validate first_feture.dataset = second_feature.dataset
 
     def __str__(self):

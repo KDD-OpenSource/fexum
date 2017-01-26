@@ -156,7 +156,7 @@ def calculate_rar(target_id, precomputed_data=None):
         RedundancyResult.objects.update_or_create(
             first_feature=(first_feature if first_feature.id < second_feature.id else second_feature),
             second_feature=(first_feature if first_feature.id >= second_feature.id else second_feature),
-            defaults={'redundancy': redundancy_data['redundancy']}
+            defaults={'redundancy': redundancy_data['redundancy'], 'weight': redundancy_data['weight']}
         )
 
     # Parse and save results
@@ -166,8 +166,7 @@ def calculate_rar(target_id, precomputed_data=None):
             feature=feature,
             target=target,
             rank=idx,
-            relevancy=relevancy_data['result']['score'],
-            weight=relevancy_data['result']['weight']
+            relevancy=relevancy_data['result']['score']
         )
 
         for slice_data in relevancy_data['result']['scoredBlocks']:
