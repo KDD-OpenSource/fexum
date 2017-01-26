@@ -150,7 +150,8 @@ class FeatureRelevancyResultsView(APIView):
 class DatasetRedundancyResults(APIView):
     def get(self, _, dataset_id):
         dataset = get_object_or_404(Dataset, pk=dataset_id)
-        redundancy_results = RedundancyResult.objects.filter(dataset=dataset)
+        redundancy_results = RedundancyResult.objects.filter(first_feature__dataset=dataset,
+                                                             second_feature__dataset=dataset)
         serializer = RedundancyResultSerializer(instance=redundancy_results, many=True)
         return Response(serializer.data)
 
