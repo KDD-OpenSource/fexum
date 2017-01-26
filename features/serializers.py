@@ -83,7 +83,7 @@ class RelevancyResultSerializer(ModelSerializer):
 
     class Meta:
         model = RelevancyResult
-        fields = ('id', 'feature', 'relevancy', 'rank', 'target')
+        fields = ('id', 'feature', 'relevancy', 'rank', 'target', 'weight')
 
 
 class RedundancyResultSerializer(ModelSerializer):

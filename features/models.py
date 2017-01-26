@@ -30,6 +30,8 @@ class RelevancyResult(models.Model):
     target = models.ForeignKey('Feature', on_delete=models.CASCADE,
                                related_name='target_rar_results')
     feature = models.ForeignKey('Feature', on_delete=models.CASCADE)
+    weight = models.IntegerField()
+
     # TODO: Validation: target.dataset = feature.dataset
 
     def __str__(self):

@@ -166,7 +166,8 @@ def calculate_rar(target_id, precomputed_data=None):
             feature=feature,
             target=target,
             rank=idx,
-            relevancy=relevancy_data['result']['score']
+            relevancy=relevancy_data['result']['score'],
+            weight=relevancy_data['result']['weight']
         )
 
         for slice_data in relevancy_data['result']['scoredBlocks']:
