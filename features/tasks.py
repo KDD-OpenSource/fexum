@@ -206,7 +206,7 @@ def calculate_conditional_distributions(target_id, feature_ranges):
     logger.info(
         'Started for target {0} and features ranges {1}'.format(target_id, feature_ranges))
 
-    dataframe = calculate_conditional_distributions.dataset_dataframe(dataset_id=target.dataset.id)
+    dataframe = _get_dataframe(dataset_id=target.dataset.id)
 
     # Convert feature ids to feature name for using it in dataframe
     feature_ranges = [{'feature': Feature.objects.get(dataset_id=target.dataset.id,
