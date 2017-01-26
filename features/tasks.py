@@ -203,7 +203,7 @@ def calculate_conditional_distributions(target_id, feature_ranges):
     # TODO: Use cache http://docs.celeryproject.org/en/latest/tutorials/task-cookbook.html
     target = Feature.objects.get(pk=target_id)
 
-    logger.c(
+    logger.info(
         'Started for target {0} and features ranges {1}'.format(target_id, feature_ranges))
 
     dataframe = calculate_conditional_distributions.dataset_dataframe(dataset_id=target.dataset.id)
