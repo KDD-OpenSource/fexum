@@ -41,7 +41,7 @@ class RelevancyResult(models.Model):
 
 class RedundancyResult(models.Model):
     class Meta:
-        unique_together = ('first_feature', 'second_feature', 'rank')
+        unique_together = ('first_feature', 'second_feature')
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     first_feature = models.ForeignKey('Feature', on_delete=models.CASCADE,
@@ -99,3 +99,5 @@ class Slice(models.Model):
     to_value = models.FloatField()
     marginal_distribution = JSONField(default=[])
     conditional_distribution = JSONField(default=[])
+
+
