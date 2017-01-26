@@ -60,6 +60,7 @@ class RedundancyResult(models.Model):
 
 class Feature(models.Model):
     class Meta:
+        ordering = ('name', )
         unique_together = (('name', 'dataset'),)
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -69,16 +70,20 @@ class Feature(models.Model):
     variance = models.FloatField(blank=True, null=True)
     min = models.FloatField(blank=True, null=True)
     max = models.FloatField(blank=True, null=True)
-    is_categorical = models.BooleanField(default=False)
+    is_categorical = models.BooleanField(default=False) # TODO: Remove default
     
     def __str__(self):
         return '{0} in {1} dataset'.format(self.name, self.dataset)
 
 
 class Sample(models.Model):
+    class Meta:
+        ordering = ('order',)
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
     value = models.FloatField()
+    order = models.IntegerField()
 
 
 class Bin(models.Model):

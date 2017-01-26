@@ -7,16 +7,46 @@ from subprocess import Popen, PIPE
 import json
 from django.db.models.signals import post_save, pre_save
 from celery import Task
-import logging
+from celery.utils.log import get_task_logger
 
 
-logger = logging.getLogger(__name__)
+logger = get_task_logger(__name__)
 
 
 def _get_dataset_and_file(dataset_id) -> (Dataset, str):
     dataset = Dataset.objects.get(pk=dataset_id)
     filename = dataset.content.path
     return dataset, filename
+
+
+DATAFRAMES = {}
+
+def _get_dataframe(dataset_id):
+    if DATAFRAMES.get(dataset_id) is None:
+        logger.info('Cache miss for dataset {0}'.format(dataset_id))
+        _, filename = _get_dataset_and_file(dataset_id=dataset_id)
+        dataframe = pd.read_csv(filename)
+        DATAFRAMES[dataset_id] = dataframe
+    else:
+        logger.info('Cache hit for dasaset {0}'.format(dataset_id))
+    return DATAFRAMES[dataset_id]
+
+
+@shared_task
+def load_dataset(dataset_id):
+    logger.info('Started loading dataset {0}'.format(dataset_id))
+    _get_dataframe(dataset_id)
+
+
+class DatasetDataframeTask(Task):
+    _dataset_dataframes = {}
+
+    def dataset_dataframe(self, dataset_id):
+        if self._dataset_dataframes.get(dataset_id) is None:
+            _, filename = _get_dataset_and_file(dataset_id=dataset_id)
+            dataframe = pd.read_csv(filename)
+            self._dataset_dataframes[dataset_id] = dataframe
+        return self._dataset_dataframes[dataset_id]
 
 
 @shared_task
@@ -62,8 +92,9 @@ def downsample_feature(feature_id, sample_rate=32):
     feature_row = dataframe[feature.name]
 
     sampling = feature_row.groupby(np.arange(len(feature_row)) // sample_rate).median()
-    for value in sampling:
-        Sample.objects.create(feature=feature, value=value)
+    for idx, value in enumerate(sampling):
+        # TODO: Test, order
+        Sample.objects.create(feature=feature, value=value, order=idx)
 
 
 @shared_task
@@ -166,22 +197,13 @@ def initialize_from_dataset(dataset_id):
         downsample_feature.delay(feature_id=feature.id)
 
 
-class DatasetDataframeTask(Task):
-    _dataset_dataframes = {}
-
-    def dataset_dataframe(self, dataset_id):
-        if self._dataset_dataframes.get(dataset_id) is None:
-            _, filename = _get_dataset_and_file(dataset_id=dataset_id)
-            dataframe = pd.read_csv(filename)
-            self._dataset_dataframes[dataset_id] = dataframe
-        return self._dataset_dataframes[dataset_id]
-
-
-@shared_task(base=DatasetDataframeTask)
+@shared_task
 def calculate_conditional_distributions(target_id, feature_ranges):
+    # TODO: TEst
+    # TODO: Use cache http://docs.celeryproject.org/en/latest/tutorials/task-cookbook.html
     target = Feature.objects.get(pk=target_id)
 
-    logging.debug(
+    logger.c(
         'Started for target {0} and features ranges {1}'.format(target_id, feature_ranges))
 
     dataframe = calculate_conditional_distributions.dataset_dataframe(dataset_id=target.dataset.id)
@@ -193,7 +215,7 @@ def calculate_conditional_distributions(target_id, feature_ranges):
                        'to_value': ranges_feature_id['to_value']}
                       for ranges_feature_id in feature_ranges]
 
-    logging.debug('Changed feature range to {0}'.format(feature_ranges))
+    logger.info('Changed feature range to {0}'.format(feature_ranges))
 
     # Make filtering
     filter_array = np.array([True] * len(dataframe))
@@ -207,5 +229,6 @@ def calculate_conditional_distributions(target_id, feature_ranges):
     result = [{'value': value_probabilies[0],
                'probability': value_probabilies[1]} for value_probabilies in zip(values, probabilies)]
 
-    logging.debug('Result: {0}'.format(result))
+    logger.info('Result: {0}'.format(result))
+
     return result

@@ -5,7 +5,7 @@ from features.models import RelevancyResult, RedundancyResult
 class RelevancyResultBinding(WebsocketBinding):
     model = RelevancyResult
     stream = 'relevancy_result'
-    fields = ['feature', 'relevancy', 'rank']
+    fields = ['feature', 'relevancy', 'rank', 'target']
 
     @classmethod
     def group_names(cls, *args, **kwargs):
