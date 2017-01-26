@@ -150,3 +150,7 @@ class TestCalculateRar(TestCase):
     def test_calculate_rar_use_precalulated_data(self):
         # TODO: Write test
         pass
+
+
+class TestCalculateArbitarySlices(TestCase):
+    pass

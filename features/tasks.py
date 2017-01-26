@@ -117,10 +117,11 @@ def calculate_rar(target_id, precomputed_data=None):
                                             name=redundancy_data['feature1'])
         second_feature = Feature.objects.get(dataset=target.dataset,
                                              name=redundancy_data['feature2'])
-        RedundancyResult.objects.create(
-            first_feature=first_feature,
-            second_feature=second_feature,
-            redundancy=redundancy_data['redundancy']
+
+        RedundancyResult.objects.update_or_create(
+            first_feature=(first_feature if first_feature.id < second_feature.id else second_feature),
+            second_feature=(first_feature if first_feature.id >= second_feature.id else second_feature),
+            defaults={'redundancy': redundancy_data['redundancy']}
         )
 
     # Parse and save results
@@ -160,17 +161,30 @@ def initialize_from_dataset(dataset_id):
         build_histogram.delay(feature_id=feature.id)
         downsample_feature.delay(feature_id=feature.id)
 
-"""
-
 
 @shared_task
-def calculate_slices(target_id, ranges_feature_ids):
+def calculate_arbitary_slices(target_id, ranges_feature_ids):
     target = Feature.objects.get(pk=target_id)
     dataset, filename = _get_dataset_and_file(target.dataset.id)
-    [ for ranges_feature_id in ranges_feature_ids]
-    fdsf = [{
-        'feature': "sdklfhushf",
-        'from_value': 2,
-        'to_value': 3
-    }]
-"""
+
+    # Convert feature ids to feature name for using it in dataframe
+    feature_ranges = [{'feature': Feature.objects.get(dataset=dataset, id=ranges_feature_id['feature']),
+                       'from_value': ranges_feature_id['from_value'],
+                       'to_value': ranges_feature_id['to_value']} for ranges_feature_id in ranges_feature_ids]
+    feature_names = [feature_range['feature'] for feature_range in feature_ranges]
+
+    dataframe = pd.read_csv(filename, usecols=feature_names + [target.name])
+
+    # Make filtering
+    filter_array = np.array([True] * len(dataframe))
+    for ftr in feature_ranges:
+        filter_array = np.logical_and(dataframe[ftr['feature']] >= ftr['from_value'], filter_array)
+        filter_array = np.logical_and(dataframe[ftr['feature']] <= ftr['to_value'], filter_array)
+    values, counts = np.unique(dataframe.loc[filter_array, target_id], return_counts=True)
+    probabilies = counts / filter_array.sum()
+
+    # Convert to result dict
+    result = [{'value': value_probabilies[0],
+               'probability': value_probabilies[1]} for value_probabilies in zip(values, probabilies)]
+
+    return result
