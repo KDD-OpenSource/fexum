@@ -5,8 +5,12 @@ import numpy as np
 from features.models import Feature, Bin, Slice, Sample, Dataset, RedundancyResult, RelevancyResult
 from subprocess import Popen, PIPE
 import json
-from math import ceil
 from django.db.models.signals import post_save, pre_save
+from celery import Task
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def _get_dataset_and_file(dataset_id) -> (Dataset, str):
@@ -162,29 +166,46 @@ def initialize_from_dataset(dataset_id):
         downsample_feature.delay(feature_id=feature.id)
 
 
-@shared_task
-def calculate_arbitary_slices(target_id, ranges_feature_ids):
+class DatasetDataframeTask(Task):
+    _dataset_dataframes = {}
+
+    def dataset_dataframe(self, dataset_id):
+        if self._dataset_dataframes.get(dataset_id) is None:
+            _, filename = _get_dataset_and_file(dataset_id=dataset_id)
+            dataframe = pd.read_csv(filename)
+            self._dataset_dataframes[dataset_id] = dataframe
+        return self._dataset_dataframes[dataset_id]
+
+
+@shared_task(base=DatasetDataframeTask)
+def calculate_conditional_distributions(target_id, feature_ranges):
     target = Feature.objects.get(pk=target_id)
-    dataset, filename = _get_dataset_and_file(target.dataset.id)
+
+    logging.debug(
+        'Started for target {0} and features ranges {1}'.format(target_id, feature_ranges))
+
+    dataframe = calculate_conditional_distributions.dataset_dataframe(dataset_id=target.dataset.id)
 
     # Convert feature ids to feature name for using it in dataframe
-    feature_ranges = [{'feature': Feature.objects.get(dataset=dataset, id=ranges_feature_id['feature']),
+    feature_ranges = [{'feature': Feature.objects.get(dataset_id=target.dataset.id,
+                                                      id=ranges_feature_id['feature']).name,
                        'from_value': ranges_feature_id['from_value'],
-                       'to_value': ranges_feature_id['to_value']} for ranges_feature_id in ranges_feature_ids]
-    feature_names = [feature_range['feature'] for feature_range in feature_ranges]
+                       'to_value': ranges_feature_id['to_value']}
+                      for ranges_feature_id in feature_ranges]
 
-    dataframe = pd.read_csv(filename, usecols=feature_names + [target.name])
+    logging.debug('Changed feature range to {0}'.format(feature_ranges))
 
     # Make filtering
     filter_array = np.array([True] * len(dataframe))
     for ftr in feature_ranges:
         filter_array = np.logical_and(dataframe[ftr['feature']] >= ftr['from_value'], filter_array)
         filter_array = np.logical_and(dataframe[ftr['feature']] <= ftr['to_value'], filter_array)
-    values, counts = np.unique(dataframe.loc[filter_array, target_id], return_counts=True)
+    values, counts = np.unique(dataframe.loc[filter_array, target.name], return_counts=True)
     probabilies = counts / filter_array.sum()
 
     # Convert to result dict
     result = [{'value': value_probabilies[0],
                'probability': value_probabilies[1]} for value_probabilies in zip(values, probabilies)]
 
+    logging.debug('Result: {0}'.format(result))
     return result

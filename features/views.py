@@ -7,7 +7,7 @@ from features.serializers import FeatureSerializer, BinSerializer, SessionSerial
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
-from features.tasks import calculate_rar
+from features.tasks import calculate_rar, calculate_conditional_distributions
 from rest_framework.parsers import MultiPartParser, FormParser
 from features.tasks import initialize_from_dataset
 from django.contrib.auth import get_user_model
@@ -164,3 +164,9 @@ class FilteredSlicesView(APIView):
                                       relevancy_result__feature_id__in=feature_ids)
         serializer = FeatureSliceSerializer(instance=slices, many=True)
         return Response(serializer.data)
+
+
+class CondiditonalDistributionsView(APIView):
+    def post(self, request, target_id):
+        data = calculate_conditional_distributions(target_id=target_id, feature_ranges=request.data)
+        return Response(data)

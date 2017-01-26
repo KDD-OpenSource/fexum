@@ -16,7 +16,23 @@ services:
     networks:
       - predots
 
-  web:
+  web_wsgi:
+    build: .
+    depends_on:
+      - queue
+      - redis
+      - postgres
+    networks:
+      - predots
+    volumes:
+      - .:/code
+    ports:
+      - "8001:8001"
+    command: gunicorn predots.wsgi:application --bind 0.0.0.0:8001 --log-level=DEBUG --timeout 200
+    environment:
+      DJANGO_SETTINGS_MODULE: predots.settings
+
+  web_worker:
     build: .
     depends_on:
       - queue
@@ -64,7 +80,7 @@ services:
     build: ./
     depends_on:
       - queue
-      - web
+      - web_worker
       - web_asgi
     networks:
       - predots
