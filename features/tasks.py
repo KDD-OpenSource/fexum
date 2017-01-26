@@ -80,12 +80,12 @@ def calculate_rar(target_id, precomputed_data=None):
         relevancy_results = RelevancyResult.objects.filter(target=target)
         for relevancy_result in relevancy_results:
             pre_save.send(RelevancyResult, instance=relevancy_result)
-            post_save.send(RelevancyResult, instance=relevancy_result)
+            post_save.send(RelevancyResult, instance=relevancy_result, created=False)
 
         redundancy_results = RedundancyResult.objects.filter(first_feature=target)
         for redundancy_result in redundancy_results:
             pre_save.send(RedundancyResult, instance=redundancy_result)
-            post_save.send(RedundancyResult, instance=redundancy_result)
+            post_save.send(RedundancyResult, instance=redundancy_result, created=False)
 
         return
 
