@@ -76,6 +76,7 @@ class RedundancyResultFactory(DjangoModelFactory):
     first_feature = SubFactory(FeatureFactory)
     redundancy = FuzzyFloat(0, 1)
     second_feature = SubFactory(FeatureFactory)
+    weight = 1
 
 
 class SliceFactory(DjangoModelFactory):

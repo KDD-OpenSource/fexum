@@ -60,13 +60,13 @@ class TestDownsampleTask(TestCase):
         dataset = _build_test_dataset()
         feature = Feature.objects.get(dataset=dataset, name='Col1')
 
-        sample_rate = 2
-        downsample_feature(feature_id=feature.id, sample_rate=sample_rate)
+        sample_count = 5
+        downsample_feature(feature_id=feature.id, sample_count=sample_count)
 
         samples = Sample.objects.filter(feature=feature)
 
         # Test that samples get created from 10 datapoints
-        self.assertEqual(samples.count(), 10/sample_rate)
+        self.assertEqual(samples.count(), sample_count)
         self.assertEqual([sample.value for sample in samples],
                          [0.042891865, 0.213652795, 0.45530289, 1.333576395, -0.18543196])
 
