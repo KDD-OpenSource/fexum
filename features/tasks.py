@@ -113,9 +113,13 @@ def calculate_rar(target_id, precomputed_data=None):
         results = json.loads(raw_output)
 
     for redundancy_data in results['redundancies']:
+        first_feature = Feature.objects.get(dataset=target.dataset,
+                                            name=redundancy_data['feature1'])
+        second_feature = Feature.objects.get(dataset=target.dataset,
+                                             name=redundancy_data['feature2'])
         RedundancyResult.objects.create(
-            first_feature=redundancy_data['feature1'],
-            second_feature=redundancy_data['feature2'],
+            first_feature=first_feature,
+            second_feature=second_feature,
             redundancy=redundancy_data['redundancy']
         )
 
@@ -155,3 +159,18 @@ def initialize_from_dataset(dataset_id):
         calculate_feature_statistics.delay(feature_id=feature.id)
         build_histogram.delay(feature_id=feature.id)
         downsample_feature.delay(feature_id=feature.id)
+
+"""
+
+
+@shared_task
+def calculate_slices(target_id, ranges_feature_ids):
+    target = Feature.objects.get(pk=target_id)
+    dataset, filename = _get_dataset_and_file(target.dataset.id)
+    [ for ranges_feature_id in ranges_feature_ids]
+    fdsf = [{
+        'feature': "sdklfhushf",
+        'from_value': 2,
+        'to_value': 3
+    }]
+"""
