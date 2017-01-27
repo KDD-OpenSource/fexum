@@ -12,6 +12,18 @@ class Session(models.Model):
 
 
 class Dataset(models.Model):
+    EMPTY = 0
+    PROCESSING = 1
+    DONE = 2
+    ERROR = 3
+
+    STATUS_CHOICES = (
+        (EMPTY, 'empty'),
+        (PROCESSING, 'processing'),
+        (DONE, 'done'),
+        (ERROR, 'error')
+    )
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     content = models.FileField()

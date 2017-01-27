@@ -117,7 +117,10 @@ def calculate_rar(target_id, precomputed_data=None):
             pre_save.send(RelevancyResult, instance=relevancy_result)
             post_save.send(RelevancyResult, instance=relevancy_result, created=False)
 
-        redundancy_results = RedundancyResult.objects.filter(first_feature=target)
+        redundancy_results = RedundancyResult.objects.filter(
+            first_feature__dataset=target.dataset,
+            second_feature__dataset=target.dataset
+        )
         for redundancy_result in redundancy_results:
             pre_save.send(RedundancyResult, instance=redundancy_result)
             post_save.send(RedundancyResult, instance=redundancy_result, created=False)
@@ -180,7 +183,7 @@ def calculate_rar(target_id, precomputed_data=None):
                 to_value = slice_data['featureRanges'][0]['end']
             )
 
-    
+
 @shared_task
 def initialize_from_dataset(dataset_id):
     dataset, filename = _get_dataset_and_file(dataset_id)
