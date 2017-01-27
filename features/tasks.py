@@ -103,9 +103,9 @@ def calculate_rar(target_id, precomputed_data=None):
     _, filename = _get_dataset_and_file(target.dataset.id)
 
     # Fix bindings in celery context
-    from features.bindings import RelevancyResultBinding, RedundancyResultBinding
-    RelevancyResultBinding.register()
-    RedundancyResultBinding.register()
+    #from features.bindings import RelevancyResultBinding, RedundancyResultBinding
+    #RelevancyResultBinding.register()
+    #RedundancyResultBinding.register()
 
     def trigger_channel():
         from channels import Group
