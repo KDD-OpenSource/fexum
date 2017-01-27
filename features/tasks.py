@@ -52,9 +52,10 @@ class DatasetDataframeTask(Task):
 @shared_task
 def calculate_feature_statistics(feature_id):
     feature = Feature.objects.get(pk=feature_id)
-    _, filename = _get_dataset_and_file(feature.dataset.id)
+    #_, filename = _get_dataset_and_file(feature.dataset.id)
 
-    dataframe = pd.read_csv(filename, usecols=[feature.name])
+    dataframe = _get_dataframe(feature.dataset.id)
+    #dataframe = pd.read_csv(filename, usecols=[feature.name])
     feature_col = dataframe[feature.name]
 
     feature.min = np.amin(feature_col).item()
@@ -70,10 +71,10 @@ def calculate_feature_statistics(feature_id):
 @shared_task
 def build_histogram(feature_id):
     feature = Feature.objects.get(pk=feature_id)
-    _, filename = _get_dataset_and_file(feature.dataset.id)
+    #_, filename = _get_dataset_and_file(feature.dataset.id)
 
     # Only read column with that name
-    dataframe = pd.read_csv(filename, usecols=[feature.name])
+    dataframe = _get_dataframe(feature.dataset.id)
 
     bins, bin_edges = np.histogram(dataframe[feature.name], bins='auto')
     for bin_index, bin_value in enumerate(bins):
@@ -86,9 +87,11 @@ def build_histogram(feature_id):
 @shared_task
 def downsample_feature(feature_id, sample_count=1000):
     feature = Feature.objects.get(pk=feature_id)
-    _, filename = _get_dataset_and_file(feature.dataset.id)
+    # _, filename = _get_dataset_and_file(feature.dataset.id)
 
-    dataframe = pd.read_csv(filename, usecols=[feature.name])
+    dataframe = _get_dataframe(feature.dataset.id)
+
+    #dataframe = pd.read_csv(filename, usecols=[feature.name])
     feature_row = dataframe[feature.name]
 
     sampling = feature_row.groupby(np.arange(len(feature_row)) // (len(feature_row)//sample_count)).median()
@@ -202,10 +205,11 @@ def calculate_rar(target_id, precomputed_data=None):
 
 @shared_task
 def initialize_from_dataset(dataset_id):
-    dataset, filename = _get_dataset_and_file(dataset_id)
-
+    dataset = Dataset.objects.get(id=dataset_id)
+    #dataset, filename = _get_dataset_and_file(dataset_id)
+    dataframe = _get_dataframe(dataset_id)
     # Only read first row for header
-    dataframe = pd.read_csv(filename, nrows=1)
+    #dataframe = pd.read_csv(filename, nrows=1)
     headers = list(dataframe.columns.values)
     for header in headers:
         feature = Feature.objects.create(name=header, dataset=dataset)
