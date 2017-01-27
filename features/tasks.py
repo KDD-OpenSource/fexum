@@ -107,11 +107,22 @@ def calculate_rar(target_id, precomputed_data=None):
     RelevancyResultBinding.register()
     RedundancyResultBinding.register()
 
+    def trigger_channel():
+        from channels import Group
+        import json
+        Group('redundancy_result-updates').send({'text': json.dumps({
+            'stream': 'redundancy_result-updates'
+        })})
+        Group('relevancy_result-updates').send({'text': json.dumps({
+            'stream': 'relevancy_result-updates'
+        })})
+
     # TODO: Add test
     # Return if rar was already calculated for a specific target
     if RelevancyResult.objects.filter(target=target).exists():
         # Manually trigger notifications
 
+        """
         relevancy_results = RelevancyResult.objects.filter(target=target)
         for relevancy_result in relevancy_results:
             pre_save.send(RelevancyResult, instance=relevancy_result)
@@ -124,6 +135,9 @@ def calculate_rar(target_id, precomputed_data=None):
         for redundancy_result in redundancy_results:
             pre_save.send(RedundancyResult, instance=redundancy_result)
             post_save.send(RedundancyResult, instance=redundancy_result, created=False)
+        """
+
+        trigger_channel()
 
         return
 
@@ -182,6 +196,8 @@ def calculate_rar(target_id, precomputed_data=None):
                 from_value = slice_data['featureRanges'][0]['start'],
                 to_value = slice_data['featureRanges'][0]['end']
             )
+
+    trigger_channel()
 
 
 @shared_task
