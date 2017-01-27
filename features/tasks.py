@@ -111,10 +111,10 @@ def calculate_rar(target_id, precomputed_data=None):
         from channels import Group
         import json
         Group('redundancy_result-updates').send({'text': json.dumps({
-            'stream': 'redundancy_result-updates'
+            'stream': 'redundancy_result'
         })})
         Group('relevancy_result-updates').send({'text': json.dumps({
-            'stream': 'relevancy_result-updates'
+            'stream': 'relevancy_result'
         })})
 
     # TODO: Add test
