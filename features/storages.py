@@ -7,9 +7,9 @@ class HDFSStorage(Storage):
     def __init__(self, option=None):
         if not option:
             option = settings.HDFS_STORAGE_OPTIONS
-        host = option.get('host', 'default')
-        port = option.get('port', 8020)
-        user = option.get('user', None)
+        host = option.get('HOST', 'default')
+        port = option.get('PORT', 50070)
+        user = option.get('USER', None)
         url = 'http://{0}:{1}'.format(host, port)
         self.client = InsecureClient(url=url, user=user)
 

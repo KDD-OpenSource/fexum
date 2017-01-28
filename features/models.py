@@ -2,6 +2,10 @@ from django.db import models
 from jsonfield import JSONField
 from django.conf import settings
 import uuid
+from features.storages import HDFSStorage
+
+
+hdfs = HDFSStorage()
 
 
 class Session(models.Model):
@@ -14,7 +18,7 @@ class Session(models.Model):
 class Dataset(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
-    content = models.FileField()
+    content = models.FileField(storage=hdfs)
 
     def __str__(self):
         return self.name

@@ -22,6 +22,7 @@ services:
       - queue
       - redis
       - postgres
+      - hadoop
     networks:
       - predots
     volumes:
@@ -36,6 +37,7 @@ services:
       - postgres
       - redis
       - queue
+      - hadoop
     networks:
       - predots
     volumes:
@@ -52,6 +54,7 @@ services:
       - queue
       - postgres
       - redis
+      - hadoop
     networks:
       - predots
     volumes:
@@ -75,6 +78,14 @@ services:
     command: "celery flower -A predots --address=0.0.0.0"
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
+
+  hadoop:
+    image: sequenceiq/hadoop-docker:2.7.1
+    ports:
+      - "50070:50070"
+    networks:
+      - predots
+
 
 networks:
   predots:
