@@ -72,7 +72,7 @@ services:
       - predots
     volumes:
       - .:/code
-    command: "celery worker --app=predots --concurrency=10 --autoscale=1,1"
+    command: "celery worker --app=predots"
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
 

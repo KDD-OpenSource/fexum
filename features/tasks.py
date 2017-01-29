@@ -8,12 +8,14 @@ import json
 from django.db.models.signals import post_save, pre_save
 from celery import Task
 from celery.utils.log import get_task_logger
+from django.core.cache import cache
 from multiprocessing import Manager
 
 
 logger = get_task_logger(__name__)
 manager = Manager()
 dataframes = manager.dict()
+
 
 
 def _get_dataset_and_file(dataset_id) -> (Dataset, str):
@@ -29,6 +31,7 @@ def _get_dataframe(dataset_id):
         _, filename = _get_dataset_and_file(dataset_id=dataset_id)
         dataframe = pd.read_csv(filename)
         dataframes[dataset_id] = dataframe
+        Dataset.objects.get(id=dataset_id).update(status=Dataset.IN_MEMORY)
     else:
         logger.info('Cache hit for dasaset {0}'.format(dataset_id))
     return dataframes[dataset_id]
@@ -37,27 +40,14 @@ def _get_dataframe(dataset_id):
 @shared_task
 def load_dataset(dataset_id):
     logger.info('Started loading dataset {0}'.format(dataset_id))
-    _get_dataframe(dataset_id)
-
-
-class DatasetDataframeTask(Task):
-    _dataset_dataframes = {}
-
-    def dataset_dataframe(self, dataset_id):
-        if self._dataset_dataframes.get(dataset_id) is None:
-            _, filename = _get_dataset_and_file(dataset_id=dataset_id)
-            dataframe = pd.read_csv(filename)
-            self._dataset_dataframes[dataset_id] = dataframe
-        return self._dataset_dataframes[dataset_id]
+    _ = _get_dataframe(dataset_id)
 
 
 @shared_task
 def calculate_feature_statistics(feature_id):
     feature = Feature.objects.get(pk=feature_id)
-    #_, filename = _get_dataset_and_file(feature.dataset.id)
 
     dataframe = _get_dataframe(feature.dataset.id)
-    #dataframe = pd.read_csv(filename, usecols=[feature.name])
     feature_col = dataframe[feature.name]
 
     feature.update(
@@ -72,7 +62,6 @@ def calculate_feature_statistics(feature_id):
 @shared_task
 def build_histogram(feature_id):
     feature = Feature.objects.get(pk=feature_id)
-    #_, filename = _get_dataset_and_file(feature.dataset.id)
 
     # Only read column with that name
     dataframe = _get_dataframe(feature.dataset.id)
@@ -92,11 +81,8 @@ def build_histogram(feature_id):
 @shared_task
 def downsample_feature(feature_id, sample_count=1000):
     feature = Feature.objects.get(pk=feature_id)
-    # _, filename = _get_dataset_and_file(feature.dataset.id)
 
     dataframe = _get_dataframe(feature.dataset.id)
-
-    #dataframe = pd.read_csv(filename, usecols=[feature.name])
     feature_row = dataframe[feature.name]
 
     sampling = feature_row.groupby(np.arange(len(feature_row)) // (len(feature_row)//sample_count)).median()
@@ -220,15 +206,14 @@ def initialize_from_dataset(dataset_id):
     dataframe = _get_dataframe(dataset_id)
 
     # Only read first row for header
-    #dataframe = pd.read_csv(filename, nrows=1)
     headers = list(dataframe.columns.values)
     for header in headers:
         feature = Feature.objects.create(name=header, dataset=dataset)
 
         # Chaining with Celery would be more beautiful...
-        calculate_feature_statistics.delay(feature_id=feature.id)
-        build_histogram.delay(feature_id=feature.id)
-        downsample_feature.delay(feature_id=feature.id)
+        calculate_feature_statistics.delay(feature_id=feature.id, queue=dataset_id)
+        build_histogram.delay(feature_id=feature.id, queue=dataset_id)
+        downsample_feature.delay(feature_id=feature.id, queue=dataset_id)
 
 
 

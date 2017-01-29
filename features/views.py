@@ -100,7 +100,7 @@ class DatasetViewUploadView(APIView):
             dataset = Dataset.objects.create(name=zip_csv_file.name, content=csv_file)
 
         # Start tasks for feature calculation
-        initialize_from_dataset.delay(dataset_id=dataset.id)
+        initialize_from_dataset.delay(dataset_id=dataset.id, queue=dataset_id)
 
         serializer = DatasetSerializer(instance=dataset)
         return Response(serializer.data)
@@ -168,7 +168,14 @@ class FilteredSlicesView(APIView):
 
 class CondiditonalDistributionsView(APIView):
     def post(self, request, target_id):
+        target = get_object_or_404(Feature, pk=target_id)
+
         # Execute calculation on worker an get a synchronous result back to the client
-        asnyc_result = calculate_conditional_distributions.apply_async(target_id=target_id, feature_ranges=request.data)
+        asnyc_result = calculate_conditional_distributions.apply_async(
+            target_id=target_id,
+            feature_ranges=request.data,
+            queue=target.dataset.id
+        )
+
         data = asnyc_result.get()
         return Response(data)
