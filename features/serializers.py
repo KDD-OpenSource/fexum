@@ -1,6 +1,6 @@
 from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRelatedField, \
     SerializerMethodField
-from features.models import Sample, Feature, Bin, Slice, Session, Dataset, RedundancyResult, \
+from features.models import Sample, Feature, Bin, Slice, Experiment, Dataset, RedundancyResult, \
     RelevancyResult
 from rest_framework.validators import ValidationError
 
@@ -20,7 +20,7 @@ class BinSerializer(ModelSerializer):
 class SampleSerializer(ModelSerializer):
     class Meta:
         model = Sample
-        fields = ('value',)
+        fields = ('value', 'order')
 
 
 class SliceSerializer(ModelSerializer):
@@ -52,23 +52,23 @@ class FeatureSliceSerializer(ModelSerializer):
 class DatasetSerializer(ModelSerializer):
     class Meta:
         model = Dataset
-        fields = ('id', 'name')
+        fields = ('id', 'name', 'status')
 
 
-class SessionSerializer(ModelSerializer):
+class ExperimentSerializer(ModelSerializer):
     target = PrimaryKeyRelatedField(many=False, read_only=True)
     dataset = PrimaryKeyRelatedField(many=False, read_only=False, queryset=Dataset.objects.all())
 
     class Meta:
-        model = Session
+        model = Experiment
         fields = ('id', 'dataset', 'target')
 
 
-class SessionTargetSerializer(ModelSerializer):
+class ExperimentTargetSerializer(ModelSerializer):
     target = PrimaryKeyRelatedField(many=False, read_only=False, queryset=Feature.objects.all())
 
     class Meta:
-        model = Session
+        model = Experiment
         fields = ('target',)
 
     def validate(self, data):

@@ -1,17 +1,17 @@
 from django.conf.urls import url
 from features.views import FeatureListView, FeatureSamplesView, DatasetListView, \
     FeatureHistogramView, FeatureSlicesView, TargetDetailView, DatasetViewUploadView, \
-    SessionListView, FeatureRelevancyResultsView, SessionDetailView, DatasetRedundancyResults, \
+    ExperimentListView, FeatureRelevancyResultsView, ExperimentDetailView, DatasetRedundancyResults, \
     FilteredSlicesView, CondiditonalDistributionsView
 
 
 urlpatterns = [
-    # Sessions
-    url(r'sessions$', SessionListView.as_view(), name='session-list'),
-    url(r'sessions/(?P<session_id>[a-zA-Z0-9-]+)$', SessionDetailView.as_view(),
-        name='session-detail'),
-    url(r'sessions/(?P<session_id>[a-zA-Z0-9-]+)/target$', TargetDetailView.as_view(),
-        name='session-targets-detail'),
+    # Experiments
+    url(r'experiments$', ExperimentListView.as_view(), name='experiment-list'),
+    url(r'experiments/(?P<experiment_id>[a-zA-Z0-9-]+)$', ExperimentDetailView.as_view(),
+        name='experiment-detail'),
+    url(r'experiments/(?P<experiment_id>[a-zA-Z0-9-]+)/target$', TargetDetailView.as_view(),
+        name='experiment-targets-detail'),
 
     # Datasets
     url(r'datasets$', DatasetListView.as_view(), name='dataset-list'),

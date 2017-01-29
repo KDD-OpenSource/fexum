@@ -1,28 +1,22 @@
 from channels.binding.websockets import WebsocketBinding
-from features.models import RelevancyResult, RedundancyResult
+from features.models import Dataset, Experiment
 
 
-class RelevancyResultBinding(WebsocketBinding):
-    model = RelevancyResult
-    stream = 'relevancy_result'
-    fields = ['feature', 'relevancy', 'rank', 'target']
-
-    @classmethod
-    def group_names(cls, *args, **kwargs):
-        return ['relevancy_result-updates']
-
-    def has_permission(self, user, action, pk):
-        return True
-
-
-class RedundancyResultBinding(WebsocketBinding):
-    model = RedundancyResult
-    stream = 'redundancy_result'
-    fields = ['first_feature', 'second_feature', 'redundancy']
+class DatasetBinding(WebsocketBinding):
+    model = Dataset
+    stream = 'dataset'
+    fields = ['name', 'status']
 
     @classmethod
-    def group_names(cls, *args, **kwargs):
-        return ['redundancy_result-updates']
+    def group_names(cls, instance):
+        return ['dataset-{0}-updates'.format(instance)]
 
     def has_permission(self, user, action, pk):
-        return True
+        """
+        The user should not be able to change dataset using channels
+        """
+        return False
+
+
+class TargetBinding(WebsocketBinding):
+    pass # TODO

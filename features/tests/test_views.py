@@ -1,58 +1,58 @@
 from rest_framework.test import APITestCase
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
-    SampleFactory, DatasetFactory, SessionFactory, RelevancyResultFactory, RedundancyResultFactory
+    SampleFactory, DatasetFactory, ExperimentFactory, RelevancyResultFactory, RedundancyResultFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, \
     HTTP_400_BAD_REQUEST
 from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, \
-    SampleSerializer, DatasetSerializer, SessionSerializer, SessionTargetSerializer, \
+    SampleSerializer, DatasetSerializer, ExperimentSerializer, ExperimentTargetSerializer, \
     RelevancyResultSerializer, RedundancyResultSerializer
 from unittest.mock import patch
-from features.models import Session, Dataset
+from features.models import Experiment, Dataset
 from django.contrib.auth import get_user_model
 import os
 import zipfile
 
 
-class TestSessionListView(APITestCase):
-    def test_retrieve_session_list(self):
-        session = SessionFactory()
+class TestExperimentListView(APITestCase):
+    def test_retrieve_experiment_list(self):
+        experiment = ExperimentFactory()
 
-        url = reverse('session-list')
+        url = reverse('experiment-list')
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         json_data = response.json()
-        data = SessionSerializer(instance=session).data
+        data = ExperimentSerializer(instance=experiment).data
         first_obj = json_data.pop(0)
         self.assertEqual(len(json_data), 0)
         self.assertEqual(first_obj.pop('id'), str(data['id']))
         self.assertEqual(first_obj.pop('dataset'), str(data['dataset']))
         self.assertEqual(first_obj.pop('target'), str(data['target']))
 
-    def test_create_new_session(self):
+    def test_create_new_experiment(self):
         dataset = DatasetFactory()
 
         data = {'dataset': dataset.id}
-        url = reverse('session-list')
+        url = reverse('experiment-list')
         response = self.client.post(url, data=data)
 
-        session = Session.objects.first()
+        experiment = Experiment.objects.first()
 
-        data = SessionSerializer(instance=session).data
+        data = ExperimentSerializer(instance=experiment).data
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(), {'id': str(data['id']), 'dataset': str(data['dataset']),
                                            'target': data['target']})
 
         # Test if creation worked
-        self.assertEqual(session.dataset, dataset)
-        self.assertIsNone(session.target)
-        self.assertEqual(session.user, get_user_model().objects.first())
+        self.assertEqual(experiment.dataset, dataset)
+        self.assertIsNone(experiment.target)
+        self.assertEqual(experiment.user, get_user_model().objects.first())
 
-    def test_create_new_session_dataset_missing(self):
+    def test_create_new_experiment_dataset_missing(self):
         data = {'dataset': '079a60fc-c3b1-48ee-8bb6-ba19f061e9e0'}
-        url = reverse('session-list')
+        url = reverse('experiment-list')
         response = self.client.post(url, data=data)
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
@@ -60,20 +60,20 @@ class TestSessionListView(APITestCase):
             'Invalid pk "079a60fc-c3b1-48ee-8bb6-ba19f061e9e0" - object does not exist.']})
 
 
-class TestSessionDetailView(APITestCase):
-    def test_retrieve_session_detail(self):
-        session = SessionFactory()
+class TestExperimentDetailView(APITestCase):
+    def test_retrieve_experiment_detail(self):
+        experiment = ExperimentFactory()
 
-        url = reverse('session-detail', args=[session.id])
+        url = reverse('experiment-detail', args=[experiment.id])
         response = self.client.get(url)
 
-        data = SessionSerializer(instance=session).data
+        data = ExperimentSerializer(instance=experiment).data
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(), {'id': str(data['id']), 'target': str(data['target']),
                                            'dataset': str(data['dataset'])})
 
-    def test_retrieve_session_detail_not_found(self):
-        url = reverse('session-detail', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+    def test_retrieve_experiment_detail_not_found(self):
+        url = reverse('experiment-detail', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
@@ -82,62 +82,62 @@ class TestSessionDetailView(APITestCase):
 
 class TestTargetDetailView(APITestCase):
     def test_delete_target(self):
-        session = SessionFactory()
+        experiment = ExperimentFactory()
 
-        self.assertIsNotNone(session.target)
+        self.assertIsNotNone(experiment.target)
 
-        url = reverse('session-targets-detail', args=[session.id])
+        url = reverse('experiment-targets-detail', args=[experiment.id])
         response = self.client.delete(url)
 
-        session = Session.objects.get(id=session.id)
+        experiment = Experiment.objects.get(id=experiment.id)
 
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
         self.assertEqual(response.content, b'')
-        self.assertIsNone(session.target)
+        self.assertIsNone(experiment.target)
 
     def test_delete_target_not_found(self):
-        url = reverse('session-targets-detail', args=['1c6f46c4-e2d6-4378-8dc4-7417cca743da'])
+        url = reverse('experiment-targets-detail', args=['1c6f46c4-e2d6-4378-8dc4-7417cca743da'])
         response = self.client.delete(url)
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
     def test_select_target(self):
-        session = SessionFactory(target=None)
-        target = FeatureFactory(dataset=session.dataset)
+        experiment = ExperimentFactory(target=None)
+        target = FeatureFactory(dataset=experiment.dataset)
 
-        self.assertIsNone(session.target)
-        self.assertEqual(session.dataset, target.dataset)
+        self.assertIsNone(experiment.target)
+        self.assertEqual(experiment.dataset, target.dataset)
 
-        url = reverse('session-targets-detail', args=[session.id])
+        url = reverse('experiment-targets-detail', args=[experiment.id])
         with patch('features.views.calculate_rar.delay') as calculate_rar:
             response = self.client.put(url, data={'target': target.id}, format='json')
 
             self.assertEqual(response.status_code, HTTP_200_OK)
 
-            session = Session.objects.get(id=session.id)
-            data = SessionTargetSerializer(instance=session).data
-            self.assertEqual(session.target, target)
+            experiment = Experiment.objects.get(id=experiment.id)
+            data = ExperimentTargetSerializer(instance=experiment).data
+            self.assertEqual(experiment.target, target)
             self.assertEqual(response.json(), {'target': str(data['target'])})
             calculate_rar.assert_called_once_with(target_id=target.id)
 
     def test_select_target_feature_not_found(self):
         target = FeatureFactory()
 
-        url = reverse('session-targets-detail', args=['5781ca8a-3c7d-46b4-897e-90d80e938258'])
+        url = reverse('experiment-targets-detail', args=['5781ca8a-3c7d-46b4-897e-90d80e938258'])
         response = self.client.put(url, data={'target': target.id}, format='json')
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
     def test_select_feature_should_not_accept_different_datasets(self):
-        session = SessionFactory(target=None)
+        experiment = ExperimentFactory(target=None)
         target = FeatureFactory()
 
-        self.assertIsNone(session.target)
-        self.assertNotEqual(session.dataset, target.dataset)
+        self.assertIsNone(experiment.target)
+        self.assertNotEqual(experiment.dataset, target.dataset)
 
-        url = reverse('session-targets-detail', args=[session.id])
+        url = reverse('experiment-targets-detail', args=[experiment.id])
         response = self.client.put(url, data={'target': target.id}, format='json')
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

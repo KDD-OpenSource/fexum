@@ -1,9 +1,9 @@
 from django.test import TestCase
-from features.serializers import FeatureSerializer, BinSerializer, SessionTargetSerializer, \
-    SliceSerializer, SampleSerializer, DatasetSerializer, SessionSerializer, \
+from features.serializers import FeatureSerializer, BinSerializer, ExperimentTargetSerializer, \
+    SliceSerializer, SampleSerializer, DatasetSerializer, ExperimentSerializer, \
     RedundancyResultSerializer, RelevancyResultSerializer
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
-    DatasetFactory, SampleFactory, SessionFactory, RedundancyResultFactory, RelevancyResultFactory
+    DatasetFactory, SampleFactory, ExperimentFactory, RedundancyResultFactory, RelevancyResultFactory
 from decimal import Decimal
 
 
@@ -57,6 +57,7 @@ class TestSampleSerializer(TestCase):
         data = serializer.data
 
         self.assertEqual(Decimal(data.pop('value')), sample.value)
+        self.assertEqual(Decimal(data.pop('order')), sample.order)
         self.assertEqual(len(data), 0)
 
 
@@ -68,18 +69,19 @@ class TestDatasetSerializer(TestCase):
 
         self.assertEqual(data.pop('id'), str(dataset.id))
         self.assertEqual(data.pop('name'), dataset.name)
+        self.assertEqual(data.pop('status'), dataset.status)
         self.assertEqual(len(data), 0)
 
 
-class TestSessionSerializer(TestCase):
+class TestExperimentSerializer(TestCase):
     def test_serialize_one(self):
-        session = SessionFactory()
-        serializer = SessionSerializer(instance=session)
+        experiment = ExperimentFactory()
+        serializer = ExperimentSerializer(instance=experiment)
         data = serializer.data
 
-        self.assertEqual(data.pop('id'), str(session.id))
-        self.assertEqual(data.pop('dataset'), session.dataset.id)
-        self.assertEqual(data.pop('target'), session.target.id)
+        self.assertEqual(data.pop('id'), str(experiment.id))
+        self.assertEqual(data.pop('dataset'), experiment.dataset.id)
+        self.assertEqual(data.pop('target'), experiment.target.id)
         self.assertEqual(len(data), 0)
 
 
@@ -110,13 +112,13 @@ class TestRedundancyResultsSerializer(TestCase):
         self.assertEqual(len(data), 0)
 
 
-class TestSessionTargetSerializer(TestCase):
+class TestExperimentTargetSerializer(TestCase):
     def test_serialize_one(self):
-        session = SessionFactory()
-        serializer = SessionTargetSerializer(instance=session)
+        experiment = ExperimentFactory()
+        serializer = ExperimentTargetSerializer(instance=experiment)
         data = serializer.data
 
-        self.assertEqual(data.pop('target'), session.target.id)
+        self.assertEqual(data.pop('target'), experiment.target.id)
         self.assertEqual(len(data), 0)
 
 

@@ -1,5 +1,5 @@
 from factory import DjangoModelFactory, Sequence, SubFactory
-from features.models import Sample, Feature, Bin, Slice, Dataset, Session, RelevancyResult, \
+from features.models import Sample, Feature, Bin, Slice, Dataset, Experiment, RelevancyResult, \
     RedundancyResult
 from factory.fuzzy import FuzzyFloat, FuzzyInteger, FuzzyText
 from factory.django import FileField
@@ -17,6 +17,7 @@ class DatasetFactory(DjangoModelFactory):
 
     name = FuzzyText(suffix='.csv')
     content = FileField(from_path='features/tests/test_file.csv')
+    status = Dataset.EMPTY
 
 
 class FeatureFactory(DjangoModelFactory):
@@ -32,14 +33,13 @@ class FeatureFactory(DjangoModelFactory):
     is_categorical = False
 
 
-class SessionFactory(DjangoModelFactory):
+class ExperimentFactory(DjangoModelFactory):
     class Meta:
-        model = Session
+        model = Experiment
 
     user = SubFactory(UserFactory)
     dataset = SubFactory(DatasetFactory)
     target = SubFactory(FeatureFactory)
-
 
 class BinFactory(DjangoModelFactory):
     class Meta:
@@ -57,6 +57,7 @@ class SampleFactory(DjangoModelFactory):
 
     feature = SubFactory(FeatureFactory)
     value = FuzzyFloat(0, 200)
+    order = Sequence(lambda n: n)
 
 
 class RelevancyResultFactory(DjangoModelFactory):

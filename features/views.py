@@ -1,9 +1,9 @@
 from rest_framework.views import APIView
-from features.models import Feature, Bin, Sample, Dataset, Session, RelevancyResult, \
+from features.models import Feature, Bin, Sample, Dataset, Experiment, RelevancyResult, \
     RedundancyResult, Slice
-from features.serializers import FeatureSerializer, BinSerializer, SessionSerializer, \
+from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
     SampleSerializer, SliceSerializer, DatasetSerializer, RedundancyResultSerializer, \
-    SessionTargetSerializer, RelevancyResultSerializer, FeatureSliceSerializer
+    ExperimentTargetSerializer, RelevancyResultSerializer, FeatureSliceSerializer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
@@ -29,34 +29,34 @@ def get_user():
     return user
 
 
-class SessionListView(APIView):
+class ExperimentListView(APIView):
     def get(self, _):
         user = get_user()
-        sessions = Session.objects.filter(user=user).all()
-        serializer = SessionSerializer(instance=sessions, many=True)
+        experiments = Experiment.objects.filter(user=user).all()
+        serializer = ExperimentSerializer(instance=experiments, many=True)
         return Response(serializer.data)
 
     def post(self, request):
         user = get_user()
-        serializer = SessionSerializer(data=request.data)
+        serializer = ExperimentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(user=user)
         return Response(serializer.data)
 
 
-class SessionDetailView(APIView):
-    def get(self, _, session_id):
+class ExperimentDetailView(APIView):
+    def get(self, _, experiment_id):
         user = get_user()
-        session = get_object_or_404(Session, pk=session_id, user=user)
-        serializer = SessionSerializer(instance=session)
+        experiment = get_object_or_404(Experiment, pk=experiment_id, user=user)
+        serializer = ExperimentSerializer(instance=experiment)
         return Response(serializer.data)
 
 
 class TargetDetailView(APIView):
-    def put(self, request, session_id):
+    def put(self, request, experiment_id):
         user = get_user()
-        session = get_object_or_404(Session, pk=session_id, user=user)
-        serializer = SessionTargetSerializer(instance=session, data=request.data)
+        experiment = get_object_or_404(Experiment, pk=experiment_id, user=user)
+        serializer = ExperimentTargetSerializer(instance=experiment, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         
@@ -64,11 +64,11 @@ class TargetDetailView(APIView):
 
         return Response(serializer.data)
 
-    def delete(self, _, session_id):
+    def delete(self, _, experiment_id):
         user = get_user()
-        session = get_object_or_404(Session, pk=session_id, user=user)
-        session.target = None
-        session.save()
+        experiment = get_object_or_404(Experiment, pk=experiment_id, user=user)
+        experiment.target = None
+        experiment.save()
         return Response(status=HTTP_204_NO_CONTENT)
 
 
@@ -168,5 +168,7 @@ class FilteredSlicesView(APIView):
 
 class CondiditonalDistributionsView(APIView):
     def post(self, request, target_id):
-        data = calculate_conditional_distributions(target_id=target_id, feature_ranges=request.data)
+        # Execute calculation on worker an get a synchronous result back to the client
+        asnyc_result = calculate_conditional_distributions.apply_async(target_id=target_id, feature_ranges=request.data)
+        data = asnyc_result.get()
         return Response(data)

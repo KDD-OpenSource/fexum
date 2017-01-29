@@ -8,9 +8,12 @@ import json
 from django.db.models.signals import post_save, pre_save
 from celery import Task
 from celery.utils.log import get_task_logger
+from multiprocessing import Manager
 
 
 logger = get_task_logger(__name__)
+manager = Manager()
+dataframes = manager.dict()
 
 
 def _get_dataset_and_file(dataset_id) -> (Dataset, str):
@@ -19,17 +22,16 @@ def _get_dataset_and_file(dataset_id) -> (Dataset, str):
     return dataset, filename
 
 
-DATAFRAMES = {}
-
 def _get_dataframe(dataset_id):
-    if DATAFRAMES.get(dataset_id) is None:
+    # TODO: Build LRU cache with timeout
+    if dataframes.get(dataset_id) is None:
         logger.info('Cache miss for dataset {0}'.format(dataset_id))
         _, filename = _get_dataset_and_file(dataset_id=dataset_id)
         dataframe = pd.read_csv(filename)
-        DATAFRAMES[dataset_id] = dataframe
+        dataframes[dataset_id] = dataframe
     else:
         logger.info('Cache hit for dasaset {0}'.format(dataset_id))
-    return DATAFRAMES[dataset_id]
+    return dataframes[dataset_id]
 
 
 @shared_task
@@ -58,14 +60,13 @@ def calculate_feature_statistics(feature_id):
     #dataframe = pd.read_csv(filename, usecols=[feature.name])
     feature_col = dataframe[feature.name]
 
-    feature.min = np.amin(feature_col).item()
-    feature.max = np.amax(feature_col).item()
-    feature.mean = np.mean(feature_col).item()
-    feature.variance = np.nanvar(feature_col).item()
-    # TODO: Test
-    feature.is_categorical = np.unique(feature_col).size <= 10
-
-    feature.save()
+    feature.update(
+        min=np.amin(feature_col).item(),
+        max=np.amax(feature_col).item(),
+        mean=np.mean(feature_col).item(),
+        variance=np.nanvar(feature_col).item(),
+        is_categorical=(np.unique(feature_col).size <= 10)
+    )
 
 
 @shared_task
@@ -80,8 +81,12 @@ def build_histogram(feature_id):
     for bin_index, bin_value in enumerate(bins):
         from_value = bin_edges[bin_index]
         to_value = bin_edges[bin_index + 1]
-        Bin.objects.create(feature=feature, from_value=from_value, to_value=to_value,
-                           count=bin_value)
+        Bin.objects.create(
+            feature=feature,
+            from_value=from_value,
+            to_value=to_value,
+            count=bin_value
+        )
 
 
 @shared_task
@@ -97,7 +102,11 @@ def downsample_feature(feature_id, sample_count=1000):
     sampling = feature_row.groupby(np.arange(len(feature_row)) // (len(feature_row)//sample_count)).median()
     for idx, value in enumerate(sampling):
         # TODO: Test, order
-        Sample.objects.create(feature=feature, value=value, order=idx)
+        Sample.objects.create(
+            feature=feature,
+            value=value,
+            order=idx
+        )
 
 
 @shared_task
@@ -191,13 +200,13 @@ def calculate_rar(target_id, precomputed_data=None):
 
         for slice_data in relevancy_data['result']['scoredBlocks']:
             Slice.objects.create(
-                relevancy_result = relevancy_result,
-                marginal_distribution = slice_data['normalizedMarginalDistribution'],
-                conditional_distribution = slice_data['normalizedConditionalDistribution'],
-                deviation = slice_data['deviation'],
-                frequency = slice_data['frequency'],
-                from_value = slice_data['featureRanges'][0]['start'],
-                to_value = slice_data['featureRanges'][0]['end']
+                relevancy_result=relevancy_result,
+                marginal_distribution=slice_data['normalizedMarginalDistribution'],
+                conditional_distribution=slice_data['normalizedConditionalDistribution'],
+                deviation=slice_data['deviation'],
+                frequency=slice_data['frequency'],
+                from_value=slice_data['featureRanges'][0]['start'],
+                to_value=slice_data['featureRanges'][0]['end']
             )
 
     trigger_channel()
@@ -206,8 +215,10 @@ def calculate_rar(target_id, precomputed_data=None):
 @shared_task
 def initialize_from_dataset(dataset_id):
     dataset = Dataset.objects.get(id=dataset_id)
-    #dataset, filename = _get_dataset_and_file(dataset_id)
+    dataset.update(status=Dataset.PROCESSING) #  TODO: Test
+
     dataframe = _get_dataframe(dataset_id)
+
     # Only read first row for header
     #dataframe = pd.read_csv(filename, nrows=1)
     headers = list(dataframe.columns.values)
@@ -218,6 +229,7 @@ def initialize_from_dataset(dataset_id):
         calculate_feature_statistics.delay(feature_id=feature.id)
         build_histogram.delay(feature_id=feature.id)
         downsample_feature.delay(feature_id=feature.id)
+
 
 
 @shared_task

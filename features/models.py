@@ -4,7 +4,7 @@ from django.conf import settings
 import uuid
 
 
-class Session(models.Model):
+class Experiment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     target = models.ForeignKey('Feature', on_delete=models.CASCADE, blank=True, null=True)
@@ -12,21 +12,24 @@ class Session(models.Model):
 
 
 class Dataset(models.Model):
-    EMPTY = 0
-    PROCESSING = 1
-    DONE = 2
-    ERROR = 3
+    EMPTY = 'empty'
+    PROCESSING = 'processing'
+    IN_MEMORY = 'in_memory'
+    ON_DISK = 'on_disk'
+    ERROR = 'error'
 
     STATUS_CHOICES = (
-        (EMPTY, 'empty'),
-        (PROCESSING, 'processing'),
-        (DONE, 'done'),
-        (ERROR, 'error')
+        (EMPTY, 'Empty'),
+        (PROCESSING, 'Processing'),
+        (IN_MEMORY, 'In Memory'),
+        (ON_DISK, 'ON Disk'),
+        (ERROR, 'Error')
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     content = models.FileField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=EMPTY)
 
     def __str__(self):
         return self.name
@@ -85,7 +88,7 @@ class Feature(models.Model):
     variance = models.FloatField(blank=True, null=True)
     min = models.FloatField(blank=True, null=True)
     max = models.FloatField(blank=True, null=True)
-    is_categorical = models.BooleanField(default=False) # TODO: Remove default
+    is_categorical = models.NullBooleanField()
     
     def __str__(self):
         return '{0} in {1} dataset'.format(self.name, self.dataset)

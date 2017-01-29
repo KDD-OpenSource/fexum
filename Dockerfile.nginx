@@ -1,6 +1,7 @@
 FROM node
 
 ARG HOST
+ARG SSH_KEY
 
 # Install NGINX
 ENV NGINX_VERSION 1.11.8-1~jessie

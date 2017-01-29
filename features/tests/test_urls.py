@@ -2,22 +2,22 @@ from django.urls import reverse
 from django.test import TestCase
 
 
-class TestSessionListUrl(TestCase):
-    def test_session_list_url(self):
-        url = reverse('session-list')
-        self.assertEqual(url, '/api/sessions')
+class TestExperimentListUrl(TestCase):
+    def test_sexperiment_list_url(self):
+        url = reverse('experiment-list')
+        self.assertEqual(url, '/api/experiments')
 
 
-class TestSessionListUrl(TestCase):
-    def test_session_detail_url(self):
-        url = reverse('session-detail', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
-        self.assertEqual(url, '/api/sessions/391ec5ac-f741-45c9-855a-7615c89ce129')
+class TestExperimentDetailUrl(TestCase):
+    def test_experiment_detail_url(self):
+        url = reverse('experiment-detail', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
+        self.assertEqual(url, '/api/experiments/391ec5ac-f741-45c9-855a-7615c89ce129')
 
 
-class TestSessionTargetsDetailUrl(TestCase):
-    def test_session_targets_detail_url(self):
-        url = reverse('session-targets-detail', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
-        self.assertEqual(url, '/api/sessions/391ec5ac-f741-45c9-855a-7615c89ce129/target')
+class TestExperimentTargetsDetailUrl(TestCase):
+    def test_experiment_targets_detail_url(self):
+        url = reverse('experiment-targets-detail', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
+        self.assertEqual(url, '/api/experiments/391ec5ac-f741-45c9-855a-7615c89ce129/target')
 
 
 class TestDatasetListView(TestCase):
