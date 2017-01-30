@@ -6,6 +6,6 @@ from rest_framework.status import HTTP_204_NO_CONTENT
 
 class LogoutView(APIView):
     def delete(self, request):
-        token = request.token
+        token = request.auth
         Token.objects.get(key=token).delete()
         return Response(status=HTTP_204_NO_CONTENT)

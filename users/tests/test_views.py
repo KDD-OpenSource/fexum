@@ -12,13 +12,13 @@ class TestTokenAuthenticationView(APITestCase):
             'username': user.username,
             'password': TEST_PASSWORD
         }
+
         self.assertEqual(Token.objects.count(), 0)
 
         url = reverse('auth-login')
         response = self.client.post(url, data=data)
 
-        # self.assertEqual(Token.objects.count(), 1)
-        print(response.json())
+        self.assertEqual(Token.objects.count(), 1)
         self.assertEqual(response.status_code, HTTP_200_OK)
         response_data = response.json()
 
