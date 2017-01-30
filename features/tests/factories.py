@@ -2,12 +2,7 @@ from factory import DjangoModelFactory, Sequence, SubFactory
 from features.models import Sample, Feature, Bin, Slice, Dataset, Session, RarResult
 from factory.fuzzy import FuzzyFloat, FuzzyInteger, FuzzyText
 from factory.django import FileField
-from django.conf import settings
-
-
-class UserFactory(DjangoModelFactory):
-    class Meta:
-        model = settings.AUTH_USER_MODEL
+from users.tests.factories import UserFactory
 
 
 class DatasetFactory(DjangoModelFactory):
