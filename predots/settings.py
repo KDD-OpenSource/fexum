@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'features',
     'channels',
+    'users',
+    'rest_framework.authtoken'
 ]
 
 MIDDLEWARE = [
@@ -140,9 +142,14 @@ CELERY_TASK_SERIALIZER = 'json'
 
 REST_FRAMEWORK = {
     'COERCE_DECIMAL_TO_STRING': False,
-    'DEFAULT_AUTHENTICATION_CLASSES': [],
-    'DEFAULT_PERMISSION_CLASSES': [],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.TokenAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    )
 }
+
 
 CHANNEL_LAYERS = {
     'default': {
@@ -154,8 +161,11 @@ CHANNEL_LAYERS = {
     },
 }
 
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Fuck the limit
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10*1024*1024*1024
+
+AUTH_USER_MODEL = 'users.User'
