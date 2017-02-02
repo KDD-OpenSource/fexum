@@ -14,8 +14,11 @@ from multiprocessing import Manager
 
 
 logger = get_task_logger(__name__)
+
+# Locking for shared memory
 manager = Manager()
 dataframes = manager.dict()
+dataframes_lock = manager.Lock()
 
 
 def _get_dataset_and_file(dataset_id) -> (Dataset, str):
@@ -25,16 +28,23 @@ def _get_dataset_and_file(dataset_id) -> (Dataset, str):
 
 
 def _get_dataframe(dataset_id) -> pd.DataFrame:
+    dataframes_lock.acquire()
+
     if dataframes.get(dataset_id) is None:
         logger.info('Cache miss for dataset {0}'.format(dataset_id))
+
         _, filename = _get_dataset_and_file(dataset_id=dataset_id)
         dataframe = pd.read_csv(filename)
         dataframes[dataset_id] = dataframe
         dataset = Dataset.objects.get(id=dataset_id)
         dataset.status = Dataset.IN_MEMORY
         dataset.save(update_fields=['status'])
+        logger.info('Put dataset {0} into cache'.format(dataset_id))
     else:
-        logger.info('Cache hit for dasaset {0}'.format(dataset_id))
+        logger.info('Cache hit for dataset {0}'.format(dataset_id))
+
+    dataframes_lock.release()
+
     return dataframes[dataset_id]
 
 
