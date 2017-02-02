@@ -4,6 +4,8 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, \
     HTTP_401_UNAUTHORIZED
 from rest_framework.authtoken.models import Token
+from users.serializers import UserSerializer
+from users.models import User
 
 
 class TestTokenAuthenticationView(APITestCase):
@@ -67,3 +69,40 @@ class TestLogoutView(APITestCase):
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
+
+
+class TestUserRegisterView(APITestCase):
+    url = reverse('user-register')
+
+    def test_register(self):
+        data = {
+            'username': 'username',
+            'password': TEST_PASSWORD
+        }
+        self.assertEqual(User.objects.count(), 0)
+
+        response = self.client.post(self.url, data=data)
+
+        self.assertEqual(User.objects.count(), 1)
+
+        data = UserSerializer(instance=User.objects.first()).data
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), data)
+
+    def test_register_missing_data(self):
+        response = self.client.post(self.url, data={})
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json(), {'password': ['This field is required.'],
+                                           'username': ['This field is required.']})
+
+    def test_register_duplicate_data(self):
+        user = UserFactory()
+        data = {
+            'username': user.username,
+            'password': TEST_PASSWORD
+        }
+        response = self.client.post(self.url, data=data)
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json(), {'username': ['A user with that username already exists.']})
