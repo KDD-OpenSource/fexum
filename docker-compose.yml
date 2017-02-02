@@ -92,20 +92,5 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
 
-   nginx:
-    depends_on:
-      - web_worker
-      - web_asgi
-    build:
-      context: ./Dockerfile.nginx
-      args:
-        SSH_KEY: ""
-        HOST: ""
-    networks:
-      - predots
-    ports:
-      - "80:80"
-      - "443:443"
-
 networks:
   predots:

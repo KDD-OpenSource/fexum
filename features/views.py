@@ -1,9 +1,10 @@
 from rest_framework.views import APIView
 from features.models import Feature, Bin, Sample, Dataset, Experiment, RelevancyResult, \
-    RedundancyResult, Slice
+    RedundancyResult, Slice, Relevancy, Redundancy
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
-    SampleSerializer, SliceSerializer, DatasetSerializer, RedundancyResultSerializer, \
-    ExperimentTargetSerializer, RelevancyResultSerializer, FeatureSliceSerializer
+    SampleSerializer, SliceSerializer, DatasetSerializer, RedundancySerializer, \
+    ExperimentTargetSerializer, RelevancySerializer, FeatureSliceSerializer, \
+    ConditionalDistributionRequestSerializer, ConditionalDistributionResultSerializer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
@@ -100,7 +101,8 @@ class DatasetViewUploadView(APIView):
             dataset = Dataset.objects.create(name=zip_csv_file.name, content=csv_file)
 
         # Start tasks for feature calculation
-        initialize_from_dataset.delay(dataset_id=dataset.id, queue=dataset_id)
+        initialize_from_dataset.apply_async(args=[dataset.id],
+                                            queue=str(dataset.id))
 
         serializer = DatasetSerializer(instance=dataset)
         return Response(serializer.data)
@@ -142,17 +144,19 @@ class FeatureSlicesView(APIView):
 class FeatureRelevancyResultsView(APIView):
     def get(self, _, target_id):
         target = get_object_or_404(Feature, pk=target_id)
-        relevancy_results = RelevancyResult.objects.filter(target=target)
-        serializer = RelevancyResultSerializer(instance=relevancy_results, many=True)
+        # TODO: Filter for same result set
+        relevancies = Relevancy.objects.filter(target=target)
+        serializer = RelevancySerializer(instance=relevancies, many=True)
         return Response(serializer.data)
 
 
 class DatasetRedundancyResults(APIView):
     def get(self, _, dataset_id):
         dataset = get_object_or_404(Dataset, pk=dataset_id)
-        redundancy_results = RedundancyResult.objects.filter(first_feature__dataset=dataset,
-                                                             second_feature__dataset=dataset)
-        serializer = RedundancyResultSerializer(instance=redundancy_results, many=True)
+        # TODO: Filter for same result set
+        redundancies = Redundancy.objects.filter(first_feature__dataset=dataset,
+                                                 second_feature__dataset=dataset)
+        serializer = RedundancySerializer(instance=redundancies, many=True)
         return Response(serializer.data)
 
 
@@ -169,13 +173,18 @@ class FilteredSlicesView(APIView):
 class CondiditonalDistributionsView(APIView):
     def post(self, request, target_id):
         target = get_object_or_404(Feature, pk=target_id)
+        serializer = ConditionalDistributionRequestSerializer(data=request.data, many=True)
+        serializer.is_valid(raise_exception=True)
 
-        # Execute calculation on worker an get a synchronous result back to the client
+        # Execute calculation on worker and get a synchronous result back to the client
         asnyc_result = calculate_conditional_distributions.apply_async(
             target_id=target_id,
-            feature_ranges=request.data,
+            feature_ranges=[dict(data) for data in serializer.validated_data],
             queue=target.dataset.id
         )
 
-        data = asnyc_result.get()
-        return Response(data)
+        # Serialize and validate output
+        results = asnyc_result.get()
+        response_serialiizer = ConditionalDistributionResultSerializer(data=results, many=True)
+        response_serialiizer.is_valid(raise_exception=True)
+        return Response(response_serialiizer.validated_data)

@@ -1,7 +1,7 @@
 from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRelatedField, \
-    SerializerMethodField
-from features.models import Sample, Feature, Bin, Slice, Experiment, Dataset, RedundancyResult, \
-    RelevancyResult
+    SerializerMethodField, Serializer, FloatField, ModelField
+from features.models import Sample, Feature, Bin, Slice, Experiment, Dataset, Redundancy, \
+    Relevancy
 from rest_framework.validators import ValidationError
 
 
@@ -72,24 +72,36 @@ class ExperimentTargetSerializer(ModelSerializer):
         fields = ('target',)
 
     def validate(self, data):
+        # TODO: Test
         if data.get('target').dataset != self.instance.dataset:
             raise ValidationError({'target': 'Target must be from the same dataset.'})
         return data
 
 
-class RelevancyResultSerializer(ModelSerializer):
+class RelevancySerializer(ModelSerializer):
     feature = PrimaryKeyRelatedField(many=False, read_only=True)
     target = PrimaryKeyRelatedField(many=False, read_only=True)
 
     class Meta:
-        model = RelevancyResult
+        model = Relevancy
         fields = ('id', 'feature', 'relevancy', 'rank', 'target')
 
 
-class RedundancyResultSerializer(ModelSerializer):
+class RedundancySerializer(ModelSerializer):
     first_feature = PrimaryKeyRelatedField(many=False, read_only=True)
     second_feature = PrimaryKeyRelatedField(many=False, read_only=True)
 
     class Meta:
-        model = RedundancyResult
+        model = Redundancy
         fields = ('id', 'first_feature', 'second_feature', 'redundancy', 'weight')
+
+
+class ConditionalDistributionRequestSerializer(Serializer):
+    feature = PrimaryKeyRelatedField(queryset=Feature.objects.all())
+    from_value = FloatField(required=True)
+    to_value = FloatField(required=True)
+
+
+class ConditionalDistributionResultSerializer(Serializer):
+    value = FloatField(required=True)
+    probability = FloatField(required=True)

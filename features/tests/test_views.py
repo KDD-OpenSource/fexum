@@ -1,12 +1,12 @@
 from rest_framework.test import APITestCase
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
-    SampleFactory, DatasetFactory, ExperimentFactory, RelevancyResultFactory, RedundancyResultFactory
+    SampleFactory, DatasetFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, \
     HTTP_400_BAD_REQUEST
 from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, \
     SampleSerializer, DatasetSerializer, ExperimentSerializer, ExperimentTargetSerializer, \
-    RelevancyResultSerializer, RedundancyResultSerializer
+    RelevancySerializer, RedundancySerializer
 from unittest.mock import patch
 from features.models import Experiment, Dataset
 from django.contrib.auth import get_user_model
@@ -174,7 +174,7 @@ class TestDatasetUploadView(APITestCase):
             self.assertEqual(dataset.name, self.file_name)
             with open(self.file_name, 'rb') as file_data:
                 self.assertEqual(dataset.content.read(), file_data.read())
-            initialize_from_dataset_mock.assert_called_once_with(dataset_id=dataset.id)
+            initialize_from_dataset_mock.assert_called_once_with(dataset_id=dataset.id, queue=dataset.id)
 
     def test_upload_dataset_no_zip_file(self):
         with open(self.file_name) as file_data:
@@ -316,14 +316,14 @@ class TestFeatureSlicesView(APITestCase):
 
 class TestFeatureRelevancyResultsView(APITestCase):
     def test_retrieve_relevancy_results(self):
-        relevancy_result = RelevancyResultFactory()
+        relevancy = RelevancyFactory()
 
-        url = reverse('target-feature-relevancy_results', args=[relevancy_result.target.id])
+        url = reverse('target-feature-relevancy_results', args=[relevancy.target.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-        data = RelevancyResultSerializer(instance=relevancy_result).data
+        data = RelevancySerializer(instance=relevancy).data
         json_data = response.json()
         first_obj = json_data.pop(0)
         self.assertEqual(len(json_data), 0)
@@ -345,7 +345,26 @@ class TestFeatureRelevancyResultsView(APITestCase):
 
 class TestFeatureRedundancyResults(APITestCase):
     def test_retrieve_redundancy_results(self):
-        assert False
+        first_feature = FeatureFactory()
+        second_feature = FeatureFactory(dataset=first_feature.dataset)
+        redundancy = RedundancyFactory(first_feature=first_feature,
+                                              second_feature=second_feature)
+        serializer = RedundancySerializer(instance=redundancy)
+
+        url = reverse('feature-redundancy_results',
+                      args=[redundancy.first_feature.dataset.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        response_data = response.json()
+        first_obj = response_data.pop(0)
+        self.assertEqual(first_obj.pop('id'), str(serializer.data['id']))
+        self.assertEqual(first_obj.pop('first_feature'), str(serializer.data['first_feature']))
+        self.assertEqual(first_obj.pop('second_feature'), str(serializer.data['second_feature']))
+        self.assertAlmostEqual(first_obj.pop('weight'), serializer.data['weight'])
+        self.assertAlmostEqual(first_obj.pop('redundancy'), serializer.data['redundancy'])
+        self.assertEqual(len(response_data), 0)
+        self.assertEqual(len(first_obj), 0)
 
     def test_retrieve_redundancy_results_dataset_not_found(self):
         url = reverse('feature-redundancy_results', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
@@ -377,3 +396,37 @@ class TestFilteredSlicesView(APITestCase):
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
+
+
+class TestCondiditonalDistributionsView(APITestCase):
+    def test_conditional_distributions_target_not_found(self):
+        pass
+
+    def test_conditional_distributions_feature_not_found(self):
+        pass
+
+    def test_conditional_distributions_missing_data(self):
+        pass
+
+    def test_conditional_distributions(self):
+        target = FeatureFactory()
+        feature = FeatureFactory(dataset=target.dataset)
+
+        data = [{
+            'feature': feature.id,
+            'from_value': -1,
+            'to_value': 1
+        }]
+
+        url = reverse('target-condidtional-distributions', args=[target.id])
+        with patch('features.views.calculate_conditional_distributions.apply_async',) as task_mock:
+            task_mock.get.return_value = []
+            response = self.client.post(url, data=data, format='json')
+            task_mock.assert_called_once_with(
+                target_id=target.id,
+                feature_ranges=data,
+                queue=target.dataset.id
+            )
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), [])

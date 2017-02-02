@@ -2,7 +2,8 @@ from __future__ import absolute_import, unicode_literals
 from celery import shared_task
 import pandas as pd
 import numpy as np
-from features.models import Feature, Bin, Slice, Sample, Dataset, RedundancyResult, RelevancyResult
+from features.models import Feature, Bin, Slice, Sample, Dataset, RedundancyResult, RelevancyResult, \
+    Redundancy, Relevancy
 from subprocess import Popen, PIPE
 import json
 from django.db.models.signals import post_save, pre_save
@@ -17,21 +18,22 @@ manager = Manager()
 dataframes = manager.dict()
 
 
-
 def _get_dataset_and_file(dataset_id) -> (Dataset, str):
     dataset = Dataset.objects.get(pk=dataset_id)
     filename = dataset.content.path
     return dataset, filename
 
 
-def _get_dataframe(dataset_id):
+def _get_dataframe(dataset_id) -> pd.DataFrame:
     # TODO: Build LRU cache with timeout
     if dataframes.get(dataset_id) is None:
         logger.info('Cache miss for dataset {0}'.format(dataset_id))
         _, filename = _get_dataset_and_file(dataset_id=dataset_id)
         dataframe = pd.read_csv(filename)
         dataframes[dataset_id] = dataframe
-        Dataset.objects.get(id=dataset_id).update(status=Dataset.IN_MEMORY)
+        dataset = Dataset.objects.get(id=dataset_id)
+        dataset.status = Dataset.IN_MEMORY
+        dataset.save(update_fields=['status'])
     else:
         logger.info('Cache hit for dasaset {0}'.format(dataset_id))
     return dataframes[dataset_id]
@@ -50,13 +52,12 @@ def calculate_feature_statistics(feature_id):
     dataframe = _get_dataframe(feature.dataset.id)
     feature_col = dataframe[feature.name]
 
-    feature.update(
-        min=np.amin(feature_col).item(),
-        max=np.amax(feature_col).item(),
-        mean=np.mean(feature_col).item(),
-        variance=np.nanvar(feature_col).item(),
-        is_categorical=(np.unique(feature_col).size <= 10)
-    )
+    feature.min = np.amin(feature_col).item(),
+    feature.max = np.amax(feature_col).item(),
+    feature.mean = np.mean(feature_col).item(),
+    feature.variance = np.nanvar(feature_col).item(),
+    feature.is_categorical = (np.unique(feature_col).size <= 10)
+    feature.save(update_fields=['min', 'max', 'variance', 'mean', 'is_categorical'])
 
 
 @shared_task
@@ -101,41 +102,25 @@ def calculate_rar(target_id, precomputed_data=None):
     _, filename = _get_dataset_and_file(target.dataset.id)
 
     # Fix bindings in celery context
-    #from features.bindings import RelevancyResultBinding, RedundancyResultBinding
-    #RelevancyResultBinding.register()
-    #RedundancyResultBinding.register()
-
-    def trigger_channel():
-        from channels import Group
-        import json
-        Group('redundancy_result-updates').send({'text': json.dumps({
-            'stream': 'redundancy_result'
-        })})
-        Group('relevancy_result-updates').send({'text': json.dumps({
-            'stream': 'relevancy_result'
-        })})
+    from features.bindings import RelevancyResultBinding, RedundancyResultBinding
+    RelevancyResultBinding.register()
+    RedundancyResultBinding.register()
 
     # TODO: Add test
+
     # Return if rar was already calculated for a specific target
-    if RelevancyResult.objects.filter(target=target).exists():
+    if RelevancyResult.objects.filter(relevancy__target=target).exists():
         # Manually trigger notifications
+        relevancy_result = RelevancyResult.objects.get(relevancy__target=target)
+        pre_save.send(RelevancyResult, instance=relevancy_result)
+        post_save.send(RelevancyResult, instance=relevancy_result, created=False)
 
-        """
-        relevancy_results = RelevancyResult.objects.filter(target=target)
-        for relevancy_result in relevancy_results:
-            pre_save.send(RelevancyResult, instance=relevancy_result)
-            post_save.send(RelevancyResult, instance=relevancy_result, created=False)
-
-        redundancy_results = RedundancyResult.objects.filter(
-            first_feature__dataset=target.dataset,
-            second_feature__dataset=target.dataset
+        redundancy_result = RedundancyResult.objects.get(
+            relevancy__first_feature__dataset=target.dataset,
+            relevancy__second_feature__dataset=target.dataset
         )
-        for redundancy_result in redundancy_results:
-            pre_save.send(RedundancyResult, instance=redundancy_result)
-            post_save.send(RedundancyResult, instance=redundancy_result, created=False)
-        """
-
-        trigger_channel()
+        pre_save.send(RedundancyResult, instance=redundancy_result)
+        post_save.send(RedundancyResult, instance=redundancy_result, created=False)
 
         return
 
@@ -162,13 +147,17 @@ def calculate_rar(target_id, precomputed_data=None):
         raw_output, err = process.communicate()
         results = json.loads(raw_output)
 
+    relevancy_result = RelevancyResult.objects.create()
+    redundancy_result = RelevancyResult.objects.create()
+
     for redundancy_data in results['redundancies']:
         first_feature = Feature.objects.get(dataset=target.dataset,
                                             name=redundancy_data['feature1'])
         second_feature = Feature.objects.get(dataset=target.dataset,
                                              name=redundancy_data['feature2'])
 
-        RedundancyResult.objects.update_or_create(
+        Redundancy.objects.update_or_create(
+            redundancy_result=redundancy_result,
             first_feature=(first_feature if first_feature.id < second_feature.id else second_feature),
             second_feature=(first_feature if first_feature.id >= second_feature.id else second_feature),
             defaults={'redundancy': redundancy_data['redundancy'], 'weight': redundancy_data['weight']}
@@ -177,16 +166,17 @@ def calculate_rar(target_id, precomputed_data=None):
     # Parse and save results
     for idx, relevancy_data in enumerate(results['relevancies']):
         feature = Feature.objects.get(dataset=target.dataset, name=relevancy_data['name'])
-        relevancy_result = RelevancyResult.objects.create(
+        relevancy = Relevancy.objects.create(
             feature=feature,
             target=target,
             rank=idx,
-            relevancy=relevancy_data['result']['score']
+            relevancy=relevancy_data['result']['score'],
+            relevancy_result=relevancy_result
         )
 
         for slice_data in relevancy_data['result']['scoredBlocks']:
             Slice.objects.create(
-                relevancy_result=relevancy_result,
+                relevancy=relevancy,
                 marginal_distribution=slice_data['normalizedMarginalDistribution'],
                 conditional_distribution=slice_data['normalizedConditionalDistribution'],
                 deviation=slice_data['deviation'],
@@ -195,13 +185,12 @@ def calculate_rar(target_id, precomputed_data=None):
                 to_value=slice_data['featureRanges'][0]['end']
             )
 
-    trigger_channel()
-
 
 @shared_task
 def initialize_from_dataset(dataset_id):
     dataset = Dataset.objects.get(id=dataset_id)
-    dataset.update(status=Dataset.PROCESSING) #  TODO: Test
+    dataset.status = Dataset.PROCESSING #  TODO: Test
+    dataset.save(update_fields=['status'])
 
     dataframe = _get_dataframe(dataset_id)
 
@@ -211,14 +200,14 @@ def initialize_from_dataset(dataset_id):
         feature = Feature.objects.create(name=header, dataset=dataset)
 
         # Chaining with Celery would be more beautiful...
-        calculate_feature_statistics.delay(feature_id=feature.id, queue=dataset_id)
-        build_histogram.delay(feature_id=feature.id, queue=dataset_id)
-        downsample_feature.delay(feature_id=feature.id, queue=dataset_id)
+        calculate_feature_statistics.apply_async(args=[feature.id], queue=dataset_id)
+        build_histogram.apply_async(args=[feature.id], queue=dataset_id)
+        downsample_feature.apply_async(args=[feature.id], queue=dataset_id)
 
 
 
 @shared_task
-def calculate_conditional_distributions(target_id, feature_ranges):
+def calculate_conditional_distributions(target_id, feature_ranges) -> list:
     # TODO: TEst
     # TODO: Use cache http://docs.celeryproject.org/en/latest/tutorials/task-cookbook.html
     target = Feature.objects.get(pk=target_id)
@@ -252,3 +241,9 @@ def calculate_conditional_distributions(target_id, feature_ranges):
     logger.info('Result: {0}'.format(result))
 
     return result
+
+
+@shared_task
+def test_queue(dataset_id):
+    dataset = _get_dataframe(dataset_id=dataset_id)
+

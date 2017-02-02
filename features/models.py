@@ -36,18 +36,9 @@ class Dataset(models.Model):
 
 
 class RelevancyResult(models.Model):
-    class Meta:
-        unique_together = ('target', 'feature', 'rank')
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    relevancy = models.FloatField()
-    rank = models.IntegerField()
-    target = models.ForeignKey('Feature', on_delete=models.CASCADE,
-                               related_name='target_rar_results')
-    feature = models.ForeignKey('Feature', on_delete=models.CASCADE)
 
     # TODO: Validation: target.dataset = feature.dataset
-
     def __str__(self):
         try:
             return 'Relevancy of {0} for target {1}'.format(self.feature, self.target)
@@ -55,25 +46,40 @@ class RelevancyResult(models.Model):
             return 'Processing…'
 
 
-class RedundancyResult(models.Model):
+class Relevancy(models.Model):
     class Meta:
-        unique_together = ('first_feature', 'second_feature')
+        unique_together = ('feature', 'rank', 'relevancy_result', 'target')
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    first_feature = models.ForeignKey('Feature', on_delete=models.CASCADE,
-                                      related_name='first_features')
-    second_feature = models.ForeignKey('Feature', on_delete=models.CASCADE,
-                                       related_name='second_features')
-    redundancy = models.FloatField()
-    weight = models.IntegerField()
+    relevancy = models.FloatField()
+    rank = models.IntegerField()
+    feature = models.ForeignKey('Feature', on_delete=models.CASCADE, related_name='features')
+    relevancy_result = models.ForeignKey('RelevancyResult', on_delete=models.CASCADE)
+    target = models.ForeignKey('Feature', on_delete=models.CASCADE, related_name='target_features')
 
-    # TODO: Validate first_feture.dataset = second_feature.dataset
+
+class RedundancyResult(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     def __str__(self):
         try:
             return 'Redundancy of {0} and {1}'.format(self.first_feature, self.second_feature)
         except:
             return 'Processing…'
+
+
+class Redundancy(models.Model):
+    class Meta:
+        unique_together = ('first_feature', 'second_feature', 'redundancy_result')
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    redundancy_result = models.ForeignKey('RedundancyResult', on_delete=models.CASCADE)
+    first_feature = models.ForeignKey('Feature', on_delete=models.CASCADE,
+                                      related_name='first_features')
+    second_feature = models.ForeignKey('Feature', on_delete=models.CASCADE,
+                                       related_name='second_features')
+    redundancy = models.FloatField()
+    weight = models.IntegerField()
 
 
 class Feature(models.Model):
@@ -115,7 +121,7 @@ class Bin(models.Model):
 
 class Slice(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    relevancy_result = models.ForeignKey(RelevancyResult, on_delete=models.CASCADE)
+    relevancy = models.ForeignKey(Relevancy, on_delete=models.CASCADE)
     from_value = models.FloatField()
     deviation = models.FloatField()
     frequency = models.FloatField()

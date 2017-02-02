@@ -2,8 +2,8 @@ from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
     calculate_feature_statistics, calculate_rar
 from features.models import Feature, Sample, Bin, Dataset, Slice, RedundancyResult, RelevancyResult
-from features.tests.factories import FeatureFactory, DatasetFactory, RedundancyResultFactory, \
-    RelevancyResultFactory
+from features.tests.factories import FeatureFactory, DatasetFactory, RelevancyFactory, \
+    RedundancyFactory
 from unittest.mock import patch, call
 
 
@@ -120,8 +120,8 @@ class TestCalculateRar(TestCase):
         feature = Feature.objects.get(dataset=dataset, name='Col1')
         target = Feature.objects.get(dataset=dataset, name='Col2')
 
-        RelevancyResultFactory(target=target, feature=feature)
-        RedundancyResultFactory(first_feature=target, second_feature=feature)
+        RelevancyFactory(target=target, feature=feature)
+        RedundancyFactory(first_feature=target, second_feature=feature)
 
         self.assertEqual(RelevancyResult.objects.count(), 1,
                          msg='Should only contain relevancy result for the one feature')

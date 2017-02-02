@@ -1,5 +1,5 @@
 from channels.binding.websockets import WebsocketBinding
-from features.models import Dataset, Experiment
+from features.models import Dataset, RelevancyResult, RedundancyResult
 
 
 class DatasetBinding(WebsocketBinding):
@@ -9,7 +9,7 @@ class DatasetBinding(WebsocketBinding):
 
     @classmethod
     def group_names(cls, instance):
-        return ['dataset-{0}-updates'.format(instance)]
+        return ['dataset-{0}-updates'.format(instance.id)]
 
     def has_permission(self, user, action, pk):
         """
@@ -18,5 +18,27 @@ class DatasetBinding(WebsocketBinding):
         return False
 
 
-class TargetBinding(WebsocketBinding):
-    pass # TODO
+class RelevancyResultBinding(WebsocketBinding):
+    model = RelevancyResult
+    stream = 'relevancy_result'
+    fields = ['id']
+
+    @classmethod
+    def group_names(cls, instance):
+        return ['relavancy-result-updates']
+
+    def has_permission(self, user, action, pk):
+        return True
+
+
+class RedundancyResultBinding(WebsocketBinding):
+    model = RedundancyResult
+    stream = 'redundancy_result'
+    fields = ['id']
+
+    @classmethod
+    def group_names(cls, instance):
+        return ['redundancy-result-updates']
+
+    def has_permission(self, user, action, pk):
+        return True

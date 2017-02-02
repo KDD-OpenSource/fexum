@@ -1,6 +1,6 @@
 from factory import DjangoModelFactory, Sequence, SubFactory
 from features.models import Sample, Feature, Bin, Slice, Dataset, Experiment, RelevancyResult, \
-    RedundancyResult
+    RedundancyResult, Redundancy, Relevancy
 from factory.fuzzy import FuzzyFloat, FuzzyInteger, FuzzyText
 from factory.django import FileField
 from django.conf import settings
@@ -60,9 +60,9 @@ class SampleFactory(DjangoModelFactory):
     order = Sequence(lambda n: n)
 
 
-class RelevancyResultFactory(DjangoModelFactory):
+class RelevancyFactory(DjangoModelFactory):
     class Meta:
-        model = RelevancyResult
+        model = Relevancy
 
     feature = SubFactory(FeatureFactory)
     relevancy = FuzzyFloat(0, 1)
@@ -70,9 +70,9 @@ class RelevancyResultFactory(DjangoModelFactory):
     target = SubFactory(FeatureFactory)
 
 
-class RedundancyResultFactory(DjangoModelFactory):
+class RedundancyFactory(DjangoModelFactory):
     class Meta:
-        model = RedundancyResult
+        model = Redundancy
 
     first_feature = SubFactory(FeatureFactory)
     redundancy = FuzzyFloat(0, 1)
@@ -80,11 +80,15 @@ class RedundancyResultFactory(DjangoModelFactory):
     weight = 1
 
 
+class RelevancyResultFactory(DjangoModelFactory):
+    class Meta:
+        model = RelevancyResult
+
 class SliceFactory(DjangoModelFactory):
     class Meta:
         model = Slice
 
-    relevancy_result = SubFactory(RelevancyResultFactory)
+    relevancy = SubFactory(RelevancyFactory)
     from_value = FuzzyFloat(-200.0, 0)
     to_value = FuzzyFloat(0, 200)
     marginal_distribution = [0, 1, 0]
