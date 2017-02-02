@@ -10,43 +10,78 @@ from django.db.models.signals import post_save, pre_save
 from celery import Task
 from celery.utils.log import get_task_logger
 from django.core.cache import cache
-from multiprocessing import Manager
+from multiprocessing import Manager, Value
+import SharedArray as sa
 
 
 logger = get_task_logger(__name__)
 
 # Locking for shared memory
 manager = Manager()
-dataframes = manager.dict()
-dataframes_lock = manager.Lock()
-
+dataframe_columns = manager.dict()
+dataframe_lock = manager.Lock()
 
 def _get_dataset_and_file(dataset_id) -> (Dataset, str):
     dataset = Dataset.objects.get(pk=dataset_id)
     filename = dataset.content.path
     return dataset, filename
 
+"""
+def _get_dataframe(dataset_id) -> pd.DataFrame:
+    with dataframes_lock:
+        if dataframes.get(dataset_id) is None:
+            logger.info('Cache miss for dataset {0}'.format(dataset_id))
+
+            _, filename = _get_dataset_and_file(dataset_id=dataset_id)
+            dataframe = pd.read_csv(filename)
+
+            buffer = memoryview(dataframe.values)
+            shared_buffer = manager.Array('f', [0] * dataframe.size , lock=False)
+            shared_buffer.value[:] = buffer
+            dataframes[dataset_id] = (dataframe.columns, shared_buffer)
+
+            #dataset = Dataset.objects.get(id=dataset_id)
+            #dataset.status = Dataset.IN_MEMORY
+            #dataset.save(update_fields=['status'])
+            logger.info('Save dataset {0} into cache'.format(dataset_id))
+
+            return dataframe
+        else:
+            columns, shared_buffer = dataframes[dataset_id]
+            array = np.frombuffer(shared_buffer)
+            dataframe = pd.DataFrame(array, columns=columns)
+
+            return dataframe
+"""
+
 
 def _get_dataframe(dataset_id) -> pd.DataFrame:
-    dataframes_lock.acquire()
+    dataframe_lock.acquire()
 
-    if dataframes.get(dataset_id) is None:
+    try:
+        shared_array = sa.attach('shm://{0}'.format(dataset_id))
+
+        dataframe_lock.release()
+
+        columns = dataframe_columns[dataset_id]
+        dataframe = pd.DataFrame(shared_array, columns=columns)
+
+        logger.info('Cache hit for dataset {0}'.format(dataset_id))
+    except FileNotFoundError:
         logger.info('Cache miss for dataset {0}'.format(dataset_id))
 
         _, filename = _get_dataset_and_file(dataset_id=dataset_id)
         dataframe = pd.read_csv(filename)
-        dataframes[dataset_id] = dataframe
-        dataset = Dataset.objects.get(id=dataset_id)
-        dataset.status = Dataset.IN_MEMORY
-        dataset.save(update_fields=['status'])
-        logger.info('Put dataset {0} into cache'.format(dataset_id))
-    else:
-        logger.info('Cache hit for dataset {0}'.format(dataset_id))
+        shared_array = sa.create('shm://{0}'.format(dataset_id), dataframe.shape)
+        shared_array[:] = dataframe.values
+        dataframe_columns[dataset_id] = dataframe.columns
 
-    dataframes_lock.release()
+        dataframe_lock.release()
 
-    return dataframes[dataset_id]
+        logger.info('Cache save for dataset {0}'.format(dataset_id))
 
+
+    return dataframe
 
 @shared_task
 def load_dataset(dataset_id):
@@ -250,3 +285,10 @@ def calculate_conditional_distributions(target_id, feature_ranges) -> list:
     logger.info('Result: {0}'.format(result))
 
     return result
+
+
+@shared_task
+def test_task():
+    dataset = Dataset.objects.first()
+    _ = _get_dataframe(str(dataset.id))
+

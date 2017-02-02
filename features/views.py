@@ -180,8 +180,7 @@ class CondiditonalDistributionsView(APIView):
 
         # Execute calculation on worker and get a synchronous result back to the client
         asnyc_result = calculate_conditional_distributions.apply_async(
-            target_id=target_id,
-            feature_ranges=[dict(data) for data in serializer.validated_data],
+            args=[target_id, [dict(data) for data in serializer.validated_data]],
             queue=target.dataset.id
         )
 

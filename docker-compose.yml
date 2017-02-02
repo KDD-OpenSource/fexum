@@ -75,6 +75,7 @@ services:
     command: "celery worker --app=predots --loglevel=INFO"
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
+    shm_size: 8g
 
   flower:
     build: ./
