@@ -72,7 +72,7 @@ services:
       - predots
     volumes:
       - .:/code
-    command: "celery worker --app=predots"
+    command: "celery worker --app=predots --loglevel=INFO"
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
 

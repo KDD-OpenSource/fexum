@@ -100,6 +100,8 @@ class DatasetViewUploadView(APIView):
             csv_file = File(zip_csv_file)
             dataset = Dataset.objects.create(name=zip_csv_file.name, content=csv_file)
 
+        from predots.celery import app
+        app.control.add_consumer(queue=str(dataset.id))
         # Start tasks for feature calculation
         initialize_from_dataset.apply_async(args=[dataset.id],
                                             queue=str(dataset.id))

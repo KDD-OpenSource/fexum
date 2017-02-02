@@ -60,6 +60,16 @@ class SampleFactory(DjangoModelFactory):
     order = Sequence(lambda n: n)
 
 
+class RelevancyResultFactory(DjangoModelFactory):
+    class Meta:
+        model = RelevancyResult
+
+
+class RedundancyResultFactory(DjangoModelFactory):
+    class Meta:
+        model = RedundancyResult
+
+
 class RelevancyFactory(DjangoModelFactory):
     class Meta:
         model = Relevancy
@@ -68,6 +78,7 @@ class RelevancyFactory(DjangoModelFactory):
     relevancy = FuzzyFloat(0, 1)
     rank = FuzzyInteger(0, 100)
     target = SubFactory(FeatureFactory)
+    relevancy_result = SubFactory(RelevancyResultFactory)
 
 
 class RedundancyFactory(DjangoModelFactory):
@@ -78,11 +89,8 @@ class RedundancyFactory(DjangoModelFactory):
     redundancy = FuzzyFloat(0, 1)
     second_feature = SubFactory(FeatureFactory)
     weight = 1
+    redundancy_result = SubFactory(RedundancyResultFactory)
 
-
-class RelevancyResultFactory(DjangoModelFactory):
-    class Meta:
-        model = RelevancyResult
 
 class SliceFactory(DjangoModelFactory):
     class Meta:

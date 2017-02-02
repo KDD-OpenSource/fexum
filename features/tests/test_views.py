@@ -164,7 +164,7 @@ class TestDatasetUploadView(APITestCase):
         with zipfile.ZipFile(self.zip_file_name, 'w') as zip_file:
             zip_file.write(self.file_name)
 
-        with patch('features.views.initialize_from_dataset.delay') as initialize_from_dataset_mock:
+        with patch('features.views.initialize_from_dataset.apply_async') as initialize_from_dataset_mock:
             with open(self.zip_file_name, 'rb') as file_data:
                 response = self.client.put(self.url, {'file': file_data}, format='multipart')
 
@@ -174,7 +174,7 @@ class TestDatasetUploadView(APITestCase):
             self.assertEqual(dataset.name, self.file_name)
             with open(self.file_name, 'rb') as file_data:
                 self.assertEqual(dataset.content.read(), file_data.read())
-            initialize_from_dataset_mock.assert_called_once_with(dataset_id=dataset.id, queue=dataset.id)
+            initialize_from_dataset_mock.assert_called_once_with(args=[dataset.id], queue=str(dataset.id))
 
     def test_upload_dataset_no_zip_file(self):
         with open(self.file_name) as file_data:

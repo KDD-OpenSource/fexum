@@ -25,7 +25,6 @@ def _get_dataset_and_file(dataset_id) -> (Dataset, str):
 
 
 def _get_dataframe(dataset_id) -> pd.DataFrame:
-    # TODO: Build LRU cache with timeout
     if dataframes.get(dataset_id) is None:
         logger.info('Cache miss for dataset {0}'.format(dataset_id))
         _, filename = _get_dataset_and_file(dataset_id=dataset_id)
@@ -200,9 +199,9 @@ def initialize_from_dataset(dataset_id):
         feature = Feature.objects.create(name=header, dataset=dataset)
 
         # Chaining with Celery would be more beautiful...
-        calculate_feature_statistics.apply_async(args=[feature.id], queue=dataset_id)
-        build_histogram.apply_async(args=[feature.id], queue=dataset_id)
-        downsample_feature.apply_async(args=[feature.id], queue=dataset_id)
+        calculate_feature_statistics.apply_async(args=[feature.id], queue=str(dataset_id))
+        build_histogram.apply_async(args=[feature.id], queue=str(dataset_id))
+        downsample_feature.apply_async(args=[feature.id], queue=str(dataset_id))
 
 
 
@@ -241,9 +240,3 @@ def calculate_conditional_distributions(target_id, feature_ranges) -> list:
     logger.info('Result: {0}'.format(result))
 
     return result
-
-
-@shared_task
-def test_queue(dataset_id):
-    dataset = _get_dataframe(dataset_id=dataset_id)
-
