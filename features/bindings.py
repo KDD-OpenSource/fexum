@@ -9,13 +9,10 @@ class DatasetBinding(WebsocketBinding):
 
     @classmethod
     def group_names(cls, instance):
-        return ['dataset-{0}-updates'.format(instance.id)]
+        return ['dataset-updates']
 
     def has_permission(self, user, action, pk):
-        """
-        The user should not be able to change dataset using channels
-        """
-        return False
+        return True
 
 
 class RelevancyResultBinding(WebsocketBinding):
@@ -25,7 +22,7 @@ class RelevancyResultBinding(WebsocketBinding):
 
     @classmethod
     def group_names(cls, instance):
-        return ['relavancy-result-updates']
+        return ['relevancy-result-updates']
 
     def has_permission(self, user, action, pk):
         return True

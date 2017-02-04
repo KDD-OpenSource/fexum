@@ -21,38 +21,11 @@ manager = Manager()
 dataframe_columns = manager.dict()
 dataframe_lock = manager.Lock()
 
+
 def _get_dataset_and_file(dataset_id) -> (Dataset, str):
     dataset = Dataset.objects.get(pk=dataset_id)
     filename = dataset.content.path
     return dataset, filename
-
-"""
-def _get_dataframe(dataset_id) -> pd.DataFrame:
-    with dataframes_lock:
-        if dataframes.get(dataset_id) is None:
-            logger.info('Cache miss for dataset {0}'.format(dataset_id))
-
-            _, filename = _get_dataset_and_file(dataset_id=dataset_id)
-            dataframe = pd.read_csv(filename)
-
-            buffer = memoryview(dataframe.values)
-            shared_buffer = manager.Array('f', [0] * dataframe.size , lock=False)
-            shared_buffer.value[:] = buffer
-            dataframes[dataset_id] = (dataframe.columns, shared_buffer)
-
-            #dataset = Dataset.objects.get(id=dataset_id)
-            #dataset.status = Dataset.IN_MEMORY
-            #dataset.save(update_fields=['status'])
-            logger.info('Save dataset {0} into cache'.format(dataset_id))
-
-            return dataframe
-        else:
-            columns, shared_buffer = dataframes[dataset_id]
-            array = np.frombuffer(shared_buffer)
-            dataframe = pd.DataFrame(array, columns=columns)
-
-            return dataframe
-"""
 
 
 def _get_dataframe(dataset_id) -> pd.DataFrame:
@@ -70,18 +43,24 @@ def _get_dataframe(dataset_id) -> pd.DataFrame:
     except FileNotFoundError:
         logger.info('Cache miss for dataset {0}'.format(dataset_id))
 
+        # Fetch dataset from disk and put it into RAM
         _, filename = _get_dataset_and_file(dataset_id=dataset_id)
         dataframe = pd.read_csv(filename)
         shared_array = sa.create('shm://{0}'.format(dataset_id), dataframe.shape)
         shared_array[:] = dataframe.values
         dataframe_columns[dataset_id] = dataframe.columns
 
+        # Update database model
+        dataset = Dataset.objects.get(id=dataset_id)
+        dataset.status = Dataset.IN_MEMORY
+        dataset.save(update_fields=['status'])
+
         dataframe_lock.release()
 
         logger.info('Cache save for dataset {0}'.format(dataset_id))
 
-
     return dataframe
+
 
 @shared_task
 def load_dataset(dataset_id):
@@ -96,10 +75,10 @@ def calculate_feature_statistics(feature_id):
     dataframe = _get_dataframe(feature.dataset.id)
     feature_col = dataframe[feature.name]
 
-    feature.min = np.amin(feature_col).item(),
-    feature.max = np.amax(feature_col).item(),
-    feature.mean = np.mean(feature_col).item(),
-    feature.variance = np.nanvar(feature_col).item(),
+    feature.min = np.amin(feature_col).item()
+    feature.max = np.amax(feature_col).item()
+    feature.mean = np.mean(feature_col).item()
+    feature.variance = np.nanvar(feature_col).item()
     feature.is_categorical = (np.unique(feature_col).size <= 10)
     feature.save(update_fields=['min', 'max', 'variance', 'mean', 'is_categorical'])
 
@@ -191,6 +170,7 @@ def calculate_rar(target_id, precomputed_data=None):
         raw_output, err = process.communicate()
         results = json.loads(raw_output)
 
+    # The Results Model should separate RaR results from different runs
     relevancy_result = RelevancyResult.objects.create()
     redundancy_result = RelevancyResult.objects.create()
 
@@ -252,8 +232,7 @@ def initialize_from_dataset(dataset_id):
 
 @shared_task
 def calculate_conditional_distributions(target_id, feature_ranges) -> list:
-    # TODO: TEst
-    # TODO: Use cache http://docs.celeryproject.org/en/latest/tutorials/task-cookbook.html
+    # TODO: Test
     target = Feature.objects.get(pk=target_id)
 
     logger.info(
@@ -285,10 +264,3 @@ def calculate_conditional_distributions(target_id, feature_ranges) -> list:
     logger.info('Result: {0}'.format(result))
 
     return result
-
-
-@shared_task
-def test_task():
-    dataset = Dataset.objects.first()
-    _ = _get_dataframe(str(dataset.id))
-

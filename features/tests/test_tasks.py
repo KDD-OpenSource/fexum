@@ -1,11 +1,12 @@
 from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
     calculate_feature_statistics, calculate_rar
-from features.models import Feature, Sample, Bin, Dataset, Slice, RedundancyResult, RelevancyResult
+from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy
 from features.tests.factories import FeatureFactory, DatasetFactory, RelevancyFactory, \
     RedundancyFactory
 from unittest.mock import patch, call
 
+# TODO: test for results
 
 def _build_test_dataset() -> Dataset:
     dataset = DatasetFactory()
@@ -96,21 +97,21 @@ class TestCalculateRar(TestCase):
         calculate_rar(target_id=target.id)
 
         # Relevancies
-        self.assertEqual(RelevancyResult.objects.count(), 1,
+        self.assertEqual(Relevancy.objects.count(), 1,
                          msg='Should only contain result for the one feature')
-        relevancy_result = RelevancyResult.objects.first()
+        relevancy = Relevancy.objects.first()
 
-        self.assertIsNotNone(relevancy_result.relevancy)
-        self.assertIsNotNone(relevancy_result.rank)
-        self.assertEqual(relevancy_result.target, target)
-        self.assertEqual(relevancy_result.feature, feature)
-        self.assertEqual(Slice.objects.filter(relevancy_result=relevancy_result).count(), 6)
+        self.assertIsNotNone(relevancy.relevancy)
+        self.assertIsNotNone(relevancy.rank)
+        self.assertEqual(relevancy.target, target)
+        self.assertEqual(relevancy.feature, feature)
+        self.assertEqual(Slice.objects.filter(relevancy=relevancy).count(), 6)
 
         # Redundancies
-        self.assertEqual(RedundancyResult.objects.count(), 1,
+        self.assertEqual(Redundancy.objects.count(), 1,
                          msg='Should only contain result for the one feature')
 
-        redundancy_result = RedundancyResult.objects.first()
+        redundancy_result = Redundancy.objects.first()
         self.assertIsNotNone(redundancy_result.redundancy)
         self.assertEqual(redundancy_result.first_feature, target)
         self.assertEqual(redundancy_result.second_feature, feature)
@@ -123,28 +124,28 @@ class TestCalculateRar(TestCase):
         RelevancyFactory(target=target, feature=feature)
         RedundancyFactory(first_feature=target, second_feature=feature)
 
-        self.assertEqual(RelevancyResult.objects.count(), 1,
+        self.assertEqual(Relevancy.objects.count(), 1,
                          msg='Should only contain relevancy result for the one feature')
-        self.assertEqual(RedundancyResult.objects.count(), 1,
+        self.assertEqual(Redundancy.objects.count(), 1,
                          msg='Should only contain redundancy result for the one feature')
 
         # Signals are called manually
         with patch('features.tasks.pre_save.send') as pre_save_signal_mock:
             with patch('features.tasks.post_save.send') as post_save_signal_mock:
                 calculate_rar(target_id=target.id)
-                existing_relevancy_result = RelevancyResult.objects.get()
-                existing_redundancy_result = RedundancyResult.objects.get()
+                existing_relevancy_result = Relevancy.objects.get()
+                existing_redundancy_result = Redundancy.objects.get()
                 kalls = [
-                    call(RelevancyResult, instance=existing_relevancy_result),
-                    call(RedundancyResult, instance=existing_redundancy_result)
+                    call(Relevancy, instance=existing_relevancy_result),
+                    call(Redundancy, instance=existing_redundancy_result)
                 ]
 
                 pre_save_signal_mock.assert_has_calls(kalls, any_order=True)
                 post_save_signal_mock.assert_has_calls(kalls, any_order=True)
 
-        self.assertEqual(RelevancyResult.objects.count(), 1,
+        self.assertEqual(Relevancy.objects.count(), 1,
                          msg='Should still only contain result for the one feature')
-        self.assertEqual(RedundancyResult.objects.count(), 1,
+        self.assertEqual(Redundancy.objects.count(), 1,
                          msg='Should still only contain result for the one feature')
 
     def test_calculate_rar_use_precalulated_data(self):

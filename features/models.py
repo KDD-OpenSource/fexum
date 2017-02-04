@@ -2,6 +2,7 @@ from django.db import models
 from jsonfield import JSONField
 from django.conf import settings
 import uuid
+from django.utils.timezone import now
 
 
 class Experiment(models.Model):
@@ -37,13 +38,21 @@ class Dataset(models.Model):
 
 class RelevancyResult(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_at = models.DateTimeField(editable=False) # TODO: Test
 
     # TODO: Validation: target.dataset = feature.dataset
+
     def __str__(self):
         try:
             return 'Relevancy of {0} for target {1}'.format(self.feature, self.target)
         except:
             return 'Processing…'
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.created = now()
+        self.modified = now()
+        return super(RelevancyResult, self).save(*args, **kwargs)
 
 
 class Relevancy(models.Model):
@@ -60,12 +69,19 @@ class Relevancy(models.Model):
 
 class RedundancyResult(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_at = models.DateTimeField(editable=False)  # TODO: TEst
 
     def __str__(self):
         try:
             return 'Redundancy of {0} and {1}'.format(self.first_feature, self.second_feature)
         except:
             return 'Processing…'
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.created = now()
+        self.modified = now()
+        return super(RedundancyResult, self).save(*args, **kwargs)
 
 
 class Redundancy(models.Model):
