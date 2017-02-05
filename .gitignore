@@ -98,3 +98,5 @@ db.sqlite3
 media/*
 ._.DS_Store
 .DS_Store
+
+*.log
