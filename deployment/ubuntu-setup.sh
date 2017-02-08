@@ -6,8 +6,7 @@ sudo apt-key adv \
 echo "deb https://apt.dockerproject.org/repo ubuntu-xenial main" | sudo tee /etc/apt/sources.list.d/docker.list
 sudo apt-get update
 apt-cache policy docker-engine
-sudo apt-get install linux-image-extra-$(uname -r) linux-image-extra-virtual -y
-sudo apt-get install docker-engine -y
+sudo apt-get install -y linux-image-extra-$(uname -r) linux-image-extra-virtual docker-engine
 sudo service docker start
 
 # Enable experimental version
@@ -20,12 +19,19 @@ sudo usermod -aG docker $USER
 newgrp docker
 
 # Install docker-compose
-sudo apt-get install python-pip -y
+sudo apt-get install -y python-pip
 pip install docker-compose
 
 # Install netshare for shared file system
-sudo apt-get install -y nfs-common
-sudo apt-get install nfs-kernel-server
+sudo apt-get install -y nfs-common nfs-kernel-server
 wget https://github.com/ContainX/docker-volume-netshare/releases/download/v0.20/docker-volume-netshare_0.20_amd64.deb
 sudo dpkg -i docker-volume-netshare_0.20_amd64.deb
 sudo service docker-volume-netshare start
+
+# Install compiler
+deb http://apt.llvm.org/precise/ llvm-toolchain-precise-4.0 main
+deb-src http://apt.llvm.org/precise/ llvm-toolchain-precise-4.0 main
+sudo apt-get install -y clang-4.0
+
+# Install utilities
+sudo apt-get install -y btrfs-tools htop unzip zip
