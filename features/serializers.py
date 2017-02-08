@@ -43,7 +43,7 @@ class FeatureSliceSerializer(ModelSerializer):
     def get_features(self, obj):
         # TODO: Optimized cache?
         return [{
-            'feature': obj.relevancy_result.feature.id,
+            'feature': obj.relevancy.feature.id,
             'from_value': obj.from_value,
             'to_value': obj.to_value
         }]
@@ -80,11 +80,10 @@ class ExperimentTargetSerializer(ModelSerializer):
 
 class RelevancySerializer(ModelSerializer):
     feature = PrimaryKeyRelatedField(many=False, read_only=True)
-    target = PrimaryKeyRelatedField(many=False, read_only=True)
 
     class Meta:
         model = Relevancy
-        fields = ('id', 'feature', 'relevancy', 'rank', 'target')
+        fields = ('id', 'feature', 'relevancy', 'rank')
 
 
 class RedundancySerializer(ModelSerializer):
@@ -100,6 +99,13 @@ class ConditionalDistributionRequestSerializer(Serializer):
     feature = PrimaryKeyRelatedField(queryset=Feature.objects.all())
     from_value = FloatField(required=True)
     to_value = FloatField(required=True)
+
+    @property
+    def validated_data(self):
+        # Patch validated data as we only want to pass the uuid not the feature object
+        data = super(ConditionalDistributionRequestSerializer, self).validated_data
+        data['feature'] = data['feature'].id
+        return data
 
 
 class ConditionalDistributionResultSerializer(Serializer):

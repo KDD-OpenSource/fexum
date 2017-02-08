@@ -3,6 +3,7 @@ from features.bindings import DatasetBinding, RedundancyResultBinding, Relevancy
 
 
 class Demultiplexer(WebsocketDemultiplexer):
+
     consumers = {
         'dataset': DatasetBinding.consumer,
         'relevancy_result': RelevancyResultBinding.consumer,
@@ -10,4 +11,6 @@ class Demultiplexer(WebsocketDemultiplexer):
     }
 
     def connection_groups(self):
-        return ['dataset-updates', 'relevancy-result-updates', 'redundancy-result-updates']
+        return ['dataset-updates',
+                'relevancy-result-updates',
+                'redundancy-result-updates']

@@ -15,6 +15,7 @@ class DatasetFactory(DjangoModelFactory):
     status = Dataset.EMPTY
 
 
+
 class FeatureFactory(DjangoModelFactory):
     class Meta:
         model = Feature
@@ -59,10 +60,14 @@ class RelevancyResultFactory(DjangoModelFactory):
     class Meta:
         model = RelevancyResult
 
+    target = SubFactory(FeatureFactory)
+
 
 class RedundancyResultFactory(DjangoModelFactory):
     class Meta:
         model = RedundancyResult
+
+    dataset = SubFactory(DatasetFactory)
 
 
 class RelevancyFactory(DjangoModelFactory):
@@ -72,7 +77,6 @@ class RelevancyFactory(DjangoModelFactory):
     feature = SubFactory(FeatureFactory)
     relevancy = FuzzyFloat(0, 1)
     rank = FuzzyInteger(0, 100)
-    target = SubFactory(FeatureFactory)
     relevancy_result = SubFactory(RelevancyResultFactory)
 
 

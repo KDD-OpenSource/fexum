@@ -30,7 +30,8 @@ class Dataset(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     content = models.FileField()
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=EMPTY)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=EMPTY) # TODO: Use status appriatly
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -38,7 +39,8 @@ class Dataset(models.Model):
 
 class RelevancyResult(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    created_at = models.DateTimeField(editable=False) # TODO: Test
+    created_at = models.DateTimeField(editable=False, default=now) # TODO: Test
+    target = models.ForeignKey('Feature', on_delete=models.CASCADE)
 
     # TODO: Validation: target.dataset = feature.dataset
 
@@ -48,40 +50,28 @@ class RelevancyResult(models.Model):
         except:
             return 'Processing…'
 
-    def save(self, *args, **kwargs):
-        if not self.id:
-            self.created = now()
-        self.modified = now()
-        return super(RelevancyResult, self).save(*args, **kwargs)
-
 
 class Relevancy(models.Model):
     class Meta:
-        unique_together = ('feature', 'rank', 'relevancy_result', 'target')
+        unique_together = ('feature', 'rank', 'relevancy_result',)
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     relevancy = models.FloatField()
     rank = models.IntegerField()
     feature = models.ForeignKey('Feature', on_delete=models.CASCADE, related_name='features')
     relevancy_result = models.ForeignKey('RelevancyResult', on_delete=models.CASCADE)
-    target = models.ForeignKey('Feature', on_delete=models.CASCADE, related_name='target_features')
 
 
 class RedundancyResult(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    created_at = models.DateTimeField(editable=False)  # TODO: TEst
+    created_at = models.DateTimeField(editable=False, default=now)  # TODO: TEst
+    dataset = models.ForeignKey('Dataset', on_delete=models.CASCADE)
 
     def __str__(self):
         try:
             return 'Redundancy of {0} and {1}'.format(self.first_feature, self.second_feature)
         except:
             return 'Processing…'
-
-    def save(self, *args, **kwargs):
-        if not self.id:
-            self.created = now()
-        self.modified = now()
-        return super(RedundancyResult, self).save(*args, **kwargs)
 
 
 class Redundancy(models.Model):

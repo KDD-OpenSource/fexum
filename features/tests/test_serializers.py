@@ -97,7 +97,6 @@ class TestRelevancySerializer(TestCase):
         self.assertEqual(data.pop('feature'), relevancy.feature.id)
         self.assertEqual(data.pop('relevancy'), relevancy.relevancy)
         self.assertEqual(data.pop('rank'), relevancy.rank)
-        self.assertEqual(data.pop('target'), relevancy.target.id)
         self.assertEqual(len(data), 0)
 
 
@@ -135,7 +134,7 @@ class TestFeatureSliceSerializer(TestCase):
         self.assertAlmostEqual(data.pop('frequency'), slice.frequency)
         first_feature = data.pop('features').pop(0)
         self.assertEqual(len(data), 0)
-        self.assertEqual(first_feature.pop('feature'), slice.relevancy_result.feature.id)
+        self.assertEqual(first_feature.pop('feature'), slice.relevancy.feature.id)
         self.assertAlmostEqual(first_feature.pop('from_value'), slice.from_value)
         self.assertAlmostEqual(first_feature.pop('to_value'), slice.to_value)
 

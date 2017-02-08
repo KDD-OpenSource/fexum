@@ -14,8 +14,8 @@ class TestDatasetBinding(ChannelTestCase):
         received = client.receive()
         self.assertIsNotNone(received)
 
-        self.assertEqual(received['payload']['data'].pop('name'), dataset.relevancy)
-        self.assertEqual(received['payload']['data'].pop('status'), dataset.rank)
+        self.assertEqual(received['payload']['data'].pop('name'), dataset.name)
+        self.assertEqual(received['payload']['data'].pop('status'), dataset.status)
         self.assertEqual(received['payload'].pop('data'), {})
 
         self.assertEqual(received['payload'].pop('action'), 'update')
@@ -78,3 +78,5 @@ class TestRedundancyResultBinding(ChannelTestCase):
 
         self.assertEqual(received, {})
         self.assertIsNone(client.receive())
+
+

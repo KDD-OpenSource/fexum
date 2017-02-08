@@ -22,41 +22,29 @@ from django.utils.datastructures import MultiValueDictKeyError
 logger = logging.getLogger(__name__)
 
 
-# Helper to mock an authenticated user TODO: replace with request.user
-def get_user():
-    user = get_user_model().objects.first() 
-    if user is None:
-        user = get_user_model().objects.create()
-    return user
-
-
 class ExperimentListView(APIView):
-    def get(self, _):
-        user = get_user()
-        experiments = Experiment.objects.filter(user=user).all()
+    def get(self, request):
+        experiments = Experiment.objects.filter(user=request.user).all()
         serializer = ExperimentSerializer(instance=experiments, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        user = get_user()
         serializer = ExperimentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(user=user)
+        serializer.save(user=request.user)
         return Response(serializer.data)
 
 
 class ExperimentDetailView(APIView):
-    def get(self, _, experiment_id):
-        user = get_user()
-        experiment = get_object_or_404(Experiment, pk=experiment_id, user=user)
+    def get(self, request, experiment_id):
+        experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
         serializer = ExperimentSerializer(instance=experiment)
         return Response(serializer.data)
 
 
 class TargetDetailView(APIView):
     def put(self, request, experiment_id):
-        user = get_user()
-        experiment = get_object_or_404(Experiment, pk=experiment_id, user=user)
+        experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
         serializer = ExperimentTargetSerializer(instance=experiment, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -65,9 +53,8 @@ class TargetDetailView(APIView):
 
         return Response(serializer.data)
 
-    def delete(self, _, experiment_id):
-        user = get_user()
-        experiment = get_object_or_404(Experiment, pk=experiment_id, user=user)
+    def delete(self, request, experiment_id):
+        experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
         experiment.target = None
         experiment.save()
         return Response(status=HTTP_204_NO_CONTENT)
@@ -98,13 +85,13 @@ class DatasetViewUploadView(APIView):
         with archive.open(csv_name) as zip_csv_file:
             # Convert zipfile handle to Django file handle
             csv_file = File(zip_csv_file)
-            dataset = Dataset.objects.create(name=zip_csv_file.name, content=csv_file)
+            dataset = Dataset.objects.create(
+                name=zip_csv_file.name,
+                content=csv_file,
+                uploaded_by=request.user)
 
-        from predots.celery import app
-        app.control.add_consumer(queue=str(dataset.id))
         # Start tasks for feature calculation
-        initialize_from_dataset.apply_async(args=[dataset.id],
-                                            queue=str(dataset.id))
+        initialize_from_dataset.delay(dataset_id=dataset.id)
 
         serializer = DatasetSerializer(instance=dataset)
         return Response(serializer.data)
@@ -147,7 +134,7 @@ class FeatureRelevancyResultsView(APIView):
     def get(self, _, target_id):
         target = get_object_or_404(Feature, pk=target_id)
         # TODO: Filter for same result set
-        relevancies = Relevancy.objects.filter(target=target)
+        relevancies = RelevancyResult.objects.filter(target=target)
         serializer = RelevancySerializer(instance=relevancies, many=True)
         return Response(serializer.data)
 
@@ -180,12 +167,11 @@ class CondiditonalDistributionsView(APIView):
 
         # Execute calculation on worker and get a synchronous result back to the client
         asnyc_result = calculate_conditional_distributions.apply_async(
-            args=[target_id, [dict(data) for data in serializer.validated_data]],
-            queue=target.dataset.id
+            args=[target.id, [dict(data) for data in serializer.validated_data]],
         )
 
         # Serialize and validate output
         results = asnyc_result.get()
-        response_serialiizer = ConditionalDistributionResultSerializer(data=results, many=True)
-        response_serialiizer.is_valid(raise_exception=True)
-        return Response(response_serialiizer.validated_data)
+        response_serializer = ConditionalDistributionResultSerializer(data=results, many=True)
+        response_serializer.is_valid(raise_exception=True)
+        return Response(response_serializer.validated_data)

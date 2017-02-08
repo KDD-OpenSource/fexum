@@ -119,62 +119,12 @@ def downsample_feature(feature_id, sample_count=1000):
         )
 
 
-@shared_task
-def calculate_rar(target_id, precomputed_data=None):
-    target = Feature.objects.get(pk=target_id)
-    _, filename = _get_dataset_and_file(target.dataset.id)
-
-    # Fix bindings in celery context
-    from features.bindings import RelevancyResultBinding, RedundancyResultBinding
-    RelevancyResultBinding.register()
-    RedundancyResultBinding.register()
-
-    # TODO: Add test
-
-    # Return if rar was already calculated for a specific target
-    if RelevancyResult.objects.filter(relevancy__target=target).exists():
-        # Manually trigger notifications
-        relevancy_result = RelevancyResult.objects.get(relevancy__target=target)
-        pre_save.send(RelevancyResult, instance=relevancy_result)
-        post_save.send(RelevancyResult, instance=relevancy_result, created=False)
-
-        redundancy_result = RedundancyResult.objects.get(
-            relevancy__first_feature__dataset=target.dataset,
-            relevancy__second_feature__dataset=target.dataset
-        )
-        pre_save.send(RedundancyResult, instance=redundancy_result)
-        post_save.send(RedundancyResult, instance=redundancy_result, created=False)
-
-        return
-
-    # Only execute rar if don't insert data manually
-    if precomputed_data is not None:
-        # TODO: Add test
-        results = precomputed_data
-    else:
-        # Execute Rar
-        JAR_FILE = '/assets/rar-mfs.jar'
-        process = Popen([
-            'java',
-            '-d64',
-            '-Xms8g',
-            '-Xmx32g',
-            '-jar', JAR_FILE,
-            'csv',
-            '--samples', '100',
-            '--subsetSize', '5',
-            '--nonorm', filename,
-            '--hics',
-            '--targetName', target.name],
-            stdout=PIPE)
-        raw_output, err = process.communicate()
-        results = json.loads(raw_output)
-
+def _parse_and_save_rar_results(rar_result_dict: dict, target: Feature):
     # The Results Model should separate RaR results from different runs
-    relevancy_result = RelevancyResult.objects.create()
-    redundancy_result = RelevancyResult.objects.create()
+    relevancy_result = RelevancyResult.objects.create(target=target)
+    redundancy_result = RelevancyResult.objects.create(dataset=target.dataset)
 
-    for redundancy_data in results['redundancies']:
+    for redundancy_data in rar_result_dict['redundancies']:
         first_feature = Feature.objects.get(dataset=target.dataset,
                                             name=redundancy_data['feature1'])
         second_feature = Feature.objects.get(dataset=target.dataset,
@@ -188,11 +138,10 @@ def calculate_rar(target_id, precomputed_data=None):
         )
 
     # Parse and save results
-    for idx, relevancy_data in enumerate(results['relevancies']):
+    for idx, relevancy_data in enumerate(rar_result_dict['relevancies']):
         feature = Feature.objects.get(dataset=target.dataset, name=relevancy_data['name'])
         relevancy = Relevancy.objects.create(
             feature=feature,
-            target=target,
             rank=idx,
             relevancy=relevancy_data['result']['score'],
             relevancy_result=relevancy_result
@@ -210,6 +159,63 @@ def calculate_rar(target_id, precomputed_data=None):
             )
 
 
+
+@shared_task
+def calculate_rar(target_id, precomputed_data=None):
+    target = Feature.objects.get(pk=target_id)
+    _, filename = _get_dataset_and_file(target.dataset.id)
+
+    # TODO: Add test
+
+    # Only execute rar if don't insert data manually
+    if precomputed_data is not None:
+        # TODO: Add test
+        results = precomputed_data
+        _parse_and_save_rar_results(results)
+        return
+
+    # Fix bindings in celery context
+    from features.bindings import RelevancyResultBinding, RedundancyResultBinding
+    RelevancyResultBinding.register()
+    RedundancyResultBinding.register()
+
+    # Return if rar was already calculated for a specific target
+    if RelevancyResult.objects.filter(target=target).exists() and RedundancyResult.objects.filter(
+            redundancy__first_feature__dataset=target.dataset).exists():
+        # Manually trigger notifications
+        relevancy_result = RelevancyResult.objects.get(relevancy__target=target)
+        pre_save.send(RelevancyResult, instance=relevancy_result)
+        post_save.send(RelevancyResult, instance=relevancy_result, created=False)
+
+        redundancy_result = RedundancyResult.objects.get(
+            relevancy__first_feature__dataset=target.dataset,
+            relevancy__second_feature__dataset=target.dataset
+        )
+        pre_save.send(RedundancyResult, instance=redundancy_result)
+        post_save.send(RedundancyResult, instance=redundancy_result, created=False)
+
+        return
+
+    # Execute Rar
+    JAR_FILE = '/assets/rar-mfs.jar'
+    process = Popen([
+        'java',
+        '-d64',
+        '-Xms8g',
+        '-Xmx32g',
+        '-jar', JAR_FILE,
+        'csv',
+        '--samples', '100',
+        '--subsetSize', '5',
+        '--nonorm', filename,
+        '--hics',
+        '--targetName', target.name],
+        stdout=PIPE)
+    raw_output, err = process.communicate()
+    results = json.loads(raw_output)
+    _parse_and_save_rar_results(results)
+
+
 @shared_task
 def initialize_from_dataset(dataset_id):
     dataset = Dataset.objects.get(id=dataset_id)
@@ -224,9 +230,9 @@ def initialize_from_dataset(dataset_id):
         feature = Feature.objects.create(name=header, dataset=dataset)
 
         # Chaining with Celery would be more beautiful...
-        calculate_feature_statistics.apply_async(args=[feature.id], queue=str(dataset_id))
-        build_histogram.apply_async(args=[feature.id], queue=str(dataset_id))
-        downsample_feature.apply_async(args=[feature.id], queue=str(dataset_id))
+        calculate_feature_statistics.delay(feature_id=feature.id)
+        build_histogram.delay(feature_id=feature.id)
+        downsample_feature.delay(feature_id=feature.id)
 
 
 
