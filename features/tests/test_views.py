@@ -84,6 +84,7 @@ class TestExperimentListView(APITestCase):
 class TestExperimentDetailView(APITestCase):
     def test_retrieve_experiment_detail(self):
         experiment = ExperimentFactory()
+        self.client.force_authenticate(experiment.user)
 
         url = reverse('experiment-detail', args=[experiment.id])
         response = self.client.get(url)
@@ -107,17 +108,18 @@ class TestExperimentDetailView(APITestCase):
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
     def test_get_experiment_unauthenticated(self):
-        url = reverse('experiment-detail')
-        response = self.client.get(url, args=['079a60fc-c3b1-48ee-8bb6-ba19f061e9e0'])
+        url = reverse('experiment-detail', args=['079a60fc-c3b1-48ee-8bb6-ba19f061e9e0'])
+        response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
-#TODO
+
 class TestTargetDetailView(APITestCase):
     def test_delete_target(self):
         experiment = ExperimentFactory()
+        self.client.force_authenticate(experiment.user)
 
         self.assertIsNotNone(experiment.target)
 
@@ -131,14 +133,29 @@ class TestTargetDetailView(APITestCase):
         self.assertIsNone(experiment.target)
 
     def test_delete_target_not_found(self):
-        url = reverse('experiment-targets-detail', args=['1c6f46c4-e2d6-4378-8dc4-7417cca743da'])
+        user = UserFactory()
+        self.client.force_authenticate(user)
+        experiment = ExperimentFactory()
+        self.assertNotEqual(user, experiment.user)
+
+        url = reverse('experiment-targets-detail', args=[experiment.id])
         response = self.client.delete(url)
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
+    def test_delete_target_unauthenticated(self):
+        url = reverse('experiment-targets-detail', args=['1c6f46c4-e2d6-4378-8dc4-7417cca743da'])
+        response = self.client.delete(url)
+
+        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.json(),
+                         {'detail': 'Authentication credentials were not provided.'})
+
     def test_select_target(self):
         experiment = ExperimentFactory(target=None)
+        self.client.force_authenticate(experiment.user)
+
         target = FeatureFactory(dataset=experiment.dataset)
 
         self.assertIsNone(experiment.target)
@@ -157,6 +174,9 @@ class TestTargetDetailView(APITestCase):
             calculate_rar.assert_called_once_with(target_id=target.id)
 
     def test_select_target_feature_not_found(self):
+        user = UserFactory()
+        self.client.force_authenticate(user)
+
         target = FeatureFactory()
 
         url = reverse('experiment-targets-detail', args=['5781ca8a-3c7d-46b4-897e-90d80e938258'])
@@ -167,6 +187,8 @@ class TestTargetDetailView(APITestCase):
 
     def test_select_feature_should_not_accept_different_datasets(self):
         experiment = ExperimentFactory(target=None)
+        self.client.force_authenticate(experiment.user)
+
         target = FeatureFactory()
 
         self.assertIsNone(experiment.target)
@@ -177,6 +199,14 @@ class TestTargetDetailView(APITestCase):
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(response.json(), {'target': ['Target must be from the same dataset.']})
+
+    def test_select_feature_unauthenticated(self):
+        url = reverse('experiment-targets-detail', args=['1c6f46c4-e2d6-4378-8dc4-7417cca743da'])
+        response = self.client.put(url)
+
+        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.json(),
+                         {'detail': 'Authentication credentials were not provided.'})
 
 
 class TestDatasetListView(APITestCase):
@@ -455,7 +485,6 @@ class TestFeatureRelevancyResultsView(APITestCase):
         self.assertEqual(len(json_data), 0)
         self.assertEqual(first_obj.pop('id'), str(data['id']))
         self.assertEqual(first_obj.pop('feature'), str(data['feature']))
-        self.assertEqual(first_obj.pop('target'), str(data['target']))
         self.assertAlmostEqual(first_obj.pop('relevancy'), data['relevancy'])
         self.assertEqual(first_obj.pop('rank'), data['rank'])
         self.assertEqual(len(first_obj), 0)
@@ -543,7 +572,7 @@ class TestFilteredSlicesView(APITestCase):
         response_data = response.json()
         self.assertEqual(len(response_data), 1)
         self.assertEqual(response_data[0]['features'][0]['feature'],
-                         str(slice1.relevancy_result.feature.id))
+                         str(slice1.relevancy.feature.id))
 
     def test_retrieve_filtered_slices_target_not_found(self):
         user = UserFactory()

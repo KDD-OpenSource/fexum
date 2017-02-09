@@ -119,10 +119,10 @@ def downsample_feature(feature_id, sample_count=1000):
         )
 
 
-def _parse_and_save_rar_results(rar_result_dict: dict, target: Feature):
+def _parse_and_save_rar_results(target: Feature, rar_result_dict: dict):
     # The Results Model should separate RaR results from different runs
     relevancy_result = RelevancyResult.objects.create(target=target)
-    redundancy_result = RelevancyResult.objects.create(dataset=target.dataset)
+    redundancy_result = RedundancyResult.objects.create(dataset=target.dataset)
 
     for redundancy_data in rar_result_dict['redundancies']:
         first_feature = Feature.objects.get(dataset=target.dataset,
@@ -171,7 +171,7 @@ def calculate_rar(target_id, precomputed_data=None):
     if precomputed_data is not None:
         # TODO: Add test
         results = precomputed_data
-        _parse_and_save_rar_results(results)
+        _parse_and_save_rar_results(target=target, rar_result_dict=results)
         return
 
     # Fix bindings in celery context
@@ -183,19 +183,18 @@ def calculate_rar(target_id, precomputed_data=None):
     if RelevancyResult.objects.filter(target=target).exists() and RedundancyResult.objects.filter(
             redundancy__first_feature__dataset=target.dataset).exists():
         # Manually trigger notifications
-        relevancy_result = RelevancyResult.objects.get(relevancy__target=target)
+        relevancy_result = RelevancyResult.objects.get(target=target)
         pre_save.send(RelevancyResult, instance=relevancy_result)
         post_save.send(RelevancyResult, instance=relevancy_result, created=False)
 
         redundancy_result = RedundancyResult.objects.get(
-            relevancy__first_feature__dataset=target.dataset,
-            relevancy__second_feature__dataset=target.dataset
+            redundancy__first_feature__dataset=target.dataset,
+            redundancy__second_feature__dataset=target.dataset
         )
         pre_save.send(RedundancyResult, instance=redundancy_result)
         post_save.send(RedundancyResult, instance=redundancy_result, created=False)
 
         return
-
     # Execute Rar
     JAR_FILE = '/assets/rar-mfs.jar'
     process = Popen([
@@ -213,7 +212,7 @@ def calculate_rar(target_id, precomputed_data=None):
         stdout=PIPE)
     raw_output, err = process.communicate()
     results = json.loads(raw_output)
-    _parse_and_save_rar_results(results)
+    _parse_and_save_rar_results(target=target, rar_result_dict=results)
 
 
 @shared_task

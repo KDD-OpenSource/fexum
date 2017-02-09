@@ -100,13 +100,6 @@ class ConditionalDistributionRequestSerializer(Serializer):
     from_value = FloatField(required=True)
     to_value = FloatField(required=True)
 
-    @property
-    def validated_data(self):
-        # Patch validated data as we only want to pass the uuid not the feature object
-        data = super(ConditionalDistributionRequestSerializer, self).validated_data
-        data['feature'] = data['feature'].id
-        return data
-
 
 class ConditionalDistributionResultSerializer(Serializer):
     value = FloatField(required=True)

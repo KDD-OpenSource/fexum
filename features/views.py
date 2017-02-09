@@ -124,8 +124,9 @@ class FeatureSlicesView(APIView):
     def get(self, _, target_id, feature_id):
         target = get_object_or_404(Feature, pk=target_id)
         feature = get_object_or_404(Feature, pk=feature_id)
-        slices = Slice.objects.filter(relevancy_result__target=target,
-                                      relevancy_result__feature=feature)
+        relevancy_result = RelevancyResult.objects.get(target=target)
+        slices = Slice.objects.filter(relevancy__relevancy_result=relevancy_result,
+                                      relevancy__feature=feature)
         serializer = SliceSerializer(instance=slices, many=True)
         return Response(serializer.data)
 
@@ -134,7 +135,8 @@ class FeatureRelevancyResultsView(APIView):
     def get(self, _, target_id):
         target = get_object_or_404(Feature, pk=target_id)
         # TODO: Filter for same result set
-        relevancies = RelevancyResult.objects.filter(target=target)
+        relevancy_result = RelevancyResult.objects.get(target=target)
+        relevancies = Relevancy.objects.filter(relevancy_result=relevancy_result)
         serializer = RelevancySerializer(instance=relevancies, many=True)
         return Response(serializer.data)
 
@@ -153,8 +155,9 @@ class FilteredSlicesView(APIView):
     def get(self, request, target_id):
         target = get_object_or_404(Feature, pk=target_id)
         feature_ids = request.query_params.get('feature__in', '').split(',')
-        slices = Slice.objects.filter(relevancy_result__target=target,
-                                      relevancy_result__feature_id__in=feature_ids)
+        relevancy_result = RelevancyResult.objects.get(target=target)
+        slices = Slice.objects.filter(relevancy__relevancy_result=relevancy_result,
+                                      relevancy__feature_id__in=feature_ids)
         serializer = FeatureSliceSerializer(instance=slices, many=True)
         return Response(serializer.data)
 
