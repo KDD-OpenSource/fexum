@@ -412,7 +412,7 @@ class TestFeatureSlicesView(APITestCase):
         fslice = SliceFactory()
 
         url = reverse('target-feature-slices',
-                      args=[fslice.relevancy.relevancy_result.target.id,
+                      args=[fslice.relevancy.rar_result.target.id,
                             fslice.relevancy.feature.id])
         response = self.client.get(url)
 
@@ -564,7 +564,7 @@ class TestFilteredSlicesView(APITestCase):
         SliceFactory()
 
         url = '{0}?feature__in={1}'.format(
-            reverse('target-filtered-slices', args=[slice1.relevancy.relevancy_result.target.id]),
+            reverse('target-filtered-slices', args=[slice1.relevancy.rar_result.target.id]),
             slice1.relevancy.feature.id)
         response = self.client.get(url)
 

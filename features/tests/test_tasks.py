@@ -2,9 +2,9 @@ from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
     calculate_feature_statistics, calculate_rar
 from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
-    RedundancyResult, RelevancyResult
+    RarResult
 from features.tests.factories import FeatureFactory, DatasetFactory, RelevancyFactory, \
-    RedundancyFactory, RelevancyResultFactory, RedundancyResultFactory
+    RedundancyFactory, RarResultFactory
 from unittest.mock import patch, call
 
 # TODO: test for results
@@ -97,8 +97,7 @@ class TestCalculateRar(TestCase):
         # Select first feature as target
         calculate_rar(target_id=target.id)
 
-        self.assertEqual(RelevancyResult.objects.count(), 1)
-        self.assertEqual(RedundancyResult.objects.count(), 1)
+        self.assertEqual(RarResult.objects.count(), 1)
 
         # Relevancies
         self.assertEqual(Relevancy.objects.count(), 1,
@@ -107,7 +106,7 @@ class TestCalculateRar(TestCase):
 
         self.assertIsNotNone(relevancy.relevancy)
         self.assertIsNotNone(relevancy.rank)
-        self.assertEqual(relevancy.relevancy_result.target, target)
+        self.assertEqual(relevancy.rar_result.target, target)
         self.assertEqual(relevancy.feature, feature)
         self.assertEqual(Slice.objects.filter(relevancy=relevancy).count(), 6)
 
@@ -126,32 +125,19 @@ class TestCalculateRar(TestCase):
         target = Feature.objects.get(dataset=dataset, name='Col2')
 
         # Init a typical result configuration
-        RelevancyResultFactory(target=target)
-        redundancy_result = RedundancyResultFactory(dataset=dataset)
-        RedundancyFactory(redundancy_result=redundancy_result, first_feature=feature, second_feature=target)
-
-        self.assertEqual(RelevancyResult.objects.count(), 1,
-                         msg='Should only contain relevancy result for the one feature')
-        self.assertEqual(RedundancyResult.objects.count(), 1,
-                         msg='Should only contain redundancy result for the one feature')
+        rar_result = RarResultFactory(target=target)
+        self.assertEqual(RarResult.objects.count(), 1,
+                         msg='Should only contain result for the one feature')
 
         # Signals are called manually
         with patch('features.tasks.pre_save.send') as pre_save_signal_mock:
             with patch('features.tasks.post_save.send') as post_save_signal_mock:
                 calculate_rar(target_id=target.id)
-                existing_relevancy_result = RelevancyResult.objects.get()
-                existing_redundancy_result = RedundancyResult.objects.get()
-                kalls = [
-                    call(RelevancyResult, instance=existing_relevancy_result),
-                    call(RedundancyResult, instance=existing_redundancy_result)
-                ]
 
-                pre_save_signal_mock.assert_has_calls(kalls, any_order=True)
-                post_save_signal_mock.assert_has_calls(kalls, any_order=True)
+                post_save_signal_mock.assert_called_once_with(RarResult, instance=rar_result)
+                pre_save_signal_mock.assert_called_once_with(RarResult, instance=rar_result)
 
-        self.assertEqual(RelevancyResult.objects.count(), 1,
-                         msg='Should still only contain result for the one feature')
-        self.assertEqual(RedundancyResult.objects.count(), 1,
+        self.assertEqual(RarResult.objects.count(), 1,
                          msg='Should still only contain result for the one feature')
 
     def test_calculate_rar_use_precalulated_data(self):

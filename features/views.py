@@ -1,6 +1,5 @@
 from rest_framework.views import APIView
-from features.models import Feature, Bin, Sample, Dataset, Experiment, RelevancyResult, \
-    RedundancyResult, Slice, Relevancy, Redundancy
+from features.models import Feature, Bin, Sample, Dataset, Experiment, RarResult, Slice, Relevancy, Redundancy
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
     SampleSerializer, SliceSerializer, DatasetSerializer, RedundancySerializer, \
     ExperimentTargetSerializer, RelevancySerializer, FeatureSliceSerializer, \
@@ -124,8 +123,8 @@ class FeatureSlicesView(APIView):
     def get(self, _, target_id, feature_id):
         target = get_object_or_404(Feature, pk=target_id)
         feature = get_object_or_404(Feature, pk=feature_id)
-        relevancy_result = RelevancyResult.objects.get(target=target)
-        slices = Slice.objects.filter(relevancy__relevancy_result=relevancy_result,
+        rar_result = RarResult.objects.get(target=target)
+        slices = Slice.objects.filter(relevancy__rar_result=rar_result,
                                       relevancy__feature=feature)
         serializer = SliceSerializer(instance=slices, many=True)
         return Response(serializer.data)
@@ -135,8 +134,8 @@ class FeatureRelevancyResultsView(APIView):
     def get(self, _, target_id):
         target = get_object_or_404(Feature, pk=target_id)
         # TODO: Filter for same result set
-        relevancy_result = RelevancyResult.objects.get(target=target)
-        relevancies = Relevancy.objects.filter(relevancy_result=relevancy_result)
+        rar_result = RarResult.objects.get(target=target)
+        relevancies = Relevancy.objects.filter(rar_result=rar_result)
         serializer = RelevancySerializer(instance=relevancies, many=True)
         return Response(serializer.data)
 
@@ -144,9 +143,8 @@ class FeatureRelevancyResultsView(APIView):
 class DatasetRedundancyResults(APIView):
     def get(self, _, dataset_id):
         dataset = get_object_or_404(Dataset, pk=dataset_id)
-        # TODO: Filter for same result set
-        redundancies = Redundancy.objects.filter(first_feature__dataset=dataset,
-                                                 second_feature__dataset=dataset)
+        rar_result = RarResult.objects.get(target__dataset=dataset)
+        redundancies = Redundancy.objects.filter(rar_result=rar_result)
         serializer = RedundancySerializer(instance=redundancies, many=True)
         return Response(serializer.data)
 
@@ -155,8 +153,8 @@ class FilteredSlicesView(APIView):
     def get(self, request, target_id):
         target = get_object_or_404(Feature, pk=target_id)
         feature_ids = request.query_params.get('feature__in', '').split(',')
-        relevancy_result = RelevancyResult.objects.get(target=target)
-        slices = Slice.objects.filter(relevancy__relevancy_result=relevancy_result,
+        rar_result = RarResult.objects.get(target=target)
+        slices = Slice.objects.filter(relevancy__rar_result=rar_result,
                                       relevancy__feature_id__in=feature_ids)
         serializer = FeatureSliceSerializer(instance=slices, many=True)
         return Response(serializer.data)

@@ -37,7 +37,7 @@ class Dataset(models.Model):
         return self.name
 
 
-class RelevancyResult(models.Model):
+class RarResult(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(editable=False, default=now) # TODO: Test
     target = models.ForeignKey('Feature', on_delete=models.CASCADE)
@@ -53,33 +53,21 @@ class RelevancyResult(models.Model):
 
 class Relevancy(models.Model):
     class Meta:
-        unique_together = ('feature', 'rank', 'relevancy_result',)
+        unique_together = ('feature', 'rank', 'rar_result',)
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     relevancy = models.FloatField()
     rank = models.IntegerField()
     feature = models.ForeignKey('Feature', on_delete=models.CASCADE, related_name='features')
-    relevancy_result = models.ForeignKey('RelevancyResult', on_delete=models.CASCADE)
-
-
-class RedundancyResult(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    created_at = models.DateTimeField(editable=False, default=now)  # TODO: TEst
-    dataset = models.ForeignKey('Dataset', on_delete=models.CASCADE)
-
-    def __str__(self):
-        try:
-            return 'Redundancy of {0} and {1}'.format(self.first_feature, self.second_feature)
-        except:
-            return 'Processing…'
+    rar_result = models.ForeignKey('RarResult', on_delete=models.CASCADE)
 
 
 class Redundancy(models.Model):
     class Meta:
-        unique_together = ('first_feature', 'second_feature', 'redundancy_result')
+        unique_together = ('first_feature', 'second_feature', 'rar_result')
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    redundancy_result = models.ForeignKey('RedundancyResult', on_delete=models.CASCADE)
+    rar_result = models.ForeignKey('RarResult', on_delete=models.CASCADE)
     first_feature = models.ForeignKey('Feature', on_delete=models.CASCADE,
                                       related_name='first_features')
     second_feature = models.ForeignKey('Feature', on_delete=models.CASCADE,

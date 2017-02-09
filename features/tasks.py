@@ -2,7 +2,7 @@ from __future__ import absolute_import, unicode_literals
 from celery import shared_task
 import pandas as pd
 import numpy as np
-from features.models import Feature, Bin, Slice, Sample, Dataset, RedundancyResult, RelevancyResult, \
+from features.models import Feature, Bin, Slice, Sample, Dataset, RarResult, \
     Redundancy, Relevancy
 from subprocess import Popen, PIPE
 import json
@@ -125,8 +125,7 @@ def downsample_feature(feature_id, sample_count=1000):
 
 def _parse_and_save_rar_results(target: Feature, rar_result_dict: dict):
     # The Results Model should separate RaR results from different runs
-    relevancy_result = RelevancyResult.objects.create(target=target)
-    redundancy_result = RedundancyResult.objects.create(dataset=target.dataset)
+    rar_result = RarResult.objects.create(target=target)
 
     for redundancy_data in rar_result_dict['redundancies']:
         first_feature = Feature.objects.get(dataset=target.dataset,
@@ -135,7 +134,7 @@ def _parse_and_save_rar_results(target: Feature, rar_result_dict: dict):
                                              name=redundancy_data['feature2'])
 
         Redundancy.objects.update_or_create(
-            redundancy_result=redundancy_result,
+            rar_result=rar_result,
             first_feature=(first_feature if first_feature.id < second_feature.id else second_feature),
             second_feature=(first_feature if first_feature.id >= second_feature.id else second_feature),
             defaults={'redundancy': redundancy_data['redundancy'], 'weight': redundancy_data['weight']}
@@ -148,7 +147,7 @@ def _parse_and_save_rar_results(target: Feature, rar_result_dict: dict):
             feature=feature,
             rank=idx,
             relevancy=relevancy_data['result']['score'],
-            relevancy_result=relevancy_result
+            rar_result=rar_result
         )
 
         for slice_data in relevancy_data['result']['scoredBlocks']:
@@ -179,26 +178,18 @@ def calculate_rar(target_id, precomputed_data=None):
         return
 
     # Fix bindings in celery context
-    from features.bindings import RelevancyResultBinding, RedundancyResultBinding
-    RelevancyResultBinding.register()
-    RedundancyResultBinding.register()
+    from features.bindings import RarResultBinding
+    RarResultBinding.register()
 
     # Return if rar was already calculated for a specific target
-    if RelevancyResult.objects.filter(target=target).exists() and RedundancyResult.objects.filter(
-            redundancy__first_feature__dataset=target.dataset).exists():
+    if RarResult.objects.filter(target=target).exists():
         # Manually trigger notifications
-        relevancy_result = RelevancyResult.objects.get(target=target)
-        pre_save.send(RelevancyResult, instance=relevancy_result)
-        post_save.send(RelevancyResult, instance=relevancy_result, created=False)
-
-        redundancy_result = RedundancyResult.objects.get(
-            redundancy__first_feature__dataset=target.dataset,
-            redundancy__second_feature__dataset=target.dataset
-        )
-        pre_save.send(RedundancyResult, instance=redundancy_result)
-        post_save.send(RedundancyResult, instance=redundancy_result, created=False)
+        rar_result = RarResult.objects.get(target=target)
+        pre_save.send(RarResult, instance=rar_result)
+        post_save.send(RarResult, instance=rar_result, created=False)
 
         return
+
     # Execute Rar
     JAR_FILE = '/assets/rar-mfs.jar'
     process = Popen([
