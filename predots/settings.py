@@ -24,7 +24,7 @@ INSTALLED_APPS = [
     'features',
     'channels',
     'users',
-    'rest_framework.authtoken'
+    'rest_framework.authtoken',
 ]
 
 MIDDLEWARE = [

@@ -140,11 +140,10 @@ class FeatureRelevancyResultsView(APIView):
         return Response(serializer.data)
 
 
-class DatasetRedundancyResults(APIView):
-    def get(self, _, dataset_id):
-        dataset = get_object_or_404(Dataset, pk=dataset_id)
-        rar_result = RarResult.objects.get(target__dataset=dataset)
-        redundancies = Redundancy.objects.filter(rar_result=rar_result)
+class TargetRedundancyResults(APIView):
+    def get(self, _, target_id):
+        target = get_object_or_404(Feature, pk=target_id)
+        redundancies = Redundancy.objects.filter(rar_result__target=target)
         serializer = RedundancySerializer(instance=redundancies, many=True)
         return Response(serializer.data)
 

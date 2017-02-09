@@ -125,7 +125,7 @@ def downsample_feature(feature_id, sample_count=1000):
 
 def _parse_and_save_rar_results(target: Feature, rar_result_dict: dict):
     # The Results Model should separate RaR results from different runs
-    rar_result = RarResult.objects.create(target=target)
+    rar_result = RarResult.objects.create(target=target, status=RarResult.EMPTY)
 
     for redundancy_data in rar_result_dict['redundancies']:
         first_feature = Feature.objects.get(dataset=target.dataset,
@@ -160,7 +160,9 @@ def _parse_and_save_rar_results(target: Feature, rar_result_dict: dict):
                 from_value=slice_data['featureRanges'][0]['start'],
                 to_value=slice_data['featureRanges'][0]['end']
             )
-
+    # Test status
+    rar_result.status = RarResult.DONE
+    rar_result.save(update_fields=['status'])
 
 
 @shared_task

@@ -18,7 +18,7 @@ class DatasetBinding(WebsocketBinding):
 class RarResultBinding(WebsocketBinding):
     model = RarResult
     stream = 'rar_result'
-    fields = ['id']
+    fields = ['id', 'status']
 
     @classmethod
     def group_names(cls, instance):

@@ -1,6 +1,7 @@
 from rest_framework.test import APITestCase
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
-    SampleFactory, DatasetFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory
+    SampleFactory, DatasetFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, \
+    RarResultFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, \
     HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
@@ -80,6 +81,7 @@ class TestExperimentListView(APITestCase):
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
+
 
 class TestExperimentDetailView(APITestCase):
     def test_retrieve_experiment_detail(self):
@@ -474,7 +476,7 @@ class TestFeatureRelevancyResultsView(APITestCase):
         relevancy = RelevancyFactory()
 
         url = reverse('target-feature-relevancy_results',
-                      args=[relevancy.relevancy_result.target.id])
+                      args=[relevancy.rar_result.target.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -516,13 +518,14 @@ class TestFeatureRedundancyResults(APITestCase):
         self.client.force_authenticate(user)
 
         first_feature = FeatureFactory()
+        rar_result = RarResultFactory(target=first_feature)
         second_feature = FeatureFactory(dataset=first_feature.dataset)
         redundancy = RedundancyFactory(first_feature=first_feature,
-                                              second_feature=second_feature)
+                                       second_feature=second_feature)
         serializer = RedundancySerializer(instance=redundancy)
 
         url = reverse('feature-redundancy_results',
-                      args=[redundancy.first_feature.dataset.id])
+                      args=[rar_result.target.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)

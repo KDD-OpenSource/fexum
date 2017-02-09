@@ -28,8 +28,8 @@ class RarResultJsonAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         target = form.cleaned_data['target']
-        relevany_result_json = form.cleaned_data['rar_result_json']
-        calculate_rar.delay(target_id=target.id, precomputed_data=relevany_result_json)
+        rar_result_json = form.cleaned_data['rar_result_json']
+        calculate_rar.delay(target_id=target.id, precomputed_data=rar_result_json)
 
 
 admin.site.register(RarResult, RarResultJsonAdmin)

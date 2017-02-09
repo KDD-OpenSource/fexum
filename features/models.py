@@ -38,9 +38,18 @@ class Dataset(models.Model):
 
 
 class RarResult(models.Model):
+    EMPTY = 'empty'
+    DONE = 'done'
+
+    STATUS_CHOICES = (
+        (EMPTY, 'Empty'),
+        (DONE, 'Done')
+    )
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(editable=False, default=now) # TODO: Test
     target = models.ForeignKey('Feature', on_delete=models.CASCADE)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=EMPTY)
 
     # TODO: Validation: target.dataset = feature.dataset
 

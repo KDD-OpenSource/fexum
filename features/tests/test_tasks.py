@@ -114,10 +114,10 @@ class TestCalculateRar(TestCase):
         self.assertEqual(Redundancy.objects.count(), 2,
                          msg='Should only contain redundancy for the two features')
 
-        redundancy_result = Redundancy.objects.first()
-        self.assertIsNotNone(redundancy_result.redundancy)
-        self.assertEqual(redundancy_result.first_feature, target)
-        self.assertEqual(redundancy_result.second_feature, feature)
+        redundancy = Redundancy.objects.first()
+        self.assertIsNotNone(redundancy.redundancy)
+        self.assertEqual(redundancy.first_feature, target)
+        self.assertEqual(redundancy.second_feature, feature)
 
     def test_calculate_rar_catch_if_already_calcalulated_for_target(self):
         dataset = _build_test_dataset()
@@ -134,7 +134,8 @@ class TestCalculateRar(TestCase):
             with patch('features.tasks.post_save.send') as post_save_signal_mock:
                 calculate_rar(target_id=target.id)
 
-                post_save_signal_mock.assert_called_once_with(RarResult, instance=rar_result)
+                post_save_signal_mock.assert_called_once_with(RarResult, created=False,
+                                                              instance=rar_result)
                 pre_save_signal_mock.assert_called_once_with(RarResult, instance=rar_result)
 
         self.assertEqual(RarResult.objects.count(), 1,

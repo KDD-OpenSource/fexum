@@ -1,7 +1,7 @@
 from django.conf.urls import url
 from features.views import FeatureListView, FeatureSamplesView, DatasetListView, \
     FeatureHistogramView, FeatureSlicesView, TargetDetailView, DatasetViewUploadView, \
-    ExperimentListView, FeatureRelevancyResultsView, ExperimentDetailView, DatasetRedundancyResults, \
+    ExperimentListView, FeatureRelevancyResultsView, ExperimentDetailView, TargetRedundancyResults, \
     FilteredSlicesView, CondiditonalDistributionsView
 
 
@@ -33,8 +33,8 @@ urlpatterns = [
     url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/relevancy_results$',
         FeatureRelevancyResultsView.as_view(),
         name='target-feature-relevancy_results'),
-    url(r'datasets/(?P<dataset_id>[a-zA-Z0-9-]+)/redundancy_results$',
-        DatasetRedundancyResults.as_view(),
+    url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/redundancy_results$',
+        TargetRedundancyResults.as_view(),
         name='feature-redundancy_results'),
 
     # Distributions
