@@ -13,24 +13,20 @@ class Experiment(models.Model):
 
 
 class Dataset(models.Model):
-    EMPTY = 'empty'
     PROCESSING = 'processing'
-    IN_MEMORY = 'in_memory'
-    ON_DISK = 'on_disk'
+    DONE = 'done'
     ERROR = 'error'
 
     STATUS_CHOICES = (
-        (EMPTY, 'Empty'),
         (PROCESSING, 'Processing'),
-        (IN_MEMORY, 'In Memory'),
-        (ON_DISK, 'ON Disk'),
-        (ERROR, 'Error')
+        (ERROR, 'Error'),
+        (DONE, 'Done')
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     content = models.FileField()
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=EMPTY) # TODO: Use status appriatly
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PROCESSING) # TODO: Use status appriatly
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, blank=True, null=True)
 
     def __str__(self):

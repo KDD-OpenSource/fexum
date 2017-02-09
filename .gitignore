@@ -102,3 +102,5 @@ media/*
 .fuse_*
 
 *.log
+*.sqlite*
+results

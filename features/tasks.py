@@ -7,10 +7,9 @@ from features.models import Feature, Bin, Slice, Sample, Dataset, RarResult, \
 from subprocess import Popen, PIPE
 import json
 from django.db.models.signals import post_save, pre_save
-from celery import Task
+from celery.task import chord
 from celery.utils.log import get_task_logger
-from django.core.cache import cache
-from multiprocessing import Manager, Value
+from multiprocessing import Manager
 import SharedArray as sa
 
 
@@ -51,11 +50,6 @@ def _get_dataframe(dataset_id: str) -> pd.DataFrame:
         shared_array = sa.create('shm://{0}'.format(dataset_id), dataframe.shape)
         shared_array[:] = dataframe.values
         dataframe_columns[dataset_id] = dataframe.columns
-
-        # Update database model
-        dataset = Dataset.objects.get(id=dataset_id)
-        dataset.status = Dataset.IN_MEMORY
-        dataset.save(update_fields=['status'])
 
         dataframe_lock.release()
 
@@ -125,6 +119,7 @@ def downsample_feature(feature_id, sample_count=1000):
 
 def _parse_and_save_rar_results(target: Feature, rar_result_dict: dict):
     # The Results Model should separate RaR results from different runs
+    # TODO: Test and refactor status
     rar_result = RarResult.objects.create(target=target, status=RarResult.EMPTY)
 
     for redundancy_data in rar_result_dict['redundancies']:
@@ -222,14 +217,28 @@ def initialize_from_dataset(dataset_id):
 
     # Only read first row for header
     headers = list(dataframe.columns.values)
-    for header in headers:
-        feature = Feature.objects.create(name=header, dataset=dataset)
+    feature_ids = [Feature.objects.create(name=header, dataset=dataset).id for header in headers]
 
-        # Chaining with Celery would be more beautiful...
-        calculate_feature_statistics.delay(feature_id=feature.id)
-        build_histogram.delay(feature_id=feature.id)
-        downsample_feature.delay(feature_id=feature.id)
+    # Chaining with Celery would be more beautiful...
+    calculate_feature_statistics_subtasks = [
+        calculate_feature_statistics.subtask(kwargs={'feature_id': feature_id}) for feature_id in
+        feature_ids]
+    build_histogram_subtasks = [build_histogram.subtask(kwargs={'feature_id': feature_id}) for
+                                feature_id in feature_ids]
+    downsample_feature_subtasks = [downsample_feature.subtask(kwargs={'feature_id': feature_id}) for
+                                   feature_id in feature_ids]
 
+    subtasks = calculate_feature_statistics_subtasks + build_histogram_subtasks + downsample_feature_subtasks
+
+    chord(subtasks)(initialize_from_dataset_processing_callback.subtask(kwargs={'dataset_id': dataset_id}))
+
+
+@shared_task
+def initialize_from_dataset_processing_callback(*args, **kwargs):
+    dataset_id = kwargs['dataset_id']
+    dataset = Dataset.objects.get(id=dataset_id)
+    dataset.status = Dataset.DONE
+    dataset.save(update_fields=['status'])
 
 
 @shared_task
