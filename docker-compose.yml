@@ -45,6 +45,9 @@ services:
     command: python manage.py runworker -v 2
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
+      HOST: "*"
+      DEBUG: "True"
+      SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
 
   web_asgi:
     build: ./
@@ -61,6 +64,9 @@ services:
     command: python manage.py runserver 0.0.0.0:8000
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
+      HOST: "*"
+      DEBUG: "True"
+      SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
 
   worker:
     build: ./
@@ -73,9 +79,12 @@ services:
     volumes:
       - .:/code
     command: "celery worker --app=predots --loglevel=INFO"
+    shm_size: 8g
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
-    shm_size: 8g
+      HOST: "*"
+      DEBUG: "True"
+      SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
 
   flower:
     build: ./
@@ -92,6 +101,9 @@ services:
     command: "celery flower -A predots --address=0.0.0.0"
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
+      HOST: "*"
+      DEBUG: "True"
+      SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
 
 networks:
   predots:
