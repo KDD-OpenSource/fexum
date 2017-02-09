@@ -105,7 +105,7 @@ class Feature(models.Model):
     def __str__(self):
         return '{0} in {1} dataset'.format(self.name, self.dataset)
 
-
+# Dataset are not separated
 class Sample(models.Model):
     class Meta:
         ordering = ('order',)

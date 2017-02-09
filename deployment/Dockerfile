@@ -1,0 +1,31 @@
+FROM nginx
+
+RUN mkdir -p /setup
+WORKDIR /setup
+
+# Install node
+RUN apt-get update
+RUN apt-get install -y curl
+RUN curl -sL https://deb.nodesource.com/setup_6.x | bash -
+RUN apt-get install -y nodejs
+
+# Copy key
+RUN apt-get install -y git-core
+COPY id_rsa.frontend /root/.ssh/id_rsa
+RUN chmod 600 /root/.ssh/id_rsa
+RUN echo "Host github.com\n\tStrictHostKeyChecking no\n" >> /root/.ssh/config
+
+# Configure frontend
+RUN git clone git@github.com:KDD-OpenSource/predots-frontend.git
+WORKDIR /setup/predots-frontend
+RUN npm install -g grunt-cli bower
+RUN npm install
+RUN echo '{ "allow_root": true }' > /root/.bowerrc
+RUN bower install --quiet --silent
+RUN grunt buildProd --out=/var/www/predots/public > /dev/null
+
+# Configure NGINX
+WORKDIR /setup
+COPY nginx.conf /setup
+
+EXPOSE 80 443

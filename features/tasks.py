@@ -28,15 +28,17 @@ def _get_dataset_and_file(dataset_id) -> (Dataset, str):
     return dataset, filename
 
 
-def _get_dataframe(dataset_id) -> pd.DataFrame:
+def _get_dataframe(dataset_id: str) -> pd.DataFrame:
     dataframe_lock.acquire()
+
+    dataset_id = str(dataset_id)
 
     try:
         shared_array = sa.attach('shm://{0}'.format(dataset_id))
+        columns = dataframe_columns[dataset_id]
 
         dataframe_lock.release()
 
-        columns = dataframe_columns[dataset_id]
         dataframe = pd.DataFrame(shared_array, columns=columns)
 
         logger.info('Cache hit for dataset {0}'.format(dataset_id))
@@ -63,12 +65,6 @@ def _get_dataframe(dataset_id) -> pd.DataFrame:
 
 
 @shared_task
-def load_dataset(dataset_id):
-    logger.info('Started loading dataset {0}'.format(dataset_id))
-    _ = _get_dataframe(dataset_id)
-
-
-@shared_task
 def calculate_feature_statistics(feature_id):
     feature = Feature.objects.get(pk=feature_id)
 
@@ -90,16 +86,19 @@ def build_histogram(feature_id):
     # Only read column with that name
     dataframe = _get_dataframe(feature.dataset.id)
 
+    bin_set = []
     bins, bin_edges = np.histogram(dataframe[feature.name], bins='auto')
     for bin_index, bin_value in enumerate(bins):
         from_value = bin_edges[bin_index]
         to_value = bin_edges[bin_index + 1]
-        Bin.objects.create(
+        bin = Bin(
             feature=feature,
             from_value=from_value,
             to_value=to_value,
             count=bin_value
         )
+        bin_set.append(bin)
+    Bin.objects.bulk_create(bin_set)
 
 
 @shared_task
@@ -109,14 +108,19 @@ def downsample_feature(feature_id, sample_count=1000):
     dataframe = _get_dataframe(feature.dataset.id)
     feature_row = dataframe[feature.name]
 
+    sample_set = []
+
     sampling = feature_row.groupby(np.arange(len(feature_row)) // (len(feature_row)//sample_count)).median()
     for idx, value in enumerate(sampling):
         # TODO: Test, order
-        Sample.objects.create(
+        sample = Sample(
             feature=feature,
             value=value,
             order=idx
         )
+        sample_set.append(sample)
+
+    Sample.objects.bulk_create(sample_set)
 
 
 def _parse_and_save_rar_results(target: Feature, rar_result_dict: dict):
