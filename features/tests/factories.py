@@ -11,8 +11,7 @@ class DatasetFactory(DjangoModelFactory):
 
     name = FuzzyText(suffix='.csv')
     content = FileField(from_path='features/tests/test_file.csv')
-    status = Dataset.EMPTY
-
+    status = Dataset.PROCESSING
 
 
 class FeatureFactory(DjangoModelFactory):
