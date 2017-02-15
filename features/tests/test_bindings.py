@@ -1,5 +1,4 @@
 from channels.tests import ChannelTestCase, HttpClient
-from channels.signals import consumer_finished
 from features.tests.factories import DatasetFactory, RarResultFactory
 
 
@@ -10,7 +9,6 @@ class TestDatasetBinding(ChannelTestCase):
 
         dataset = DatasetFactory()
 
-        consumer_finished.send(sender=None)
         received = client.receive()
         self.assertIsNotNone(received)
 
@@ -29,7 +27,6 @@ class TestDatasetBinding(ChannelTestCase):
         self.assertIsNone(client.receive())
 
 
-
 class TestRarResultBinding(ChannelTestCase):
     def test_outbound_create(self):
         client = HttpClient()
@@ -37,11 +34,10 @@ class TestRarResultBinding(ChannelTestCase):
 
         rar_result = RarResultFactory()
 
-        consumer_finished.send(sender=None)
         received = client.receive()
         self.assertIsNotNone(received)
 
-        self.assertEqual(received['payload']['data'].pop('id'), rar_result.id)
+        self.assertEqual(received['payload']['data'].pop('status'), rar_result.status)
         self.assertEqual(received['payload'].pop('data'), {})
 
         self.assertEqual(received['payload'].pop('action'), 'update')
