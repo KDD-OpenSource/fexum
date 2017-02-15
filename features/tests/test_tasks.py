@@ -11,7 +11,7 @@ from unittest.mock import patch, call
 
 def _build_test_dataset() -> Dataset:
     dataset = DatasetFactory()
-    feature_names = ['Col1', 'Col2']
+    feature_names = ['Col1', 'Col2', 'Col3']
     for feature_name in feature_names:
         FeatureFactory(name=feature_name, dataset=dataset)
 
@@ -21,22 +21,30 @@ def _build_test_dataset() -> Dataset:
 class TestInitializeFromDatasetTask(TestCase):
     def test_initialize_from_dataset(self):
         dataset = DatasetFactory()
-        feature_names = ['Col1', 'Col2']
+        feature_names = ['Col1', 'Col2', 'Col3']
 
         # TODO: Fuck nesting
-        with patch('features.tasks.build_histogram.delay') as build_histogram_mock:
-            with patch('features.tasks.downsample_feature.delay') as downsample_feature_mock:
-                with patch('features.tasks.calculate_feature_statistics.delay') \
+        with patch('features.tasks.build_histogram.subtask') as build_histogram_mock:
+            with patch('features.tasks.downsample_feature.subtask') as downsample_feature_mock:
+                with patch('features.tasks.calculate_feature_statistics.subtask') \
                         as calculate_feature_statistics_mock:
-                    initialize_from_dataset(dataset_id=dataset.id)
+                    with patch('features.tasks.initialize_from_dataset_processing_callback.subtask') \
+                            as initialize_from_dataset_processing_callback_mock:
+                        with patch('features.tasks.chord') \
+                                as chord_mock:
 
-                    # Make sure that we call the preprocessing task for each feature
-                    features = Feature.objects.filter(name__in=feature_names).all()
-                    kalls = [call(feature_id=feature.id) for feature in features]
+                            initialize_from_dataset(dataset_id=dataset.id)
 
-                    build_histogram_mock.assert_has_calls(kalls, any_order=True)
-                    calculate_feature_statistics_mock.assert_has_calls(kalls, any_order=True)
-                    downsample_feature_mock.assert_has_calls(kalls, any_order=True)
+                            # Make sure that we call the preprocessing task for each feature
+                            features = Feature.objects.filter(name__in=feature_names).all()
+                            kalls = [call(kwargs={'feature_id': feature.id}) for feature in features]
+
+                            build_histogram_mock.assert_has_calls(kalls, any_order=True)
+                            calculate_feature_statistics_mock.assert_has_calls(kalls, any_order=True)
+                            downsample_feature_mock.assert_has_calls(kalls, any_order=True)
+                            initialize_from_dataset_processing_callback_mock.assert_called_once_with(
+                                kwargs={'dataset_id': dataset.id})
+                            chord_mock.assert_called_once()
 
         self.assertEqual(feature_names, [feature.name for feature in Feature.objects.all()])
 
@@ -91,8 +99,9 @@ class TestCalculateFeatureStatistics(TestCase):
 class TestCalculateRar(TestCase):
     def test_calculate_rar(self):
         dataset = _build_test_dataset()
-        feature = Feature.objects.get(dataset=dataset, name='Col1')
-        target = Feature.objects.get(dataset=dataset, name='Col2')
+        feature1 = Feature.objects.get(dataset=dataset, name='Col1')
+        feature2 = Feature.objects.get(dataset=dataset, name='Col2')
+        target = Feature.objects.get(dataset=dataset, name='Col3')
 
         # Select first feature as target
         calculate_rar(target_id=target.id)
@@ -100,24 +109,23 @@ class TestCalculateRar(TestCase):
         self.assertEqual(RarResult.objects.count(), 1)
 
         # Relevancies
-        self.assertEqual(Relevancy.objects.count(), 1,
+        self.assertEqual(Relevancy.objects.count(), 2,
                          msg='Should only contain relevancy for the one feature')
-        relevancy = Relevancy.objects.first()
-
-        self.assertIsNotNone(relevancy.relevancy)
-        self.assertIsNotNone(relevancy.rank)
-        self.assertEqual(relevancy.rar_result.target, target)
-        self.assertEqual(relevancy.feature, feature)
-        self.assertEqual(Slice.objects.filter(relevancy=relevancy).count(), 6)
+        for relevancy in Relevancy.objects.all():
+            self.assertIsNotNone(relevancy.relevancy)
+            self.assertIsNotNone(relevancy.rank)
+            self.assertEqual(relevancy.rar_result.target, target)
+            assert relevancy.feature == feature1 or relevancy.feature == feature2
+            self.assertEqual(Slice.objects.filter(relevancy=relevancy).count(), 6)
 
         # Redundancies
-        self.assertEqual(Redundancy.objects.count(), 2,
-                         msg='Should only contain redundancy for the two features')
+        self.assertEqual(Redundancy.objects.count(), 1,
+                         msg='Should only contain redundancy for one feature pair')
 
         redundancy = Redundancy.objects.first()
         self.assertIsNotNone(redundancy.redundancy)
-        self.assertEqual(redundancy.first_feature, target)
-        self.assertEqual(redundancy.second_feature, feature)
+        self.assertEqual(redundancy.first_feature, feature2)
+        self.assertEqual(redundancy.second_feature, feature1)
 
     def test_calculate_rar_catch_if_already_calcalulated_for_target(self):
         dataset = _build_test_dataset()

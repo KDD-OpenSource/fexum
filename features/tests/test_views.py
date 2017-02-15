@@ -521,7 +521,8 @@ class TestFeatureRedundancyResults(APITestCase):
         rar_result = RarResultFactory(target=first_feature)
         second_feature = FeatureFactory(dataset=first_feature.dataset)
         redundancy = RedundancyFactory(first_feature=first_feature,
-                                       second_feature=second_feature)
+                                       second_feature=second_feature,
+                                       rar_result=rar_result)
         serializer = RedundancySerializer(instance=redundancy)
 
         url = reverse('feature-redundancy_results',
