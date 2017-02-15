@@ -124,12 +124,11 @@ class TestCalculateRar(TestCase):
 
         redundancy = Redundancy.objects.first()
         self.assertIsNotNone(redundancy.redundancy)
-        self.assertEqual(redundancy.first_feature, feature2)
-        self.assertEqual(redundancy.second_feature, feature1)
+        assert redundancy.first_feature == feature1 or redundancy.first_feature == feature2
+        assert redundancy.second_feature == feature1 or redundancy.second_feature == feature2
 
     def test_calculate_rar_catch_if_already_calcalulated_for_target(self):
         dataset = _build_test_dataset()
-        feature = Feature.objects.get(dataset=dataset, name='Col1')
         target = Feature.objects.get(dataset=dataset, name='Col2')
 
         # Init a typical result configuration
