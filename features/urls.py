@@ -1,16 +1,17 @@
 from django.conf.urls import url
 from features.views import FeatureListView, FeatureSamplesView, DatasetListView, \
     FeatureHistogramView, FeatureSlicesView, TargetDetailView, DatasetViewUploadView, \
-    SessionListView, FeatureRarResultsView, SessionDetailView
+    ExperimentListView, FeatureRelevancyResultsView, ExperimentDetailView, TargetRedundancyResults, \
+    FilteredSlicesView, CondiditonalDistributionsView
 
 
 urlpatterns = [
-    # Sessions
-    url(r'sessions$', SessionListView.as_view(), name='session-list'),
-    url(r'sessions/(?P<session_id>[a-zA-Z0-9-]+)$', SessionDetailView.as_view(),
-        name='session-detail'),
-    url(r'sessions/(?P<session_id>[a-zA-Z0-9-]+)/target$', TargetDetailView.as_view(),
-        name='session-targets-detail'),
+    # Experiments
+    url(r'experiments$', ExperimentListView.as_view(), name='experiment-list'),
+    url(r'experiments/(?P<experiment_id>[a-zA-Z0-9-]+)$', ExperimentDetailView.as_view(),
+        name='experiment-detail'),
+    url(r'experiments/(?P<experiment_id>[a-zA-Z0-9-]+)/target$', TargetDetailView.as_view(),
+        name='experiment-targets-detail'),
 
     # Datasets
     url(r'datasets$', DatasetListView.as_view(), name='dataset-list'),
@@ -25,10 +26,18 @@ urlpatterns = [
         name='feature-histogram'),
 
     # Results
-    url(r'sessions/(?P<session_id>[a-zA-Z0-9-]+)/features/(?P<feature_id>[a-zA-Z0-9-]+)/slices$',
-        FeatureSlicesView.as_view(),
-        name='session-feature-slices'),
-    url(r'sessions/(?P<session_id>[a-zA-Z0-9-]+)/rar_results$',
-        FeatureRarResultsView.as_view(),
-        name='session-feature-rar_results'),
+    url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/features/(?P<feature_id>[a-zA-Z0-9-]+)/slices$',
+        FeatureSlicesView.as_view(), name='target-feature-slices'),
+    url('targets/(?P<target_id>[a-zA-Z0-9-]+)/slices$', FilteredSlicesView.as_view(),
+        name='target-filtered-slices'),
+    url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/relevancy_results$',
+        FeatureRelevancyResultsView.as_view(),
+        name='target-feature-relevancy_results'),
+    url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/redundancy_results$',
+        TargetRedundancyResults.as_view(),
+        name='feature-redundancy_results'),
+
+    # Distributions
+    url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/distributions$', CondiditonalDistributionsView.as_view(),
+        name='target-condidtional-distributions')
 ]

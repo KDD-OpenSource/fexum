@@ -1,8 +1,11 @@
 from django.test import TestCase
-from features.serializers import FeatureSerializer, BinSerializer, SessionTargetSerializer, \
-    SliceSerializer, SampleSerializer, DatasetSerializer, SessionSerializer, RarResultSerializer
+from features.serializers import FeatureSerializer, BinSerializer, ExperimentTargetSerializer, \
+    SliceSerializer, SampleSerializer, DatasetSerializer, ExperimentSerializer, \
+    RedundancySerializer, RelevancySerializer, \
+    ConditionalDistributionRequestSerializer, ConditionalDistributionResultSerializer, \
+    FeatureSliceSerializer
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
-    DatasetFactory, SampleFactory, SessionFactory, RarResultFactory
+    DatasetFactory, SampleFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory
 from decimal import Decimal
 
 
@@ -18,6 +21,7 @@ class TestFeatureSerializer(TestCase):
         self.assertEqual(data.pop('max'), feature.max)
         self.assertEqual(data.pop('mean'), feature.mean)
         self.assertEqual(data.pop('variance'), feature.variance)
+        self.assertEqual(data.pop('is_categorical'), feature.is_categorical)
         self.assertEqual(len(data), 0)
 
 
@@ -43,7 +47,6 @@ class TestSliceSerializer(TestCase):
         self.assertEqual(Decimal(data.pop('to_value')), a_slice.to_value)
         self.assertEqual(Decimal(data.pop('deviation')), a_slice.deviation)
         self.assertEqual(Decimal(data.pop('frequency')), a_slice.frequency)
-        self.assertEqual(Decimal(data.pop('significance')), a_slice.significance)
         self.assertEqual(data.pop('marginal_distribution'), a_slice.marginal_distribution)
         self.assertEqual(data.pop('conditional_distribution'), a_slice.conditional_distribution)
         self.assertEqual(len(data), 0)
@@ -56,6 +59,7 @@ class TestSampleSerializer(TestCase):
         data = serializer.data
 
         self.assertEqual(Decimal(data.pop('value')), sample.value)
+        self.assertEqual(Decimal(data.pop('order')), sample.order)
         self.assertEqual(len(data), 0)
 
 
@@ -67,41 +71,86 @@ class TestDatasetSerializer(TestCase):
 
         self.assertEqual(data.pop('id'), str(dataset.id))
         self.assertEqual(data.pop('name'), dataset.name)
+        self.assertEqual(data.pop('status'), dataset.status)
         self.assertEqual(len(data), 0)
 
 
-class TestSessionSerializer(TestCase):
+class TestExperimentSerializer(TestCase):
     def test_serialize_one(self):
-        session = SessionFactory()
-        serializer = SessionSerializer(instance=session)
+        experiment = ExperimentFactory()
+        serializer = ExperimentSerializer(instance=experiment)
         data = serializer.data
 
-        self.assertEqual(data.pop('id'), str(session.id))
-        self.assertEqual(data.pop('dataset'), session.dataset.id)
-        self.assertEqual(data.pop('target'), session.target.id)
+        self.assertEqual(data.pop('id'), str(experiment.id))
+        self.assertEqual(data.pop('dataset'), experiment.dataset.id)
+        self.assertEqual(data.pop('target'), experiment.target.id)
         self.assertEqual(len(data), 0)
 
 
-class TestRarResultsSerializer(TestCase):
+class TestRelevancySerializer(TestCase):
     def test_serialize_one(self):
-        rar_result = RarResultFactory()
-        serializer = RarResultSerializer(instance=rar_result)
+        relevancy = RelevancyFactory()
+        serializer = RelevancySerializer(instance=relevancy)
         data = serializer.data
 
-        self.assertEqual(data.pop('id'), str(rar_result.id))
-        self.assertEqual(data.pop('feature'), rar_result.feature.id)
-        self.assertEqual(data.pop('relevancy'), rar_result.relevancy)
-        self.assertEqual(data.pop('redundancy'), rar_result.redundancy)
-        self.assertEqual(data.pop('rank'), rar_result.rank)
+        self.assertEqual(data.pop('id'), str(relevancy.id))
+        self.assertEqual(data.pop('feature'), relevancy.feature.id)
+        self.assertEqual(data.pop('relevancy'), relevancy.relevancy)
+        self.assertEqual(data.pop('rank'), relevancy.rank)
         self.assertEqual(len(data), 0)
 
 
-class TestSessionTargetSerializer(TestCase):
+class TestRedundancySerializer(TestCase):
     def test_serialize_one(self):
-        session = SessionFactory()
-        serializer = SessionTargetSerializer(instance=session)
+        redundancy = RedundancyFactory()
+        serializer = RedundancySerializer(instance=redundancy)
         data = serializer.data
 
-        self.assertEqual(data.pop('target'), session.target.id)
+        self.assertEqual(data.pop('id'), str(redundancy.id))
+        self.assertEqual(data.pop('first_feature'), redundancy.first_feature.id)
+        self.assertEqual(data.pop('second_feature'), redundancy.second_feature.id)
+        self.assertEqual(data.pop('redundancy'), redundancy.redundancy)
+        self.assertEqual(data.pop('weight'), redundancy.weight)
         self.assertEqual(len(data), 0)
 
+
+class TestExperimentTargetSerializer(TestCase):
+    def test_serialize_one(self):
+        experiment = ExperimentFactory()
+        serializer = ExperimentTargetSerializer(instance=experiment)
+        data = serializer.data
+
+        self.assertEqual(data.pop('target'), experiment.target.id)
+        self.assertEqual(len(data), 0)
+
+
+class TestFeatureSliceSerializer(TestCase):
+    def test_serialize_one(self):
+        slice = SliceFactory()
+        serializer = FeatureSliceSerializer(instance=slice)
+
+        data = serializer.data
+        self.assertAlmostEqual(data.pop('deviation'), slice.deviation)
+        self.assertAlmostEqual(data.pop('frequency'), slice.frequency)
+        first_feature = data.pop('features').pop(0)
+        self.assertEqual(len(data), 0)
+        self.assertEqual(first_feature.pop('feature'), slice.relevancy.feature.id)
+        self.assertAlmostEqual(first_feature.pop('from_value'), slice.from_value)
+        self.assertAlmostEqual(first_feature.pop('to_value'), slice.to_value)
+
+
+class TestConditionalDistributionRequestSerializer(TestCase):
+    def test_deserialize_one(self):
+        feature = FeatureFactory()
+        data = {'feature': feature.id, 'from_value': 0, 'to_value': 1}
+        serializer = ConditionalDistributionRequestSerializer(data=data)
+        self.assertTrue(serializer.is_valid(raise_exception=True))
+        self.assertEqual(serializer.data, data)
+
+
+class TestConditionalDistributionResultSerializer(TestCase):
+    def test_serialize_one(self):
+        data = {'value': 1, 'probability': 1}
+        serializer = ConditionalDistributionResultSerializer(data=data)
+        self.assertTrue(serializer.is_valid(raise_exception=True))
+        self.assertEqual(serializer.data, data)

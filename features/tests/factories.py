@@ -1,5 +1,5 @@
 from factory import DjangoModelFactory, Sequence, SubFactory
-from features.models import Sample, Feature, Bin, Slice, Dataset, Session, RarResult
+from features.models import Sample, Feature, Bin, Slice, Dataset, Experiment, RarResult, Redundancy, Relevancy
 from factory.fuzzy import FuzzyFloat, FuzzyInteger, FuzzyText
 from factory.django import FileField
 from users.tests.factories import UserFactory
@@ -11,6 +11,7 @@ class DatasetFactory(DjangoModelFactory):
 
     name = FuzzyText(suffix='.csv')
     content = FileField(from_path='features/tests/test_file.csv')
+    status = Dataset.PROCESSING
 
 
 class FeatureFactory(DjangoModelFactory):
@@ -23,16 +24,16 @@ class FeatureFactory(DjangoModelFactory):
     max = FuzzyFloat(0, 1)
     mean = FuzzyFloat(0, 1)
     variance = FuzzyFloat(0, 1)
+    is_categorical = False
 
 
-class SessionFactory(DjangoModelFactory):
+class ExperimentFactory(DjangoModelFactory):
     class Meta:
-        model = Session
+        model = Experiment
 
     user = SubFactory(UserFactory)
     dataset = SubFactory(DatasetFactory)
     target = SubFactory(FeatureFactory)
-
 
 class BinFactory(DjangoModelFactory):
     class Meta:
@@ -50,28 +51,45 @@ class SampleFactory(DjangoModelFactory):
 
     feature = SubFactory(FeatureFactory)
     value = FuzzyFloat(0, 200)
+    order = Sequence(lambda n: n)
 
 
 class RarResultFactory(DjangoModelFactory):
     class Meta:
         model = RarResult
 
-    feature = SubFactory(FeatureFactory)
-    relevancy = FuzzyFloat(0, 200)
-    redundancy = FuzzyFloat(0, 200)
-    rank = FuzzyInteger(0, 100)
     target = SubFactory(FeatureFactory)
+
+
+class RelevancyFactory(DjangoModelFactory):
+    class Meta:
+        model = Relevancy
+
+    feature = SubFactory(FeatureFactory)
+    relevancy = FuzzyFloat(0, 1)
+    rank = FuzzyInteger(0, 100)
+    rar_result = SubFactory(RarResultFactory)
+
+
+class RedundancyFactory(DjangoModelFactory):
+    class Meta:
+        model = Redundancy
+
+    first_feature = SubFactory(FeatureFactory)
+    redundancy = FuzzyFloat(0, 1)
+    second_feature = SubFactory(FeatureFactory)
+    weight = 1
+    rar_result = SubFactory(RarResultFactory)
 
 
 class SliceFactory(DjangoModelFactory):
     class Meta:
         model = Slice
 
-    rar_result = SubFactory(RarResultFactory)
+    relevancy = SubFactory(RelevancyFactory)
     from_value = FuzzyFloat(-200.0, 0)
     to_value = FuzzyFloat(0, 200)
     marginal_distribution = [0, 1, 0]
     conditional_distribution = [0, 1, 0]
     deviation = FuzzyFloat(0, 1)
     frequency = FuzzyFloat(0, 1)
-    significance = FuzzyFloat(0, 1)

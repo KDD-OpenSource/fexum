@@ -16,7 +16,26 @@ services:
     networks:
       - predots
 
-  web:
+  web_wsgi:
+    build: .
+    depends_on:
+      - queue
+      - redis
+      - postgres
+    networks:
+      - predots
+    volumes:
+      - .:/code
+    ports:
+      - "8001:8001"
+    command: gunicorn predots.wsgi:application --bind 0.0.0.0:8001 --log-level=DEBUG --timeout 200
+    environment:
+      DJANGO_SETTINGS_MODULE: predots.settings
+      HOST: "*"
+      DEBUG: "False"
+      SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
+
+  web_worker:
     build: .
     depends_on:
       - queue
@@ -30,7 +49,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
       HOST: "*"
-      DEBUG: "True"
+      DEBUG: "False"
       SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
 
   web_asgi:
@@ -49,7 +68,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
       HOST: "*"
-      DEBUG: "True"
+      DEBUG: "False"
       SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
 
   worker:
@@ -62,18 +81,19 @@ services:
       - predots
     volumes:
       - .:/code
-    command: "celery worker --app=predots"
+    command: "celery worker --app=predots --loglevel=INFO"
+    shm_size: 8g
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
       HOST: "*"
-      DEBUG: "True"
+      DEBUG: "False"
       SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
 
   flower:
     build: ./
     depends_on:
       - queue
-      - web
+      - web_worker
       - web_asgi
     networks:
       - predots
@@ -85,8 +105,22 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
       HOST: "*"
-      DEBUG: "True"
+      DEBUG: "False"
       SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
+
+  nginx:
+    build: ./deployment
+    networks:
+      - predots
+    depends_on:
+      - web_wsgi
+      - web_asgi
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      NGINX_HOST: 0.0.0.0
+    command: /bin/bash -c "envsubst '$$NGINX_HOST' < /setup/nginx.conf > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
 
 networks:
   predots:

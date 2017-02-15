@@ -99,4 +99,8 @@ media/*
 ._.DS_Store
 .DS_Store
 
+.fuse_*
+
 *.log
+*.sqlite*
+celery/*

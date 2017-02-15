@@ -2,22 +2,22 @@ from django.urls import reverse
 from django.test import TestCase
 
 
-class TestSessionListUrl(TestCase):
-    def test_session_list_url(self):
-        url = reverse('session-list')
-        self.assertEqual(url, '/api/sessions')
+class TestExperimentListUrl(TestCase):
+    def test_sexperiment_list_url(self):
+        url = reverse('experiment-list')
+        self.assertEqual(url, '/api/experiments')
 
 
-class TestSessionListUrl(TestCase):
-    def test_session_detail_url(self):
-        url = reverse('session-detail', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
-        self.assertEqual(url, '/api/sessions/391ec5ac-f741-45c9-855a-7615c89ce129')
+class TestExperimentDetailUrl(TestCase):
+    def test_experiment_detail_url(self):
+        url = reverse('experiment-detail', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
+        self.assertEqual(url, '/api/experiments/391ec5ac-f741-45c9-855a-7615c89ce129')
 
 
-class TestSessionTargetsDetailUrl(TestCase):
-    def test_session_targets_detail_url(self):
-        url = reverse('session-targets-detail', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
-        self.assertEqual(url, '/api/sessions/391ec5ac-f741-45c9-855a-7615c89ce129/target')
+class TestExperimentTargetsDetailUrl(TestCase):
+    def test_experiment_targets_detail_url(self):
+        url = reverse('experiment-targets-detail', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
+        self.assertEqual(url, '/api/experiments/391ec5ac-f741-45c9-855a-7615c89ce129/target')
 
 
 class TestDatasetListView(TestCase):
@@ -52,13 +52,27 @@ class TestFeatureHistogramUrl(TestCase):
 
 class TestFeatureSlicesUrl(TestCase):
     def test_feature_slices_url(self):
-        url = reverse('session-feature-slices', args=['391ec5ac-f741-45c9-855a-7615c89ce129',
+        url = reverse('target-feature-slices', args=['391ec5ac-f741-45c9-855a-7615c89ce129',
                                                        '391ec5ac-f741-45c9-855a-7615c89ce128'])
-        self.assertEqual(url,'/api/sessions/391ec5ac-f741-45c9-855a-7615c89ce129/' +
+        self.assertEqual(url,'/api/targets/391ec5ac-f741-45c9-855a-7615c89ce129/' +
                          'features/391ec5ac-f741-45c9-855a-7615c89ce128/slices')
 
 
-class TestSessionFeatureRarResultsUrl(TestCase):
-    def test_session_feature_rar_results_url(self):
-        url = reverse('session-feature-rar_results', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
-        self.assertEqual(url, '/api/sessions/391ec5ac-f741-45c9-855a-7615c89ce129/rar_results')
+class TestTargetFeatureRelevancyResultsUrl(TestCase):
+    def test_target_feature_relevancy_results_url(self):
+        url = reverse('target-feature-relevancy_results',
+                      args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
+        self.assertEqual(url, '/api/targets/391ec5ac-f741-45c9-855a-7615c89ce129/relevancy_results')
+
+
+class TestDatasetRedundancyResultsUrl(TestCase):
+    def test_dataset_redundancy_results(self):
+        url = reverse('feature-redundancy_results', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
+        self.assertEqual(url,
+                         '/api/targets/391ec5ac-f741-45c9-855a-7615c89ce129/redundancy_results')
+
+
+class TestTargetFilteredSlicesUrl(TestCase):
+    def test_target_filtered_slices_url(self):
+        url = reverse('target-filtered-slices', args=['391ec5ac-f741-45c9-855a-7615c89ce128'])
+        self.assertEqual(url,'/api/targets/391ec5ac-f741-45c9-855a-7615c89ce128/slices')

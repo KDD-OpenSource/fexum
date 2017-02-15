@@ -5,7 +5,7 @@ COPY requirements.txt /setup/
 RUN pip3 install -r /setup/requirements.txt
 
 # Setup private key for repository access
-COPY credentials/id_rsa.docker /root/.ssh/id_rsa
+COPY credentials/id_rsa.rar /root/.ssh/id_rsa
 RUN chmod 600 /root/.ssh/id_rsa
 RUN echo "Host github.com\n\tStrictHostKeyChecking no\n" >> /root/.ssh/config
 

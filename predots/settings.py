@@ -16,7 +16,7 @@ INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
-    #'django.contrib.sessions',
+    'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
@@ -24,7 +24,7 @@ INSTALLED_APPS = [
     'features',
     'channels',
     'users',
-    'rest_framework.authtoken'
+    'rest_framework.authtoken',
 ]
 
 MIDDLEWARE = [
@@ -116,8 +116,9 @@ CELERY_BROKER_URL = 'amqp://guest:guest@queue'
 #: Only add pickle to this list if your broker is secured
 #: from unwanted access (see userguide/security.html)
 CELERY_ACCEPT_CONTENT = ['json']
-# CELERY_RESULT_BACKEND = 'db+sqlite:///results.sqlite'
+CELERY_RESULT_BACKEND = 'file:///code/celery'
 CELERY_TASK_SERIALIZER = 'json'
+CELERY_IGNORE_RESULT = False
 
 
 REST_FRAMEWORK = {
@@ -144,6 +145,9 @@ CHANNEL_LAYERS = {
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Fuck the limit
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10*1024*1024*1024
 
 AUTH_USER_MODEL = 'users.User'
 

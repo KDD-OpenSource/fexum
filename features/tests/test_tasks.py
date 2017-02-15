@@ -1,14 +1,17 @@
 from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
     calculate_feature_statistics, calculate_rar
-from features.models import Feature, Sample, Bin, Dataset, RarResult, Slice
-from features.tests.factories import FeatureFactory, DatasetFactory, RarResultFactory
+from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
+    RarResult
+from features.tests.factories import FeatureFactory, DatasetFactory, RelevancyFactory, \
+    RedundancyFactory, RarResultFactory
 from unittest.mock import patch, call
 
+# TODO: test for results
 
 def _build_test_dataset() -> Dataset:
     dataset = DatasetFactory()
-    feature_names = ['Col1', 'Col2']
+    feature_names = ['Col1', 'Col2', 'Col3']
     for feature_name in feature_names:
         FeatureFactory(name=feature_name, dataset=dataset)
 
@@ -18,22 +21,30 @@ def _build_test_dataset() -> Dataset:
 class TestInitializeFromDatasetTask(TestCase):
     def test_initialize_from_dataset(self):
         dataset = DatasetFactory()
-        feature_names = ['Col1', 'Col2']
+        feature_names = ['Col1', 'Col2', 'Col3']
 
         # TODO: Fuck nesting
-        with patch('features.tasks.build_histogram.delay') as build_histogram_mock:
-            with patch('features.tasks.downsample_feature.delay') as downsample_feature_mock:
-                with patch('features.tasks.calculate_feature_statistics.delay') \
+        with patch('features.tasks.build_histogram.subtask') as build_histogram_mock:
+            with patch('features.tasks.downsample_feature.subtask') as downsample_feature_mock:
+                with patch('features.tasks.calculate_feature_statistics.subtask') \
                         as calculate_feature_statistics_mock:
-                    initialize_from_dataset(dataset_id=dataset.id)
+                    with patch('features.tasks.initialize_from_dataset_processing_callback.subtask') \
+                            as initialize_from_dataset_processing_callback_mock:
+                        with patch('features.tasks.chord') \
+                                as chord_mock:
 
-                    # Make sure that we call the preprocessing task for each feature
-                    features = Feature.objects.filter(name__in=feature_names).all()
-                    kalls = [call(feature_id=feature.id) for feature in features]
+                            initialize_from_dataset(dataset_id=dataset.id)
 
-                    build_histogram_mock.assert_has_calls(kalls, any_order=True)
-                    calculate_feature_statistics_mock.assert_has_calls(kalls, any_order=True)
-                    downsample_feature_mock.assert_has_calls(kalls, any_order=True)
+                            # Make sure that we call the preprocessing task for each feature
+                            features = Feature.objects.filter(name__in=feature_names).all()
+                            kalls = [call(kwargs={'feature_id': feature.id}) for feature in features]
+
+                            build_histogram_mock.assert_has_calls(kalls, any_order=True)
+                            calculate_feature_statistics_mock.assert_has_calls(kalls, any_order=True)
+                            downsample_feature_mock.assert_has_calls(kalls, any_order=True)
+                            initialize_from_dataset_processing_callback_mock.assert_called_once_with(
+                                kwargs={'dataset_id': dataset.id})
+                            chord_mock.assert_called_once()
 
         self.assertEqual(feature_names, [feature.name for feature in Feature.objects.all()])
 
@@ -59,13 +70,13 @@ class TestDownsampleTask(TestCase):
         dataset = _build_test_dataset()
         feature = Feature.objects.get(dataset=dataset, name='Col1')
 
-        sample_rate = 2
-        downsample_feature(feature_id=feature.id, sample_rate=sample_rate)
+        sample_count = 5
+        downsample_feature(feature_id=feature.id, sample_count=sample_count)
 
         samples = Sample.objects.filter(feature=feature)
 
         # Test that samples get created from 10 datapoints
-        self.assertEqual(samples.count(), 10/sample_rate)
+        self.assertEqual(samples.count(), sample_count)
         self.assertEqual([sample.value for sample in samples],
                          [0.042891865, 0.213652795, 0.45530289, 1.333576395, -0.18543196])
 
@@ -88,30 +99,40 @@ class TestCalculateFeatureStatistics(TestCase):
 class TestCalculateRar(TestCase):
     def test_calculate_rar(self):
         dataset = _build_test_dataset()
-        feature = Feature.objects.get(dataset=dataset, name='Col1')
-        target = Feature.objects.get(dataset=dataset, name='Col2')
+        feature1 = Feature.objects.get(dataset=dataset, name='Col1')
+        feature2 = Feature.objects.get(dataset=dataset, name='Col2')
+        target = Feature.objects.get(dataset=dataset, name='Col3')
 
         # Select first feature as target
         calculate_rar(target_id=target.id)
 
-        self.assertEqual(RarResult.objects.count(), 1,
-                         msg='Should only contain result for the one feature')
-        rar_result = RarResult.objects.first()
+        self.assertEqual(RarResult.objects.count(), 1)
 
-        self.assertIsNotNone(rar_result.relevancy)
-        self.assertIsNone(rar_result.redundancy)
-        self.assertIsNotNone(rar_result.rank)
-        self.assertEqual(rar_result.target, target)
-        self.assertEqual(rar_result.feature, feature)
-        self.assertEqual(Slice.objects.filter(rar_result=rar_result).count(), 6)
+        # Relevancies
+        self.assertEqual(Relevancy.objects.count(), 2,
+                         msg='Should only contain relevancy for the one feature')
+        for relevancy in Relevancy.objects.all():
+            self.assertIsNotNone(relevancy.relevancy)
+            self.assertIsNotNone(relevancy.rank)
+            self.assertEqual(relevancy.rar_result.target, target)
+            assert relevancy.feature == feature1 or relevancy.feature == feature2
+            self.assertEqual(Slice.objects.filter(relevancy=relevancy).count(), 6)
+
+        # Redundancies
+        self.assertEqual(Redundancy.objects.count(), 1,
+                         msg='Should only contain redundancy for one feature pair')
+
+        redundancy = Redundancy.objects.first()
+        self.assertIsNotNone(redundancy.redundancy)
+        assert redundancy.first_feature == feature1 or redundancy.first_feature == feature2
+        assert redundancy.second_feature == feature1 or redundancy.second_feature == feature2
 
     def test_calculate_rar_catch_if_already_calcalulated_for_target(self):
         dataset = _build_test_dataset()
-        feature = Feature.objects.get(dataset=dataset, name='Col1')
         target = Feature.objects.get(dataset=dataset, name='Col2')
 
-        RarResultFactory(target=target, feature=feature)
-
+        # Init a typical result configuration
+        rar_result = RarResultFactory(target=target)
         self.assertEqual(RarResult.objects.count(), 1,
                          msg='Should only contain result for the one feature')
 
@@ -119,10 +140,10 @@ class TestCalculateRar(TestCase):
         with patch('features.tasks.pre_save.send') as pre_save_signal_mock:
             with patch('features.tasks.post_save.send') as post_save_signal_mock:
                 calculate_rar(target_id=target.id)
-                existing_rar_result = RarResult.objects.get()
-                pre_save_signal_mock.assert_called_once_with(RarResult, instance=existing_rar_result)
-                post_save_signal_mock.assert_called_once_with(RarResult,
-                                                              instance=existing_rar_result)
+
+                post_save_signal_mock.assert_called_once_with(RarResult, created=False,
+                                                              instance=rar_result)
+                pre_save_signal_mock.assert_called_once_with(RarResult, instance=rar_result)
 
         self.assertEqual(RarResult.objects.count(), 1,
                          msg='Should still only contain result for the one feature')
@@ -130,3 +151,7 @@ class TestCalculateRar(TestCase):
     def test_calculate_rar_use_precalulated_data(self):
         # TODO: Write test
         pass
+
+
+class TestCalculateArbitarySlices(TestCase):
+    pass

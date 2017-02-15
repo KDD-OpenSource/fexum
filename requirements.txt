@@ -3,10 +3,12 @@ djangorestframework==3.5.2
 jsonfield==1.0.3
 celery==4.0.2
 psycopg2==2.6.2
-channels==1.0.2
+channels==1.0.3
 asgi_redis==1.0.0
-daphne==1.0.1
+daphne==1.0.3
 flower==0.9.1
+SharedArray==2.0.2
+gunicorn
 
 # Disable these for docker envs
 # scipy

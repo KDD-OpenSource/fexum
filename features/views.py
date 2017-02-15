@@ -1,12 +1,13 @@
 from rest_framework.views import APIView
-from features.models import Feature, Bin, Sample, Dataset, Session, RarResult, Slice
-from features.serializers import FeatureSerializer, BinSerializer, SessionSerializer, \
-    SampleSerializer, SliceSerializer, DatasetSerializer, RarResultSerializer, \
-    SessionTargetSerializer
+from features.models import Feature, Bin, Sample, Dataset, Experiment, RarResult, Slice, Relevancy, Redundancy
+from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
+    SampleSerializer, SliceSerializer, DatasetSerializer, RedundancySerializer, \
+    ExperimentTargetSerializer, RelevancySerializer, FeatureSliceSerializer, \
+    ConditionalDistributionRequestSerializer, ConditionalDistributionResultSerializer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
-from features.tasks import calculate_rar
+from features.tasks import calculate_rar, calculate_conditional_distributions
 from rest_framework.parsers import MultiPartParser, FormParser
 from features.tasks import initialize_from_dataset
 from django.contrib.auth import get_user_model
@@ -20,42 +21,30 @@ from django.utils.datastructures import MultiValueDictKeyError
 logger = logging.getLogger(__name__)
 
 
-# Helper to mock an authenticated user TODO: replace with request.user
-def get_user():
-    user = get_user_model().objects.first() 
-    if user is None:
-        user = get_user_model().objects.create()
-    return user
-
-
-class SessionListView(APIView):
-    def get(self, _):
-        user = get_user()
-        sessions = Session.objects.filter(user=user).all()
-        serializer = SessionSerializer(instance=sessions, many=True)
+class ExperimentListView(APIView):
+    def get(self, request):
+        experiments = Experiment.objects.filter(user=request.user).all()
+        serializer = ExperimentSerializer(instance=experiments, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        user = get_user()
-        serializer = SessionSerializer(data=request.data)
+        serializer = ExperimentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(user=user)
+        serializer.save(user=request.user)
         return Response(serializer.data)
 
 
-class SessionDetailView(APIView):
-    def get(self, _, session_id):
-        user = get_user()
-        session = get_object_or_404(Session, pk=session_id, user=user)
-        serializer = SessionSerializer(instance=session)
+class ExperimentDetailView(APIView):
+    def get(self, request, experiment_id):
+        experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
+        serializer = ExperimentSerializer(instance=experiment)
         return Response(serializer.data)
 
 
 class TargetDetailView(APIView):
-    def put(self, request, session_id):
-        user = get_user()
-        session = get_object_or_404(Session, pk=session_id, user=user)
-        serializer = SessionTargetSerializer(instance=session, data=request.data)
+    def put(self, request, experiment_id):
+        experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
+        serializer = ExperimentTargetSerializer(instance=experiment, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         
@@ -63,11 +52,10 @@ class TargetDetailView(APIView):
 
         return Response(serializer.data)
 
-    def delete(self, _, session_id):
-        user = get_user()
-        session = get_object_or_404(Session, pk=session_id, user=user)
-        session.target = None
-        session.save()
+    def delete(self, request, experiment_id):
+        experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
+        experiment.target = None
+        experiment.save()
         return Response(status=HTTP_204_NO_CONTENT)
 
 
@@ -96,7 +84,10 @@ class DatasetViewUploadView(APIView):
         with archive.open(csv_name) as zip_csv_file:
             # Convert zipfile handle to Django file handle
             csv_file = File(zip_csv_file)
-            dataset = Dataset.objects.create(name=zip_csv_file.name, content=csv_file)
+            dataset = Dataset.objects.create(
+                name=zip_csv_file.name,
+                content=csv_file,
+                uploaded_by=request.user)
 
         # Start tasks for feature calculation
         initialize_from_dataset.delay(dataset_id=dataset.id)
@@ -129,21 +120,59 @@ class FeatureHistogramView(APIView):
 
 
 class FeatureSlicesView(APIView):
-    def get(self, _, session_id, feature_id):
-        user = get_user()
-        session = get_object_or_404(Session, pk=session_id, user=user)
+    def get(self, _, target_id, feature_id):
+        target = get_object_or_404(Feature, pk=target_id)
         feature = get_object_or_404(Feature, pk=feature_id)
-        slices = Slice.objects.filter(rar_result__target=session.target,
-                                      rar_result__feature=feature)
+        rar_result = RarResult.objects.get(target=target)
+        slices = Slice.objects.filter(relevancy__rar_result=rar_result,
+                                      relevancy__feature=feature)
         serializer = SliceSerializer(instance=slices, many=True)
         return Response(serializer.data)
 
 
-class FeatureRarResultsView(APIView):
-    def get(self, _, session_id):
-        user = get_user()
-        session = get_object_or_404(Session, pk=session_id, user=user)
-        rar_results = RarResult.objects.filter(feature__dataset=session.dataset,
-                                               target=session.target)
-        serializer = RarResultSerializer(instance=rar_results, many=True)
+class FeatureRelevancyResultsView(APIView):
+    def get(self, _, target_id):
+        target = get_object_or_404(Feature, pk=target_id)
+        # TODO: Filter for same result set
+        rar_result = RarResult.objects.filter(target=target).last()
+        relevancies = Relevancy.objects.filter(rar_result=rar_result)
+        serializer = RelevancySerializer(instance=relevancies, many=True)
         return Response(serializer.data)
+
+
+class TargetRedundancyResults(APIView):
+    def get(self, _, target_id):
+        target = get_object_or_404(Feature, pk=target_id)
+        rar_result = RarResult.objects.filter(target=target).last()
+        redundancies = Redundancy.objects.filter(rar_result=rar_result)
+        serializer = RedundancySerializer(instance=redundancies, many=True)
+        return Response(serializer.data)
+
+
+class FilteredSlicesView(APIView):
+    def get(self, request, target_id):
+        target = get_object_or_404(Feature, pk=target_id)
+        feature_ids = request.query_params.get('feature__in', '').split(',')
+        rar_result = RarResult.objects.get(target=target)
+        slices = Slice.objects.filter(relevancy__rar_result=rar_result,
+                                      relevancy__feature_id__in=feature_ids)
+        serializer = FeatureSliceSerializer(instance=slices, many=True)
+        return Response(serializer.data)
+
+
+class CondiditonalDistributionsView(APIView):
+    def post(self, request, target_id):
+        target = get_object_or_404(Feature, pk=target_id)
+        serializer = ConditionalDistributionRequestSerializer(data=request.data, many=True)
+        serializer.is_valid(raise_exception=True)
+
+        # Execute calculation on worker and get a synchronous result back to the client
+        asnyc_result = calculate_conditional_distributions.apply_async(
+            args=[target.id, [dict(data) for data in serializer.data]],
+        )
+
+        # Serialize and validate output
+        results = asnyc_result.get()
+        response_serializer = ConditionalDistributionResultSerializer(data=results, many=True)
+        response_serializer.is_valid(raise_exception=True)
+        return Response(response_serializer.validated_data)
