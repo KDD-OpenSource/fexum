@@ -1,13 +1,21 @@
 from channels.tests import ChannelTestCase, HttpClient
-from features.tests.factories import DatasetFactory, RarResultFactory
+from features.tests.factories import ExperimentFactory, RarResultFactory, DatasetFactory
+from features.models import Dataset
 
 
 class TestDatasetBinding(ChannelTestCase):
     def test_outbound_create(self):
-        client = HttpClient()
-        client.join_group('dataset-updates')
+        experiment = ExperimentFactory()
 
-        dataset = DatasetFactory()
+        client = HttpClient()
+        client.join_group('user-{0}-dataset-updates'.format(experiment.user.id))
+
+        dataset = experiment.dataset
+        dataset.status = Dataset.PROCESSING
+        dataset.save()
+
+        # It should not receive this one as it's on a different channel
+        DatasetFactory()
 
         received = client.receive()
         self.assertIsNotNone(received)
@@ -29,10 +37,15 @@ class TestDatasetBinding(ChannelTestCase):
 
 class TestRarResultBinding(ChannelTestCase):
     def test_outbound_create(self):
-        client = HttpClient()
-        client.join_group('rar-result-updates')
+        experiment = ExperimentFactory()
 
-        rar_result = RarResultFactory()
+        client = HttpClient()
+        client.join_group('user-{0}-rar-result-updates'.format(experiment.user.id))
+
+        rar_result = RarResultFactory(target=experiment.target)
+
+        # It should not receive this one as it's on a different channel
+        RarResultFactory()
 
         received = client.receive()
         self.assertIsNotNone(received)
