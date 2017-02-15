@@ -134,7 +134,7 @@ class FeatureRelevancyResultsView(APIView):
     def get(self, _, target_id):
         target = get_object_or_404(Feature, pk=target_id)
         # TODO: Filter for same result set
-        rar_result = RarResult.objects.get(target=target)
+        rar_result = RarResult.objects.filter(target=target).last()
         relevancies = Relevancy.objects.filter(rar_result=rar_result)
         serializer = RelevancySerializer(instance=relevancies, many=True)
         return Response(serializer.data)
@@ -143,7 +143,8 @@ class FeatureRelevancyResultsView(APIView):
 class TargetRedundancyResults(APIView):
     def get(self, _, target_id):
         target = get_object_or_404(Feature, pk=target_id)
-        redundancies = Redundancy.objects.filter(rar_result__target=target)
+        rar_result = RarResult.objects.filter(target=target).last()
+        redundancies = Redundancy.objects.filter(rar_result=rar_result)
         serializer = RedundancySerializer(instance=redundancies, many=True)
         return Response(serializer.data)
 
