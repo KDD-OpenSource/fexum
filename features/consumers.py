@@ -11,6 +11,6 @@ class Demultiplexer(WebsocketDemultiplexer):
 
     def connection_groups(self):
         users = User.objects.all()
-        dataset_groups = ['user-{0}-dataset-updates' for user in users]
-        rar_result_groups = ['user-{0}-rar-result-updates' for user in users]
+        dataset_groups = ['user-{0}-dataset-updates'.format(user.id) for user in users]
+        rar_result_groups = ['user-{0}-rar-result-updates'.format(user.id) for user in users]
         return dataset_groups + rar_result_groups
