@@ -13,6 +13,7 @@ class DatasetBinding(WebsocketBinding):
         return ['dataset-{0}-updates'.format(instance.id)]
 
     def has_permission(self, user, action, pk):
+        # Permission is always false to block inbound messages that change the model
         return False
 
 
@@ -26,5 +27,6 @@ class RarResultBinding(WebsocketBinding):
         return ['rar-result-{0}-updates'.format(instance.id)]
 
     def has_permission(self, user, action, pk):
+        # Permission is always false to block inbound messages that change the model
         return False
 
