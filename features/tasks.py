@@ -181,7 +181,7 @@ def calculate_rar(target_id, precomputed_data=None):
     # Return if rar was already calculated for a specific target
     if RarResult.objects.filter(target=target).exists():
         # Manually trigger notifications
-        rar_result = RarResult.objects.get(target=target)
+        rar_result = RarResult.objects.filter(target=target).first()
         pre_save.send(RarResult, instance=rar_result)
         post_save.send(RarResult, instance=rar_result, created=False)
 

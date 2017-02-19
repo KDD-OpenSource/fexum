@@ -1,16 +1,26 @@
 from channels.generic.websockets import WebsocketDemultiplexer
 from features.bindings import DatasetBinding, RarResultBinding
-from users.models import User
+from features.models import RarResult, Experiment
 
 
 class Demultiplexer(WebsocketDemultiplexer):
+    http_user = True
+
     consumers = {
         'dataset': DatasetBinding.consumer,
         'rar_result': RarResultBinding.consumer
     }
 
-    def connection_groups(self):
-        users = User.objects.all()
-        dataset_groups = ['user-{0}-dataset-updates'.format(user.id) for user in users]
-        rar_result_groups = ['user-{0}-rar-result-updates'.format(user.id) for user in users]
+    def connection_groups(self, **kwargs):
+        user = self.message.user
+
+        if user.is_anonymous:
+            return []
+
+        experiments = Experiment.objects.filter(user=user).all()
+        dataset_groups = ['dataset-{0}-updates'.format(experiment.dataset.id) for experiment in
+                          experiments]
+
+        # rar_results = RarResult.objects.filter(target_in=experiments.target_set)
+        rar_result_groups = [] #['rar-result-{0}-updates'.format(rar_result.id) for rar_result in rar_results]
         return dataset_groups + rar_result_groups

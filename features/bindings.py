@@ -10,8 +10,7 @@ class DatasetBinding(WebsocketBinding):
 
     @classmethod
     def group_names(cls, instance):
-        users = User.objects.filter(experiment__dataset=instance)
-        return ['user-{0}-dataset-updates'.format(user.id) for user in users]
+        return ['dataset-{0}-updates'.format(instance.id)]
 
     def has_permission(self, user, action, pk):
         return False
@@ -24,8 +23,7 @@ class RarResultBinding(WebsocketBinding):
 
     @classmethod
     def group_names(cls, instance):
-        users = User.objects.filter(experiment__target=instance.target)
-        return ['user-{0}-rar-result-updates'.format(user.id) for user in users]
+        return ['rar-result-{0}-updates'.format(instance.id)]
 
     def has_permission(self, user, action, pk):
         return False

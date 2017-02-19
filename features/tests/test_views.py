@@ -4,7 +4,7 @@ from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
     RarResultFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, \
-    HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
+    HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, \
     SampleSerializer, DatasetSerializer, ExperimentSerializer, ExperimentTargetSerializer, \
     RelevancySerializer, RedundancySerializer
@@ -71,14 +71,14 @@ class TestExperimentListView(APITestCase):
         url = reverse('experiment-list')
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(), {})
 
     def test_get_experiment_list_unauthenticated(self):
         url = reverse('experiment-list')
         response = self.client.post(url, data={})
 
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
@@ -113,7 +113,7 @@ class TestExperimentDetailView(APITestCase):
         url = reverse('experiment-detail', args=['079a60fc-c3b1-48ee-8bb6-ba19f061e9e0'])
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
@@ -150,7 +150,7 @@ class TestTargetDetailView(APITestCase):
         url = reverse('experiment-targets-detail', args=['1c6f46c4-e2d6-4378-8dc4-7417cca743da'])
         response = self.client.delete(url)
 
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
@@ -206,7 +206,7 @@ class TestTargetDetailView(APITestCase):
         url = reverse('experiment-targets-detail', args=['1c6f46c4-e2d6-4378-8dc4-7417cca743da'])
         response = self.client.put(url)
 
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
@@ -228,7 +228,7 @@ class TestDatasetListView(APITestCase):
         url = reverse('dataset-list')
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
@@ -286,7 +286,7 @@ class TestDatasetUploadView(APITestCase):
     def test_upload_dataset_unauthenticated(self):
         response = self.client.get(self.url)
 
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
     def tearDown(self):
@@ -334,7 +334,7 @@ class TestFeatureListView(APITestCase):
         url = reverse('dataset-features-list', args=['5781ca8a-3c7d-46b4-897e-90d80e938258'])
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
@@ -362,7 +362,7 @@ class TestFeatureSamplesView(APITestCase):
         url = reverse('feature-samples', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
@@ -401,7 +401,7 @@ class TestFeatureHistogramView(APITestCase):
         url = reverse('feature-histogram', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
@@ -463,7 +463,7 @@ class TestFeatureSlicesView(APITestCase):
                                                      '8a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
@@ -507,7 +507,7 @@ class TestFeatureRelevancyResultsView(APITestCase):
                       args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
@@ -554,7 +554,7 @@ class TestFeatureRedundancyResults(APITestCase):
         url = reverse('feature-redundancy_results', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
@@ -592,7 +592,7 @@ class TestFilteredSlicesView(APITestCase):
         url = reverse('target-filtered-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
@@ -612,7 +612,7 @@ class TestCondiditonalDistributionsView(APITestCase):
                       args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.post(url, data={}, format='json')
 
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 

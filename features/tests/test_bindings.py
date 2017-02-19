@@ -8,7 +8,8 @@ class TestDatasetBinding(ChannelTestCase):
         experiment = ExperimentFactory()
 
         client = HttpClient()
-        client.join_group('user-{0}-dataset-updates'.format(experiment.user.id))
+        client.force_login(experiment.user)
+        client.join_group('dataset-{}-updates'.format(experiment.dataset.id))
 
         dataset = experiment.dataset
         dataset.status = Dataset.PROCESSING
@@ -40,6 +41,7 @@ class TestRarResultBinding(ChannelTestCase):
         experiment = ExperimentFactory()
 
         client = HttpClient()
+        client.force_login(experiment.user)
         client.join_group('user-{0}-rar-result-updates'.format(experiment.user.id))
 
         rar_result = RarResultFactory(target=experiment.target)
