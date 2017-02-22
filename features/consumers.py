@@ -21,6 +21,7 @@ class Demultiplexer(WebsocketDemultiplexer):
         dataset_groups = ['dataset-{0}-updates'.format(experiment.dataset.id) for experiment in
                           experiments]
 
-        # rar_results = RarResult.objects.filter(target_in=experiments.target_set)
-        rar_result_groups = [] #['rar-result-{0}-updates'.format(rar_result.id) for rar_result in rar_results]
+        rar_results = RarResult.objects.filter(target_in=experiments.target_set)
+        rar_result_groups = ['rar-result-{0}-updates'.format(rar_result.id) for rar_result in rar_results]
+
         return dataset_groups + rar_result_groups

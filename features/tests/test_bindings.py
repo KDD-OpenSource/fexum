@@ -42,7 +42,7 @@ class TestRarResultBinding(ChannelTestCase):
 
         client = HttpClient()
         client.force_login(experiment.user)
-        client.join_group('user-{0}-rar-result-updates'.format(experiment.user.id))
+        client.join_group('rar-result-{0}-updates'.format(experiment.user.id))
 
         rar_result = RarResultFactory(target=experiment.target)
 

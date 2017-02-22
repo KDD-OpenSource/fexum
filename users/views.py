@@ -9,6 +9,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from django.contrib.auth import login, logout
 
+
 class CustomBaseAuthentication(BaseAuthentication):
     def authenticate(self, request):
         serializer = AuthTokenSerializer(data=request.data)
@@ -33,6 +34,7 @@ class AuthLogoutView(APIView):
 
 class UserRegisterView(APIView):
     permission_classes = (AllowAny,)
+    authentication_classes = () # TODO: Remove
 
     def post(self, request):
         serializer = UserSerializer(data=request.data)
