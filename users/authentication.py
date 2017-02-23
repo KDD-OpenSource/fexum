@@ -1,4 +1,5 @@
 from rest_framework.authentication import SessionAuthentication, BaseAuthentication
+from rest_framework.authtoken.serializers import AuthTokenSerializer
 
 
 class CSRFLessSessionAuthentication(SessionAuthentication):
