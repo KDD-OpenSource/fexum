@@ -39,12 +39,13 @@ class TestDatasetBinding(ChannelTestCase):
 class TestRarResultBinding(ChannelTestCase):
     def test_outbound_create(self):
         experiment = ExperimentFactory()
+        id = 'e8d481ac-e345-4798-92e7-d771a7b21ff1'
 
         client = HttpClient()
         client.force_login(experiment.user)
-        client.join_group('rar-result-{0}-updates'.format(experiment.user.id))
+        client.join_group('rar-result-{0}-updates'.format(id))
 
-        rar_result = RarResultFactory(target=experiment.target)
+        rar_result = RarResultFactory(id=id, target=experiment.target)
 
         # It should not receive this one as it's on a different channel
         RarResultFactory()
