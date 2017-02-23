@@ -8,14 +8,7 @@ from rest_framework.authentication import BaseAuthentication, SessionAuthenticat
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from django.contrib.auth import login, logout
-
-
-class CustomBaseAuthentication(BaseAuthentication):
-    def authenticate(self, request):
-        serializer = AuthTokenSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-        return (user, None)
+from users.authentication import CustomBaseAuthentication
 
 
 class AuthLoginView(APIView):
