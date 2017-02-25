@@ -50,10 +50,7 @@ class RarResult(models.Model):
     # TODO: Validation: target.dataset = feature.dataset
 
     def __str__(self):
-        try:
-            return 'Relevancy of {0} for target {1}'.format(self.feature, self.target)
-        except:
-            return 'Processing…'
+        return 'Result for target '.format(self.target.name)
 
 
 class Relevancy(models.Model):

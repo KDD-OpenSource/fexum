@@ -1,5 +1,6 @@
 from channels.binding.websockets import WebsocketBinding
 from features.models import Dataset, RarResult
+from users.models import User
 
 
 class DatasetBinding(WebsocketBinding):
@@ -9,10 +10,11 @@ class DatasetBinding(WebsocketBinding):
 
     @classmethod
     def group_names(cls, instance):
-        return ['dataset-updates']
+        return ['dataset-{0}-updates'.format(instance.id)]
 
     def has_permission(self, user, action, pk):
-        return True
+        # Permission is always false to block inbound messages that change the model
+        return False
 
 
 class RarResultBinding(WebsocketBinding):
@@ -22,8 +24,9 @@ class RarResultBinding(WebsocketBinding):
 
     @classmethod
     def group_names(cls, instance):
-        return ['rar-result-updates']
+        return ['rar-result-{0}-updates'.format(instance.id)]
 
     def has_permission(self, user, action, pk):
-        return True
+        # Permission is always false to block inbound messages that change the model
+        return False
 

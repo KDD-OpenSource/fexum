@@ -2,13 +2,12 @@ from rest_framework.test import APITestCase
 from users.tests.factories import UserFactory, TokenFactory, TEST_PASSWORD
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, \
-    HTTP_401_UNAUTHORIZED
-from rest_framework.authtoken.models import Token
+    HTTP_403_FORBIDDEN
 from users.serializers import UserSerializer
 from users.models import User
 
 
-class TestTokenAuthenticationView(APITestCase):
+class TestAuthLoginView(APITestCase):
     url = reverse('auth-login')
 
     def test_authenticate(self):
@@ -17,17 +16,13 @@ class TestTokenAuthenticationView(APITestCase):
             'username': user.username,
             'password': TEST_PASSWORD
         }
+        self.assertIsNone(self.client.session.get('_auth_user_id'))
 
-        self.assertEqual(Token.objects.count(), 0)
 
         response = self.client.post(self.url, data=data)
 
-        self.assertEqual(Token.objects.count(), 1)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        response_data = response.json()
-
-        token = Token.objects.get(key=response_data['token'])
-        self.assertEqual(token.user, user)
+        self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
+        self.assertEqual(self.client.session['_auth_user_id'], str(user.id))
 
     def test_authenticate_wrong_credentials(self):
         data = {
@@ -47,26 +42,24 @@ class TestTokenAuthenticationView(APITestCase):
         self.assertEqual(response.json(), {'username': ['This field is required.'],
                                            'password': ['This field is required.']})
 
-
-class TestLogoutView(APITestCase):
+class TestAuthLogoutView(APITestCase):
     url = reverse('auth-logout')
 
     def test_logout(self):
-        token = TokenFactory()
+        user = UserFactory()
+        self.client.force_login(user)
+        self.assertEqual(self.client.session['_auth_user_id'], str(user.id))
 
-        self.assertEqual(Token.objects.count(), 1)
-
-        self.client.credentials(HTTP_AUTHORIZATION='Token {0}'.format(token.key))
         response = self.client.delete(self.url)
 
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
         self.assertEqual(response.content, b'')
-        self.assertEqual(Token.objects.count(), 0)
+        self.assertIsNone(self.client.session.get('_auth_user_id'))
 
     def test_logout_unauthenticated(self):
-        url = reverse('auth-logout')
-        response = self.client.delete(url)
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        response = self.client.delete(self.url)
+        print(response.content)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
@@ -105,4 +98,5 @@ class TestUserRegisterView(APITestCase):
         response = self.client.post(self.url, data=data)
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.json(), {'username': ['A user with that username already exists.']})
+        self.assertEqual(response.json(),
+                         {'username': ['A user with that username already exists.']})
