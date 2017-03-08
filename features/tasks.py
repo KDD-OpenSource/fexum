@@ -209,6 +209,10 @@ def calculate_rar(target_id, precomputed_data=None):
 
 @shared_task
 def initialize_from_dataset(dataset_id):
+    # Fix bindings in celery context
+    from features.bindings import DatasetBinding
+    DatasetBinding.register()
+
     dataset = Dataset.objects.get(id=dataset_id)
     dataset.status = Dataset.PROCESSING #  TODO: Test
     dataset.save(update_fields=['status'])
@@ -235,6 +239,10 @@ def initialize_from_dataset(dataset_id):
 
 @shared_task
 def initialize_from_dataset_processing_callback(*args, **kwargs):
+    # Fix bindings in celery context
+    from features.bindings import DatasetBinding
+    DatasetBinding.register()
+
     dataset_id = kwargs['dataset_id']
     dataset = Dataset.objects.get(id=dataset_id)
     dataset.status = Dataset.DONE
