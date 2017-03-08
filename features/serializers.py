@@ -8,7 +8,7 @@ from rest_framework.validators import ValidationError
 class FeatureSerializer(ModelSerializer):
     class Meta:
         model = Feature
-        fields = ('id', 'name', 'mean', 'variance', 'min', 'max', 'is_categorical')
+        fields = ('id', 'name', 'mean', 'variance', 'min', 'max', 'is_categorical', 'categories')
 
 
 class BinSerializer(ModelSerializer):

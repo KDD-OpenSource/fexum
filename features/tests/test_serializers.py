@@ -22,6 +22,7 @@ class TestFeatureSerializer(TestCase):
         self.assertEqual(data.pop('mean'), feature.mean)
         self.assertEqual(data.pop('variance'), feature.variance)
         self.assertEqual(data.pop('is_categorical'), feature.is_categorical)
+        self.assertEqual(data.pop('categories'), feature.categories)
         self.assertEqual(len(data), 0)
 
 

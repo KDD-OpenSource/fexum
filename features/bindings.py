@@ -1,6 +1,5 @@
 from channels.binding.websockets import WebsocketBinding
 from features.models import Dataset, RarResult, Experiment
-from users.models import User
 
 
 class DatasetBinding(WebsocketBinding):
@@ -27,7 +26,7 @@ class RarResultBinding(WebsocketBinding):
 
     @classmethod
     def group_names(cls, instance):
-        experiments = Experiment.objects.filter(target=instance)
+        experiments = Experiment.objects.filter(target=instance.target)
         return ['user-{0}-updates'.format(experiment.user_id) for experiment in experiments]
 
     def has_permission(self, user, action, pk):
