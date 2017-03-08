@@ -128,4 +128,4 @@ networks:
       driver: default
       config:
       - subnet: 10.151.0.0/16
-        gateway: 10.151.01
+        gateway: 10.151.0.1
