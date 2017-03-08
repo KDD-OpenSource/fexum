@@ -124,3 +124,4 @@ services:
 
 networks:
   predots:
+    subnet: 10.151.0.0/16
