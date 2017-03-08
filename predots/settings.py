@@ -115,7 +115,7 @@ CELERY_BROKER_URL = 'amqp://guest:guest@queue'
 #: Only add pickle to this list if your broker is secured
 #: from unwanted access (see userguide/security.html)
 CELERY_ACCEPT_CONTENT = ['json']
-CELERY_RESULT_BACKEND = 'file:///code/celery'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/1'
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_IGNORE_RESULT = False
 
