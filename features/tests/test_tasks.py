@@ -94,6 +94,23 @@ class TestCalculateFeatureStatistics(TestCase):
         self.assertEqual(feature.variance, 1.2756908271439)
         self.assertEqual(feature.min, -1.24479339)
         self.assertEqual(feature.max, 2.24539624)
+        self.assertEqual(feature.is_categorical, False)
+        self.assertEqual(feature.categories, None)
+
+    def test_calculate_feature_statistics_is_categorical(self):
+        dataset = _build_test_dataset()
+        feature = Feature.objects.get(dataset=dataset, name='Col3')
+
+        calculate_feature_statistics(feature_id=feature.id)
+
+        feature = Feature.objects.get(id=feature.id)
+
+        self.assertEqual(feature.mean, 0.9)
+        self.assertEqual(feature.variance, 0.69)
+        self.assertEqual(feature.min, 0)
+        self.assertEqual(feature.max, 2.0)
+        self.assertEqual(feature.is_categorical, True)
+        self.assertEqual(feature.categories, [0, 1, 2])
 
 
 class TestCalculateRar(TestCase):

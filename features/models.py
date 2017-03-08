@@ -91,7 +91,8 @@ class Feature(models.Model):
     min = models.FloatField(blank=True, null=True)
     max = models.FloatField(blank=True, null=True)
     is_categorical = models.NullBooleanField()
-    
+    categories = JSONField(default=None, blank=True, null=True)
+
     def __str__(self):
         return '{0} in {1} dataset'.format(self.name, self.dataset)
 

@@ -318,6 +318,7 @@ class TestFeatureListView(APITestCase):
         self.assertEqual(first_obj.pop('id'), data['id'])
         self.assertEqual(first_obj.pop('name'), data['name'])
         self.assertEqual(first_obj.pop('is_categorical'), data['is_categorical'])
+        self.assertEqual(first_obj.pop('categories'), data['categories'])
         self.assertEqual(len(first_obj), 0)
 
     def test_retrieve_feature_list_dataset_not_found(self):
