@@ -97,8 +97,18 @@ class RedundancySerializer(ModelSerializer):
 
 class ConditionalDistributionRequestSerializer(Serializer):
     feature = PrimaryKeyRelatedField(queryset=Feature.objects.all())
-    from_value = FloatField(required=True)
-    to_value = FloatField(required=True)
+    from_value = FloatField(required=False)
+    to_value = FloatField(required=False)
+    categories = JSONField(required=False)
+
+    def validate(self, data):
+        categories_empty = data.get('categories') is None
+        value_range_empty = data.get('to_value') is None or data.get('from_value') is not None
+
+        if (not categories_empty and not value_range_empty) or (categories_empty and value_range_empty):
+            raise ValidationError('Either filter by "categories" or "from_value" and "to_value".')
+
+        return data
 
 
 class ConditionalDistributionResultSerializer(Serializer):

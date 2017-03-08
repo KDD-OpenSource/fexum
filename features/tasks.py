@@ -276,12 +276,13 @@ def calculate_conditional_distributions(target_id, feature_ranges) -> list:
     for ftr in feature_ranges:
         filter_array = np.logical_and(dataframe[ftr['feature']] >= ftr['from_value'], filter_array)
         filter_array = np.logical_and(dataframe[ftr['feature']] <= ftr['to_value'], filter_array)
+        
     values, counts = np.unique(dataframe.loc[filter_array, target.name], return_counts=True)
-    probabilies = counts / filter_array.sum()
+    probabilities = counts / filter_array.sum()
 
     # Convert to result dict
-    result = [{'value': value_probabilies[0],
-               'probability': value_probabilies[1]} for value_probabilies in zip(values, probabilies)]
+    result = [{'value': value_probabilities[0],
+               'probability': value_probabilities[1]} for value_probabilities in zip(values, probabilities)]
 
     logger.info('Result: {0}'.format(result))
 
