@@ -9,6 +9,7 @@ daphne==1.0.3
 flower==0.9.1
 SharedArray==2.0.2
 gunicorn
+celery[redis]
 
 # Disable these for docker envs
 # scipy
