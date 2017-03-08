@@ -124,3 +124,8 @@ services:
 
 networks:
   predots:
+    ipam:
+      driver: default
+      config:
+      - subnet: 10.151.0.0/16
+        gateway: 10.151.0.1
