@@ -44,8 +44,11 @@ class FeatureSliceSerializer(ModelSerializer):
         # TODO: Optimized cache?
         return [{
             'feature': obj.relevancy.feature.id,
-            'from_value': obj.from_value,
-            'to_value': obj.to_value
+            'range': {
+                'from_value': obj.from_value,
+                'to_value': obj.to_value
+            },
+            'categories': []  # TODO: Implement, algorithm does not return categories right now
         }]
 
 
