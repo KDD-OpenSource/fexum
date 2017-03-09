@@ -155,13 +155,13 @@ class TestConditionalDistributionRequestSerializer(TestCase):
         data = {'feature': feature.id, 'range': {'from_value': 0, 'to_value': 1}}
         serializer = ConditionalDistributionRequestSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        self.assertEqual(serializer.data, data) # TODO: Really the same after validation?
+        self.assertEqual(dict(serializer.validated_data), {'feature': feature, 'range': data['range']})
 
         # Test for categories
-        data = {'feature': feature.id, 'categories':[4.0, 3]}
+        data = {'feature': feature.id, 'categories':[4.0, 3.0]}
         serializer = ConditionalDistributionRequestSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        self.assertEqual(serializer.data, data)
+        self.assertEqual(dict(serializer.validated_data), {'feature': feature, 'categories': data['categories']})
 
 
 class TestConditionalDistributionResultSerializer(TestCase):

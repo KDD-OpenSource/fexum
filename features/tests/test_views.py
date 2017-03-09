@@ -623,6 +623,7 @@ class TestCondiditonalDistributionsView(APITestCase):
 
         target = FeatureFactory()
         feature = FeatureFactory(dataset=target.dataset)
+        url = reverse('target-condidtional-distributions', args=[target.id])
 
         # Test for range
         data_range = [{
@@ -633,7 +634,6 @@ class TestCondiditonalDistributionsView(APITestCase):
             }
         }]
 
-        url = reverse('target-condidtional-distributions', args=[target.id])
         with patch('features.views.calculate_conditional_distributions.apply_async',) as task_mock:
             task_mock.get.return_value = [] # TODO: Proper data
             response = self.client.post(url, data=data_range, format='json')
@@ -650,7 +650,6 @@ class TestCondiditonalDistributionsView(APITestCase):
         with patch('features.views.calculate_conditional_distributions.apply_async', ) as task_mock:
             task_mock.get.return_value = []  # TODO: Proper data
             response = self.client.post(url, data=data_categorical, format='json')
-            print(response.json())
             task_mock.assert_called_once_with(args=[target.id, data_categorical])
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(), [])

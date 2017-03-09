@@ -108,13 +108,9 @@ class RangeSerializer(Serializer):
 class ConditionalDistributionRequestSerializer(Serializer):
     feature = PrimaryKeyRelatedField(queryset=Feature.objects.all())
     range = RangeSerializer(required=False)
-    categories = ListField(
-        child=FloatField(), required=False, allow_empty=False
-    )
+    categories = ListField(required=False)
 
     def validate(self, attrs):
-        print(attrs.get('categories'))
-        print(attrs.get('range'))
         if (attrs.get('categories') is None) == (attrs.get('range') is None):
             raise ValidationError('Specify either a range or categories.')
         return attrs
