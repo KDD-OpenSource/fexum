@@ -271,7 +271,7 @@ def calculate_conditional_distributions(target_id, feature_constraints) -> list:
             filter_list = np.logical_and(dataframe[ftr['feature']] <= ftr['range']['to_value'], filter_list)
 
         elif 'categories' in ftr:
-            filter_list = np.logical_and(dataframe[ftr['feature']] in ftr['categories'], filter_list)
+            filter_list = np.logical_and(dataframe[ftr['feature']].isin(ftr['categories']), filter_list)
 
     # Calculate conditional probabilites based on filtering
     values, counts = np.unique(dataframe.loc[filter_list, target.name], return_counts=True)
