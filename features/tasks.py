@@ -278,7 +278,7 @@ def calculate_conditional_distributions(target_id, feature_contraints) -> list:
     probabilities = counts / filter_list.sum()
 
     # Convert to result dict
-    result = [{'value': probs[0], 'probability': probs[1]} for probs in zip(values, probabilities)]
+    result = [{'value': float(probs[0]), 'probability': probs[1]} for probs in zip(values, probabilities)]
 
     logger.info('Result: {0}'.format(result))
 
