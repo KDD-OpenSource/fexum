@@ -48,7 +48,7 @@ class FeatureSliceSerializer(ModelSerializer):
                 'from_value': obj.from_value,
                 'to_value': obj.to_value
             },
-            'categories': []  # TODO: Implement, algorithm does not return categories right now
+            'categories': null  # TODO: Implement, algorithm does not return categories right now
         }]
 
 
