@@ -15,10 +15,15 @@ import SharedArray as sa
 
 logger = get_task_logger(__name__)
 
-# Locking for shared memory
+# Locking of shared memory
 manager = Manager()
 dataframe_columns = manager.dict()
 dataframe_lock = manager.Lock()
+
+# Fix bindings in celery context
+from features.bindings import RarResultBinding, DatasetBinding
+DatasetBinding.register()
+RarResultBinding.register()
 
 
 def _get_dataset_and_file(dataset_id) -> (Dataset, str):
@@ -177,10 +182,6 @@ def calculate_rar(target_id, precomputed_data=None):
         _parse_and_save_rar_results(target=target, rar_result_dict=results)
         return
 
-    # Fix bindings in celery context
-    from features.bindings import RarResultBinding
-    RarResultBinding.register()
-
     # Return if rar was already calculated for a specific target
     if RarResult.objects.filter(target=target).exists():
         # Manually trigger notifications
@@ -212,10 +213,6 @@ def calculate_rar(target_id, precomputed_data=None):
 
 @shared_task
 def initialize_from_dataset(dataset_id):
-    # Fix bindings in celery context
-    from features.bindings import DatasetBinding
-    DatasetBinding.register()
-
     dataset = Dataset.objects.get(id=dataset_id)
     dataset.status = Dataset.PROCESSING #  TODO: Test
     dataset.save(update_fields=['status'])
@@ -242,10 +239,6 @@ def initialize_from_dataset(dataset_id):
 
 @shared_task
 def initialize_from_dataset_processing_callback(*args, **kwargs):
-    # Fix bindings in celery context
-    from features.bindings import DatasetBinding
-    DatasetBinding.register()
-
     dataset_id = kwargs['dataset_id']
     dataset = Dataset.objects.get(id=dataset_id)
     dataset.status = Dataset.DONE
@@ -253,35 +246,39 @@ def initialize_from_dataset_processing_callback(*args, **kwargs):
 
 
 @shared_task
-def calculate_conditional_distributions(target_id, feature_ranges) -> list:
+def calculate_conditional_distributions(target_id, feature_contraints) -> list:
     # TODO: Test
     target = Feature.objects.get(pk=target_id)
 
     logger.info(
-        'Started for target {0} and features ranges {1}'.format(target_id, feature_ranges))
+        'Started for target {0} and features ranges/categories {1}'.format(target_id, feature_contraints))
 
     dataframe = _get_dataframe(dataset_id=target.dataset.id)
 
     # Convert feature ids to feature name for using it in dataframe
-    feature_ranges = [{'feature': Feature.objects.get(dataset_id=target.dataset.id,
-                                                      id=ranges_feature_id['feature']).name,
-                       'from_value': ranges_feature_id['from_value'],
-                       'to_value': ranges_feature_id['to_value']}
-                      for ranges_feature_id in feature_ranges]
+    for feature_contraint in feature_contraints:
+        feature_name = Feature.objects.get(dataset_id=target.dataset.id,
+                                           id=feature_contraint['feature']).name
+        feature_contraint['feature'] = feature_name
 
-    logger.info('Changed feature range to {0}'.format(feature_ranges))
+    logger.info('Changed feature range to {0}'.format(feature_contraints))
 
-    # Make filtering
-    filter_array = np.array([True] * len(dataframe))
-    for ftr in feature_ranges:
-        filter_array = np.logical_and(dataframe[ftr['feature']] >= ftr['from_value'], filter_array)
-        filter_array = np.logical_and(dataframe[ftr['feature']] <= ftr['to_value'], filter_array)
-    values, counts = np.unique(dataframe.loc[filter_array, target.name], return_counts=True)
-    probabilies = counts / filter_array.sum()
+    # Make filtering based on category or range
+    filter_list = np.array([True] * len(dataframe))
+    for ftr in feature_contraints:
+        if feature_contraint.get('range') is not None:
+            filter_list = np.logical_and(dataframe[ftr['feature']] >= ftr['range']['from_value'], filter_list)
+            filter_list = np.logical_and(dataframe[ftr['feature']] <= ftr['range']['to_value'], filter_list)
+
+        elif feature_contraint.get('categories') is not None:
+            filter_list = np.logical_and(dataframe[ftr['feature']] in ftr['categories'], filter_list)
+
+    # Calculate conditional probabilites based on filtering
+    values, counts = np.unique(dataframe.loc[filter_list, target.name], return_counts=True)
+    probabilities = counts / filter_list.sum()
 
     # Convert to result dict
-    result = [{'value': value_probabilies[0],
-               'probability': value_probabilies[1]} for value_probabilies in zip(values, probabilies)]
+    result = [{'value': probs[0], 'probability': probs[1]} for probs in zip(values, probabilities)]
 
     logger.info('Result: {0}'.format(result))
 

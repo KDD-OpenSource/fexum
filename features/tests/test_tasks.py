@@ -172,3 +172,11 @@ class TestCalculateRar(TestCase):
 
 class TestCalculateArbitarySlices(TestCase):
     pass
+
+
+class TestCalculateConditionalDistributions(TestCase):
+    def test_calculate_conditional_distributions_categorical(self):
+        pass
+
+    def test_calculate_conditional_distributions_in_range(self):
+        pass

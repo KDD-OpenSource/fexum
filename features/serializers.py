@@ -1,5 +1,5 @@
 from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRelatedField, \
-    SerializerMethodField, Serializer, FloatField, ModelField
+    SerializerMethodField, Serializer, ListField, FloatField
 from features.models import Sample, Feature, Bin, Slice, Experiment, Dataset, Redundancy, \
     Relevancy
 from rest_framework.validators import ValidationError
@@ -44,8 +44,11 @@ class FeatureSliceSerializer(ModelSerializer):
         # TODO: Optimized cache?
         return [{
             'feature': obj.relevancy.feature.id,
-            'from_value': obj.from_value,
-            'to_value': obj.to_value
+            'range': {
+                'from_value': obj.from_value,
+                'to_value': obj.to_value
+            },
+            'categories': []  # TODO: Implement, algorithm does not return categories right now
         }]
 
 
@@ -95,10 +98,25 @@ class RedundancySerializer(ModelSerializer):
         fields = ('id', 'first_feature', 'second_feature', 'redundancy', 'weight')
 
 
-class ConditionalDistributionRequestSerializer(Serializer):
-    feature = PrimaryKeyRelatedField(queryset=Feature.objects.all())
+class RangeSerializer(Serializer):
     from_value = FloatField(required=True)
     to_value = FloatField(required=True)
+
+    def validate(self, attrs):
+        if attrs['from_value'] > attrs['to_value']:
+            raise ValidationError('from_value has to be smaller than to_value')
+        return attrs
+
+
+class ConditionalDistributionRequestSerializer(Serializer):
+    feature = PrimaryKeyRelatedField(queryset=Feature.objects.all())
+    range = RangeSerializer(required=False)
+    categories = ListField(required=False)
+
+    def validate(self, attrs):
+        if (attrs.get('categories') is None) == (attrs.get('range') is None):
+            raise ValidationError('Specify either a range or categories.')
+        return attrs
 
 
 class ConditionalDistributionResultSerializer(Serializer):

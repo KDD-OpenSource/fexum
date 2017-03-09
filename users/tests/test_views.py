@@ -58,7 +58,6 @@ class TestAuthLogoutView(APITestCase):
 
     def test_logout_unauthenticated(self):
         response = self.client.delete(self.url)
-        print(response.content)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})

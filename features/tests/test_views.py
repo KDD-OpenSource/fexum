@@ -617,25 +617,39 @@ class TestCondiditonalDistributionsView(APITestCase):
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
-
     def test_conditional_distributions(self):
         user = UserFactory()
         self.client.force_authenticate(user)
 
         target = FeatureFactory()
         feature = FeatureFactory(dataset=target.dataset)
+        url = reverse('target-condidtional-distributions', args=[target.id])
 
-        data = [{
+        # Test for range
+        data_range = [{
             'feature': feature.id,
-            'from_value': -1,
-            'to_value': 1
+            'range': {
+                'from_value': -1,
+                'to_value': 1
+            }
         }]
 
-        url = reverse('target-condidtional-distributions', args=[target.id])
         with patch('features.views.calculate_conditional_distributions.apply_async',) as task_mock:
             task_mock.get.return_value = [] # TODO: Proper data
-            response = self.client.post(url, data=data, format='json')
-            task_mock.assert_called_once_with(args=[target.id,data])
+            response = self.client.post(url, data=data_range, format='json')
+            task_mock.assert_called_once_with(args=[target.id,data_range])
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), [])
 
+        # Test for categories
+        data_categorical = [{
+            'feature': feature.id,
+            'categories': [1.0, 3.0]
+        }]
+
+        with patch('features.views.calculate_conditional_distributions.apply_async', ) as task_mock:
+            task_mock.get.return_value = []  # TODO: Proper data
+            response = self.client.post(url, data=data_categorical, format='json')
+            task_mock.assert_called_once_with(args=[target.id, data_categorical])
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(), [])

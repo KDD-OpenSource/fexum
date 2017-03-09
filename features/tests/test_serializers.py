@@ -7,6 +7,7 @@ from features.serializers import FeatureSerializer, BinSerializer, ExperimentTar
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
     DatasetFactory, SampleFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory
 from decimal import Decimal
+from rest_framework.exceptions import ValidationError
 
 
 class TestFeatureSerializer(TestCase):
@@ -143,10 +144,24 @@ class TestFeatureSliceSerializer(TestCase):
 class TestConditionalDistributionRequestSerializer(TestCase):
     def test_deserialize_one(self):
         feature = FeatureFactory()
-        data = {'feature': feature.id, 'from_value': 0, 'to_value': 1}
+
+        # Test that we can only specify one condition
+        data = {'feature': feature.id, 'range': {'from_value': 0, 'to_value': 1}, 'categories':[4.0, 3]}
         serializer = ConditionalDistributionRequestSerializer(data=data)
-        self.assertTrue(serializer.is_valid(raise_exception=True))
-        self.assertEqual(serializer.data, data)
+        self.assertRaises(ValidationError, serializer.is_valid, raise_exception=True)
+        self.assertEqual(serializer.errors, {'non_field_errors': ['Specify either a range or categories.']})
+
+        # Test for range
+        data = {'feature': feature.id, 'range': {'from_value': 0, 'to_value': 1}}
+        serializer = ConditionalDistributionRequestSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.assertEqual(dict(serializer.validated_data), {'feature': feature, 'range': data['range']})
+
+        # Test for categories
+        data = {'feature': feature.id, 'categories':[4.0, 3.0]}
+        serializer = ConditionalDistributionRequestSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.assertEqual(dict(serializer.validated_data), {'feature': feature, 'categories': data['categories']})
 
 
 class TestConditionalDistributionResultSerializer(TestCase):
