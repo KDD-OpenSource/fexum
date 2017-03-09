@@ -644,7 +644,7 @@ class TestCondiditonalDistributionsView(APITestCase):
         # Test for categories
         data_categorical = [{
             'feature': feature.id,
-            'categories:': [1.0, 3.0]
+            'categories': [1.0, 3.0]
         }]
 
         with patch('features.views.calculate_conditional_distributions.apply_async', ) as task_mock:
