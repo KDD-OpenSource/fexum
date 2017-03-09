@@ -1,2 +1,7 @@
 #!/bin/bash
-docker-compose run web_wsgi py.test
+
+if [ "$1" == "--lf" ]; then
+    docker-compose run web_wsgi py.test --lf;
+else
+    docker-compose run web_wsgi py.test;
+fi
