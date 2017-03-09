@@ -251,7 +251,7 @@ def calculate_conditional_distributions(target_id, feature_constraints) -> list:
     target = Feature.objects.get(pk=target_id)
 
     logger.info(
-        'Started for target {0} and features ranges/categories {1}'.format(target_id, feature_contraints))
+        'Started for target {0} and features ranges/categories {1}'.format(target_id, feature_constraints))
 
     dataframe = _get_dataframe(dataset_id=target.dataset.id)
 
