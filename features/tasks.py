@@ -246,39 +246,39 @@ def initialize_from_dataset_processing_callback(*args, **kwargs):
 
 
 @shared_task
-def calculate_conditional_distributions(target_id, feature_contraints) -> list:
+def calculate_conditional_distributions(target_id, feature_constraints) -> list:
     # TODO: Test
     target = Feature.objects.get(pk=target_id)
 
     logger.info(
-        'Started for target {0} and features ranges/categories {1}'.format(target_id, feature_contraints))
+        'Started for target {0} and features ranges/categories {1}'.format(target_id, feature_constraints))
 
     dataframe = _get_dataframe(dataset_id=target.dataset.id)
 
     # Convert feature ids to feature name for using it in dataframe
-    for feature_contraint in feature_contraints:
+    for feature_constraint in feature_constraints:
         feature_name = Feature.objects.get(dataset_id=target.dataset.id,
-                                           id=feature_contraint['feature']).name
-        feature_contraint['feature'] = feature_name
+                                           id=feature_constraint['feature']).name
+        feature_constraint['feature'] = feature_name
 
-    logger.info('Changed feature range to {0}'.format(feature_contraints))
+    logger.info('Changed feature range to {0}'.format(feature_constraints))
 
     # Make filtering based on category or range
     filter_list = np.array([True] * len(dataframe))
-    for ftr in feature_contraints:
-        if feature_contraint.get('range') is not None:
+    for ftr in feature_constraints:
+        if 'range' in ftr:
             filter_list = np.logical_and(dataframe[ftr['feature']] >= ftr['range']['from_value'], filter_list)
             filter_list = np.logical_and(dataframe[ftr['feature']] <= ftr['range']['to_value'], filter_list)
 
-        elif feature_contraint.get('categories') is not None:
-            filter_list = np.logical_and(dataframe[ftr['feature']] in ftr['categories'], filter_list)
+        elif 'categories' in ftr:
+            filter_list = np.logical_and(dataframe[ftr['feature']].isin(ftr['categories']), filter_list)
 
     # Calculate conditional probabilites based on filtering
     values, counts = np.unique(dataframe.loc[filter_list, target.name], return_counts=True)
     probabilities = counts / filter_list.sum()
 
     # Convert to result dict
-    result = [{'value': probs[0], 'probability': probs[1]} for probs in zip(values, probabilities)]
+    result = [{'value': float(probs[0]), 'probability': probs[1]} for probs in zip(values, probabilities)]
 
     logger.info('Result: {0}'.format(result))
 

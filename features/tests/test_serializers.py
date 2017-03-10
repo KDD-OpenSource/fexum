@@ -137,8 +137,8 @@ class TestFeatureSliceSerializer(TestCase):
         first_feature = data.pop('features').pop(0)
         self.assertEqual(len(data), 0)
         self.assertEqual(first_feature.pop('feature'), slice.relevancy.feature.id)
-        self.assertAlmostEqual(first_feature.pop('from_value'), slice.from_value)
-        self.assertAlmostEqual(first_feature.pop('to_value'), slice.to_value)
+        self.assertAlmostEqual(first_feature['range'].pop('from_value'), slice.from_value)
+        self.assertAlmostEqual(first_feature['range'].pop('to_value'), slice.to_value)
 
 
 class TestConditionalDistributionRequestSerializer(TestCase):
