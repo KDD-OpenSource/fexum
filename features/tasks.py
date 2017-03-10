@@ -4,8 +4,6 @@ import pandas as pd
 import numpy as np
 from features.models import Feature, Bin, Slice, Sample, Dataset, RarResult, \
     Redundancy, Relevancy
-from subprocess import Popen, PIPE
-import json
 from django.db.models.signals import post_save, pre_save
 from celery.task import chord
 from celery.utils.log import get_task_logger
@@ -191,23 +189,9 @@ def calculate_rar(target_id, precomputed_data=None):
 
         return
 
-    # Execute Rar
-    JAR_FILE = '/assets/rar-mfs.jar'
-    process = Popen([
-        'java',
-        '-d64',
-        '-Xms8g',
-        '-Xmx32g',
-        '-jar', JAR_FILE,
-        'csv',
-        '--samples', '100',
-        '--subsetSize', '5',
-        '--nonorm', filename,
-        '--hics',
-        '--targetName', target.name],
-        stdout=PIPE)
-    raw_output, err = process.communicate()
-    results = json.loads(raw_output)
+    # TODO: Add hics here
+
+
     _parse_and_save_rar_results(target=target, rar_result_dict=results)
 
 

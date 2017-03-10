@@ -10,6 +10,8 @@ flower==0.9.1
 SharedArray==2.0.2
 gunicorn
 celery[redis]
+git+ssh://git@github.com/KDD-OpenSource/predots-python-hics.git==0.1
+
 
 # Disable these for docker envs
 # scipy
