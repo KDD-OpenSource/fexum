@@ -41,10 +41,6 @@ def _get_dataframe(dataset_id: str) -> pd.DataFrame:
         shared_array = sa.attach('shm://{0}'.format(dataset_id))
         columns = dataframe_columns[dataset_id]
 
-        dataframe_lock.release()
-
-        dataframe = pd.DataFrame(shared_array, columns=columns)
-
         logger.info('Cache hit for dataset {0}'.format(dataset_id))
     except FileNotFoundError:
         logger.info('Cache miss for dataset {0}'.format(dataset_id))
@@ -54,12 +50,15 @@ def _get_dataframe(dataset_id: str) -> pd.DataFrame:
         dataframe = pd.read_csv(filename)
         shared_array = sa.create('shm://{0}'.format(dataset_id), dataframe.shape)
         shared_array[:] = dataframe.values
-        dataframe_columns[dataset_id] = dataframe.columns
-
-        dataframe_lock.release()
+        columns = dataframe.columns
+        dataframe_columns[dataset_id] = columns
+        del dataframe
 
         logger.info('Cache save for dataset {0}'.format(dataset_id))
 
+    dataframe = pd.DataFrame(shared_array, columns=columns)
+
+    dataframe_lock.release()
     return dataframe
 
 
