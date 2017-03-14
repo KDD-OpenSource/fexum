@@ -90,7 +90,7 @@ def build_histogram(feature_id):
     dataframe = _get_dataframe(feature.dataset.id)
 
     bin_set = []
-    bins, bin_edges = np.histogram(dataframe[feature.name], bins='auto')
+    bins, bin_edges = np.histogram(dataframe[feature.name], bins=50)
     for bin_index, bin_value in enumerate(bins):
         from_value = bin_edges[bin_index]
         to_value = bin_edges[bin_index + 1]
