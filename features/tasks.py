@@ -79,6 +79,8 @@ def calculate_feature_statistics(feature_id):
         feature.categories = list(unique_values)
     feature.save(update_fields=['min', 'max', 'variance', 'mean', 'is_categorical', 'categories'])
 
+    del unique_values, feature
+
 
 @shared_task
 def build_histogram(feature_id):
@@ -101,6 +103,8 @@ def build_histogram(feature_id):
         bin_set.append(bin)
     Bin.objects.bulk_create(bin_set)
 
+    del bins, bin_edges, bin_set
+
 
 @shared_task
 def downsample_feature(feature_id, sample_count=1000):
@@ -122,6 +126,8 @@ def downsample_feature(feature_id, sample_count=1000):
         sample_set.append(sample)
 
     Sample.objects.bulk_create(sample_set)
+
+    del sample_set, sampling
 
 
 def _parse_and_save_rar_results(target: Feature, rar_result_dict: dict):
