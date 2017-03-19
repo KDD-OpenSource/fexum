@@ -41,10 +41,6 @@ def _get_dataframe(dataset_id: str) -> pd.DataFrame:
         shared_array = sa.attach('shm://{0}'.format(dataset_id))
         columns = dataframe_columns[dataset_id]
 
-        dataframe_lock.release()
-
-        dataframe = pd.DataFrame(shared_array, columns=columns)
-
         logger.info('Cache hit for dataset {0}'.format(dataset_id))
     except FileNotFoundError:
         logger.info('Cache miss for dataset {0}'.format(dataset_id))
@@ -54,12 +50,15 @@ def _get_dataframe(dataset_id: str) -> pd.DataFrame:
         dataframe = pd.read_csv(filename)
         shared_array = sa.create('shm://{0}'.format(dataset_id), dataframe.shape)
         shared_array[:] = dataframe.values
-        dataframe_columns[dataset_id] = dataframe.columns
-
-        dataframe_lock.release()
+        columns = dataframe.columns
+        dataframe_columns[dataset_id] = columns
+        del dataframe
 
         logger.info('Cache save for dataset {0}'.format(dataset_id))
 
+    dataframe = pd.DataFrame(shared_array, columns=columns)
+
+    dataframe_lock.release()
     return dataframe
 
 
@@ -80,6 +79,8 @@ def calculate_feature_statistics(feature_id):
         feature.categories = list(unique_values)
     feature.save(update_fields=['min', 'max', 'variance', 'mean', 'is_categorical', 'categories'])
 
+    del unique_values, feature
+
 
 @shared_task
 def build_histogram(feature_id):
@@ -89,7 +90,7 @@ def build_histogram(feature_id):
     dataframe = _get_dataframe(feature.dataset.id)
 
     bin_set = []
-    bins, bin_edges = np.histogram(dataframe[feature.name], bins='auto')
+    bins, bin_edges = np.histogram(dataframe[feature.name], bins=50)
     for bin_index, bin_value in enumerate(bins):
         from_value = bin_edges[bin_index]
         to_value = bin_edges[bin_index + 1]
@@ -101,6 +102,8 @@ def build_histogram(feature_id):
         )
         bin_set.append(bin)
     Bin.objects.bulk_create(bin_set)
+
+    del bins, bin_edges, bin_set
 
 
 @shared_task
@@ -123,6 +126,8 @@ def downsample_feature(feature_id, sample_count=1000):
         sample_set.append(sample)
 
     Sample.objects.bulk_create(sample_set)
+
+    del sample_set, sampling
 
 
 def _parse_and_save_rar_results(target: Feature, rar_result_dict: dict):
