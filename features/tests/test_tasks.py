@@ -1,6 +1,6 @@
 from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
-    calculate_feature_statistics, calculate_rar
+    calculate_feature_statistics, calculate_hics
 from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
     RarResult
 from features.tests.factories import FeatureFactory, DatasetFactory, RelevancyFactory, \
@@ -121,7 +121,7 @@ class TestCalculateRar(TestCase):
         target = Feature.objects.get(dataset=dataset, name='Col3')
 
         # Select first feature as target
-        calculate_rar(target_id=target.id)
+        calculate_hics(target_id=target.id)
 
         self.assertEqual(RarResult.objects.count(), 1)
 
@@ -156,7 +156,7 @@ class TestCalculateRar(TestCase):
         # Signals are called manually
         with patch('features.tasks.pre_save.send') as pre_save_signal_mock:
             with patch('features.tasks.post_save.send') as post_save_signal_mock:
-                calculate_rar(target_id=target.id)
+                calculate_hics(target_id=target.id)
 
                 post_save_signal_mock.assert_called_once_with(RarResult, created=False,
                                                               instance=rar_result)

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from features.models import RarResult, Feature
 from django import forms
-from features.tasks import calculate_rar
+from features.tasks import calculate_hics
 import json
 
 
@@ -29,7 +29,7 @@ class RarResultJsonAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         target = form.cleaned_data['target']
         rar_result_json = form.cleaned_data['rar_result_json']
-        calculate_rar.delay(target_id=target.id, precomputed_data=rar_result_json)
+        calculate_hics.delay(target_id=target.id, precomputed_data=rar_result_json)
 
 
 admin.site.register(RarResult, RarResultJsonAdmin)

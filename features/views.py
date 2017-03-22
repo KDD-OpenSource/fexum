@@ -7,7 +7,7 @@ from features.serializers import FeatureSerializer, BinSerializer, ExperimentSer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
-from features.tasks import calculate_rar, calculate_conditional_distributions
+from features.tasks import calculate_hics, calculate_conditional_distributions
 from rest_framework.parsers import MultiPartParser, FormParser
 from features.tasks import initialize_from_dataset
 from django.contrib.auth import get_user_model
@@ -48,7 +48,7 @@ class TargetDetailView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         
-        calculate_rar.delay(target_id=serializer.instance.target.id)
+        calculate_hics.delay(target_id=serializer.instance.target.id)
 
         return Response(serializer.data)
 

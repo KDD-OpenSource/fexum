@@ -9,6 +9,7 @@ from celery.task import chord
 from celery.utils.log import get_task_logger
 from multiprocessing import Manager
 import SharedArray as sa
+from hics.bivariate_correlation import IncrementalBivariateCorrelation
 
 
 logger = get_task_logger(__name__)
@@ -167,9 +168,9 @@ def _parse_and_save_rar_results(target: Feature, rar_result_dict: dict):
 
 
 @shared_task
-def calculate_rar(target_id, precomputed_data=None):
+def calculate_hics(target_id, precomputed_data=None):
     target = Feature.objects.get(pk=target_id)
-    _, filename = _get_dataset_and_file(target.dataset.id)
+    dataframe = _get_dataframe(target.dataset.id)
 
     # TODO: Add test
 
@@ -190,7 +191,8 @@ def calculate_rar(target_id, precomputed_data=None):
         return
 
     # TODO: Add hics here
-
+    correlation = IncrementalBivariateCorrelation(dataframe, '0', iterations=10, alpha=0.1, drop_discrete=True)
+    relevancies, redundancies, feature_slices = correlation.calculate_correlation(limit=5, callback=None)
 
     _parse_and_save_rar_results(target=target, rar_result_dict=results)
 
