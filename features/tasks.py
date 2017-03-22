@@ -9,7 +9,8 @@ from celery.task import chord
 from celery.utils.log import get_task_logger
 from multiprocessing import Manager
 import SharedArray as sa
-from hics.bivariate_correlation import IncrementalBivariateCorrelation
+from hics.incremental_correlation import IncrementalCorrelation
+from hics.result_storage import AbstractResultStorage
 
 
 logger = get_task_logger(__name__)
@@ -60,6 +61,49 @@ def _get_dataframe(dataset_id: str) -> pd.DataFrame:
         logger.info('Cache save for dataset {0}'.format(dataset_id))
 
     return dataframe
+
+
+class DjangoHICSResultStorage(AbstractResultStorage):
+    def __init__(self, rar_result, features):
+        assert type(rar_result) == RarResult
+        self.features = features
+
+    def get_relevancies(self):
+        pass
+
+    def update_relevancies(self, new_relevancies: pd.DataFrame):
+        pass
+
+    def get_redundancies(self):
+        feature_names = [feature.name for feature in self.features]
+        redundancies_dataframe = pd.DateFrame(data=0, columns=feature_names, index=feature_names)
+        weights_dataframe = pd.DateFrame(data=0, columns=feature_names, index=feature_names)
+
+        redundancies = Redundancy.objects.all()
+        for redundancy in redundancies:
+            first_feature_name = redundancy.first_feature.name
+            second_feature_name = redundancy.second_feature.name
+            redundancies_dataframe[first_feature_name, second_feature_name] = redundancy.redundancy
+            redundancies_dataframe[second_feature_name, first_feature_name] = redundancy.redundancy
+            weights_dataframe[first_feature_name, second_feature_name] = redundancy.weight
+            weights_dataframe[second_feature_name, first_feature_name] = redundancy.weight
+
+        return redundancies_dataframe, weights_dataframe
+
+    def update_redundancies(self, new_redundancies: pd.DataFrame, new_weights: pd.DataFrame):
+        # TODO: Filter by dataset
+        for first_feature in self.features:
+            for second_feature in self.features:
+                Redundancy.objects.update_or_create(
+                    first_feature=(first_feature if first_feature.id < second_feature.id else second_feature),
+                    second_feature=(first_feature if first_feature.id >= second_feature.id else second_feature),
+                    defaults={'redundancy': 0, 'weight': 0})
+
+    def get_slices(self):
+        pass
+
+    def update_slices(self, new_slices: dict()):
+        pass
 
 
 @shared_task
@@ -124,49 +168,6 @@ def downsample_feature(feature_id, sample_count=1000):
     Sample.objects.bulk_create(sample_set)
 
 
-def _parse_and_save_rar_results(target: Feature, rar_result_dict: dict):
-    # The Results Model should separate RaR results from different runs
-    # TODO: Test and refactor status
-    rar_result = RarResult.objects.create(target=target, status=RarResult.EMPTY)
-
-    for redundancy_data in rar_result_dict['redundancies']:
-        first_feature = Feature.objects.get(dataset=target.dataset,
-                                            name=redundancy_data['feature1'])
-        second_feature = Feature.objects.get(dataset=target.dataset,
-                                             name=redundancy_data['feature2'])
-
-        Redundancy.objects.update_or_create(
-            rar_result=rar_result,
-            first_feature=(first_feature if first_feature.id < second_feature.id else second_feature),
-            second_feature=(first_feature if first_feature.id >= second_feature.id else second_feature),
-            defaults={'redundancy': redundancy_data['redundancy'], 'weight': redundancy_data['weight']}
-        )
-
-    # Parse and save results
-    for idx, relevancy_data in enumerate(rar_result_dict['relevancies']):
-        feature = Feature.objects.get(dataset=target.dataset, name=relevancy_data['name'])
-        relevancy = Relevancy.objects.create(
-            feature=feature,
-            rank=idx,
-            relevancy=relevancy_data['result']['score'],
-            rar_result=rar_result
-        )
-
-        for slice_data in relevancy_data['result']['scoredBlocks']:
-            Slice.objects.create(
-                relevancy=relevancy,
-                marginal_distribution=slice_data['normalizedMarginalDistribution'],
-                conditional_distribution=slice_data['normalizedConditionalDistribution'],
-                deviation=slice_data['deviation'],
-                frequency=slice_data['frequency'],
-                from_value=slice_data['featureRanges'][0]['start'],
-                to_value=slice_data['featureRanges'][0]['end']
-            )
-    # Test status
-    rar_result.status = RarResult.DONE
-    rar_result.save(update_fields=['status'])
-
-
 @shared_task
 def calculate_hics(target_id, precomputed_data=None):
     target = Feature.objects.get(pk=target_id)
@@ -178,7 +179,6 @@ def calculate_hics(target_id, precomputed_data=None):
     if precomputed_data is not None:
         # TODO: Add test
         results = precomputed_data
-        _parse_and_save_rar_results(target=target, rar_result_dict=results)
         return
 
     # Return if rar was already calculated for a specific target
@@ -190,11 +190,10 @@ def calculate_hics(target_id, precomputed_data=None):
 
         return
 
-    # TODO: Add hics here
-    correlation = IncrementalBivariateCorrelation(dataframe, '0', iterations=10, alpha=0.1, drop_discrete=True)
-    relevancies, redundancies, feature_slices = correlation.calculate_correlation(limit=5, callback=None)
-
-    _parse_and_save_rar_results(target=target, rar_result_dict=results)
+    result_storage = DjangoHICSResultStorage()
+    correlation = IncrementalCorrelation(data=dataframe, target=target.name, result_storage=result_storage,
+                                         iterations=10, alpha=0.1, drop_discrete=False)
+    correlation.calculate_correlation(limit=5, callback=None)
 
 
 @shared_task

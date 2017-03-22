@@ -55,12 +55,12 @@ class RarResult(models.Model):
 
 class Relevancy(models.Model):
     class Meta:
-        unique_together = ('feature', 'rank', 'rar_result',)
+        unique_together = ('features', 'rank', 'rar_result',)
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     relevancy = models.FloatField()
     rank = models.IntegerField()
-    feature = models.ForeignKey('Feature', on_delete=models.CASCADE, related_name='features')
+    feature_set = models.ManyToManyField('Feature')
     rar_result = models.ForeignKey('RarResult', on_delete=models.CASCADE)
 
 
@@ -95,6 +95,7 @@ class Feature(models.Model):
 
     def __str__(self):
         return '{0} in {1} dataset'.format(self.name, self.dataset)
+
 
 # Dataset are not separated
 class Sample(models.Model):
