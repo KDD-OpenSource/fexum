@@ -2,9 +2,9 @@ from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
     calculate_feature_statistics, calculate_hics
 from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
-    RarResult
+    Result
 from features.tests.factories import FeatureFactory, DatasetFactory, RelevancyFactory, \
-    RedundancyFactory, RarResultFactory
+    RedundancyFactory, ResultFactory
 from unittest.mock import patch, call
 
 # TODO: test for results
@@ -113,8 +113,11 @@ class TestCalculateFeatureStatistics(TestCase):
         self.assertEqual(feature.categories, [0, 1, 2])
 
 
-class TestCalculateRar(TestCase):
-    def test_calculate_rar(self):
+class TestCalculateHics(TestCase):
+    def test_calculate_incremental_hics(self):
+        pass
+
+    def test_calculate_hics(self):
         dataset = _build_test_dataset()
         feature1 = Feature.objects.get(dataset=dataset, name='Col1')
         feature2 = Feature.objects.get(dataset=dataset, name='Col2')
@@ -123,7 +126,7 @@ class TestCalculateRar(TestCase):
         # Select first feature as target
         calculate_hics(target_id=target.id)
 
-        self.assertEqual(RarResult.objects.count(), 1)
+        self.assertEqual(Result.objects.count(), 1)
 
         # Relevancies
         self.assertEqual(Relevancy.objects.count(), 2,
@@ -144,13 +147,13 @@ class TestCalculateRar(TestCase):
         assert redundancy.first_feature == feature1 or redundancy.first_feature == feature2
         assert redundancy.second_feature == feature1 or redundancy.second_feature == feature2
 
-    def test_calculate_rar_catch_if_already_calcalulated_for_target(self):
+    def test_calculate_hics_catch_if_already_calcalulated_for_target(self):
         dataset = _build_test_dataset()
         target = Feature.objects.get(dataset=dataset, name='Col2')
 
         # Init a typical result configuration
-        rar_result = RarResultFactory(target=target)
-        self.assertEqual(RarResult.objects.count(), 1,
+        rar_result = ResultFactory(target=target)
+        self.assertEqual(Result.objects.count(), 1,
                          msg='Should only contain result for the one feature')
 
         # Signals are called manually
@@ -158,11 +161,11 @@ class TestCalculateRar(TestCase):
             with patch('features.tasks.post_save.send') as post_save_signal_mock:
                 calculate_hics(target_id=target.id)
 
-                post_save_signal_mock.assert_called_once_with(RarResult, created=False,
+                post_save_signal_mock.assert_called_once_with(Result, created=False,
                                                               instance=rar_result)
-                pre_save_signal_mock.assert_called_once_with(RarResult, instance=rar_result)
+                pre_save_signal_mock.assert_called_once_with(Result, instance=rar_result)
 
-        self.assertEqual(RarResult.objects.count(), 1,
+        self.assertEqual(Result.objects.count(), 1,
                          msg='Should still only contain result for the one feature')
 
     def test_calculate_rar_use_precalulated_data(self):

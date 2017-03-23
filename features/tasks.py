@@ -2,15 +2,16 @@ from __future__ import absolute_import, unicode_literals
 from celery import shared_task
 import pandas as pd
 import numpy as np
-from features.models import Feature, Bin, Slice, Sample, Dataset, RarResult, \
+from features.models import Feature, Bin, Slice, Sample, Dataset, Result, \
     Redundancy, Relevancy
-from django.db.models.signals import post_save, pre_save
 from celery.task import chord
 from celery.utils.log import get_task_logger
 from multiprocessing import Manager
 import SharedArray as sa
 from hics.incremental_correlation import IncrementalCorrelation
 from hics.result_storage import AbstractResultStorage
+from hics.scored_slices import ScoredSlices
+from features.bindings import ResultBinding, DatasetBinding
 
 
 logger = get_task_logger(__name__)
@@ -21,9 +22,8 @@ dataframe_columns = manager.dict()
 dataframe_lock = manager.Lock()
 
 # Fix bindings in celery context
-from features.bindings import RarResultBinding, DatasetBinding
 DatasetBinding.register()
-RarResultBinding.register()
+ResultBinding.register()
 
 
 def _get_dataset_and_file(dataset_id) -> (Dataset, str):
@@ -64,22 +64,44 @@ def _get_dataframe(dataset_id: str) -> pd.DataFrame:
 
 
 class DjangoHICSResultStorage(AbstractResultStorage):
-    def __init__(self, rar_result, features):
-        assert type(rar_result) == RarResult
+    def __init__(self, result, features):
         self.features = features
+        self.target = result.target
+        self.result = result
 
     def get_relevancies(self):
-        pass
+        relevancies = Relevancy.objects.filter(result=self.result).all()
+        feature_set_list = []
+        relevancy_list = []
+        iteration_list = []
+
+        for relevancy in relevancies:
+            feature_set_list += [tuple([feature.name for feature in relevancy.features.all()])]
+            relevancy_list += [relevancy.relevancy]
+            iteration_list += [relevancy.iteration]
+
+        dataframe = pd.DataFrame({'relevancy': relevancy_list, 'iteration': iteration_list},
+                                 index=feature_set_list)
+
+        return dataframe
 
     def update_relevancies(self, new_relevancies: pd.DataFrame):
-        pass
+        for feature_set, data in new_relevancies.iterrows():
+            features = Feature.objects.filter(name__in=list(feature_set), id__in=self.features)
+            Relevancy.objects.update_or_create(
+                result=self.result,
+                features=features,
+                defaults={'iteration': data.iteration, 'relevancy': data.relevancy}
+            )
 
     def get_redundancies(self):
         feature_names = [feature.name for feature in self.features]
-        redundancies_dataframe = pd.DateFrame(data=0, columns=feature_names, index=feature_names)
-        weights_dataframe = pd.DateFrame(data=0, columns=feature_names, index=feature_names)
+        redundancies_dataframe = pd.DataFrame(data=0, columns=feature_names, index=feature_names)
+        weights_dataframe = pd.DataFrame(data=0, columns=feature_names, index=feature_names)
 
-        redundancies = Redundancy.objects.all()
+        redundancies = Redundancy.objects.filter(first_feature__in=self.features,
+                                                 second_feature__in=self.features,
+                                                 result=self.result).all()
         for redundancy in redundancies:
             first_feature_name = redundancy.first_feature.name
             second_feature_name = redundancy.second_feature.name
@@ -91,19 +113,26 @@ class DjangoHICSResultStorage(AbstractResultStorage):
         return redundancies_dataframe, weights_dataframe
 
     def update_redundancies(self, new_redundancies: pd.DataFrame, new_weights: pd.DataFrame):
-        # TODO: Filter by dataset
         for first_feature in self.features:
             for second_feature in self.features:
                 Redundancy.objects.update_or_create(
+                    result=self.result,
                     first_feature=(first_feature if first_feature.id < second_feature.id else second_feature),
                     second_feature=(first_feature if first_feature.id >= second_feature.id else second_feature),
                     defaults={'redundancy': 0, 'weight': 0})
 
     def get_slices(self):
-        pass
+        slices = Slice.objects.filter(features__in=self.features, result=self.result)
+        return {tuple([feature.name for feature in slice.features.all()]): ScoredSlices.from_dict(slice.definition) for slice in slices}
 
     def update_slices(self, new_slices: dict()):
-        pass
+        for feature_set, slices in new_slices.items():
+            features = Feature.objects.filter(name__in=feature_set, dataset=self.target.dataset)
+            Slice.objects.update_or_create(
+                result=self.result,
+                features=features,
+                defaults={'definition': slices.to_dict()}
+            )
 
 
 @shared_task
@@ -169,31 +198,24 @@ def downsample_feature(feature_id, sample_count=1000):
 
 
 @shared_task
-def calculate_hics(target_id, precomputed_data=None):
+def calculate_hics(target_id, bivariate=True):
     target = Feature.objects.get(pk=target_id)
     dataframe = _get_dataframe(target.dataset.id)
+    features = Feature.objects.filter(dataset=target.dataset).exclude(id=target.id).all()
 
-    # TODO: Add test
-
-    # Only execute rar if don't insert data manually
-    if precomputed_data is not None:
-        # TODO: Add test
-        results = precomputed_data
-        return
-
-    # Return if rar was already calculated for a specific target
-    if RarResult.objects.filter(target=target).exists():
-        # Manually trigger notifications
-        rar_result = RarResult.objects.filter(target=target).first()
-        pre_save.send(RarResult, instance=rar_result)
-        post_save.send(RarResult, instance=rar_result, created=False)
-
-        return
-
-    result_storage = DjangoHICSResultStorage()
+    result = Result.objects.create(target=target)
+    result_storage = DjangoHICSResultStorage(result=result, features=features)
     correlation = IncrementalCorrelation(data=dataframe, target=target.name, result_storage=result_storage,
                                          iterations=10, alpha=0.1, drop_discrete=False)
-    correlation.calculate_correlation(limit=5, callback=None)
+
+    if bivariate:
+        correlation.update_bivariate_relevancies(runs=1)
+        correlation.update_bivariate_relevancies(runs=1)
+    else:
+        raise NotImplementedError()
+
+    result.status = Result.DONE
+    result.save(update_fields=['status'])
 
 
 @shared_task
@@ -268,3 +290,8 @@ def calculate_conditional_distributions(target_id, feature_constraints) -> list:
     logger.info('Result: {0}'.format(result))
 
     return result
+
+
+
+
+

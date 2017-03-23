@@ -1,5 +1,5 @@
 from channels.binding.websockets import WebsocketBinding
-from features.models import Dataset, RarResult, Experiment
+from features.models import Dataset, Result, Experiment
 
 
 class DatasetBinding(WebsocketBinding):
@@ -19,9 +19,9 @@ class DatasetBinding(WebsocketBinding):
         return False
 
 
-class RarResultBinding(WebsocketBinding):
-    model = RarResult
-    stream = 'rar_result'
+class ResultBinding(WebsocketBinding):
+    model = Result
+    stream = 'result'
     fields = ['id', 'status']
 
     @classmethod

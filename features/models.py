@@ -33,7 +33,7 @@ class Dataset(models.Model):
         return self.name
 
 
-class RarResult(models.Model):
+class Result(models.Model):
     EMPTY = 'empty'
     DONE = 'done'
 
@@ -42,34 +42,38 @@ class RarResult(models.Model):
         (DONE, 'Done')
     )
 
+    NONE = 'none'
+    HICS = 'hics'
+    RESULT_TYPE = (
+        (NONE, 'None'),
+        (HICS, 'HiCS'),
+    )
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(editable=False, default=now) # TODO: Test
     target = models.ForeignKey('Feature', on_delete=models.CASCADE)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=EMPTY)
+    type = models.CharField(max_length=10, choices=RESULT_TYPE, default=EMPTY)
 
     # TODO: Validation: target.dataset = feature.dataset
-
     def __str__(self):
         return 'Result for target '.format(self.target.name)
 
 
 class Relevancy(models.Model):
-    class Meta:
-        unique_together = ('features', 'rank', 'rar_result',)
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     relevancy = models.FloatField()
-    rank = models.IntegerField()
-    feature_set = models.ManyToManyField('Feature')
-    rar_result = models.ForeignKey('RarResult', on_delete=models.CASCADE)
+    features = models.ManyToManyField('Feature')
+    result = models.ForeignKey('Result', on_delete=models.CASCADE)
+    iteration = models.IntegerField()
 
 
 class Redundancy(models.Model):
     class Meta:
-        unique_together = ('first_feature', 'second_feature', 'rar_result')
+        unique_together = ('first_feature', 'second_feature', 'result')
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    rar_result = models.ForeignKey('RarResult', on_delete=models.CASCADE)
+    result = models.ForeignKey('Result', on_delete=models.CASCADE)
     first_feature = models.ForeignKey('Feature', on_delete=models.CASCADE,
                                       related_name='first_features')
     second_feature = models.ForeignKey('Feature', on_delete=models.CASCADE,
@@ -119,12 +123,7 @@ class Bin(models.Model):
 
 class Slice(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    relevancy = models.ForeignKey(Relevancy, on_delete=models.CASCADE)
-    from_value = models.FloatField()
-    deviation = models.FloatField()
-    frequency = models.FloatField()
-    to_value = models.FloatField()
-    marginal_distribution = JSONField(default=[])
-    conditional_distribution = JSONField(default=[])
-
+    definition = JSONField(default=[])
+    features = models.ManyToManyField('Feature')  # TODO: Consider ManyToMany trough for relation uniquess
+    result = models.ForeignKey(Result, on_delete=models.CASCADE)
 

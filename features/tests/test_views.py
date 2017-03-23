@@ -1,7 +1,7 @@
 from rest_framework.test import APITestCase
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
     SampleFactory, DatasetFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, \
-    RarResultFactory
+    ResultFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, \
     HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
@@ -519,7 +519,7 @@ class TestFeatureRedundancyResults(APITestCase):
         self.client.force_authenticate(user)
 
         first_feature = FeatureFactory()
-        rar_result = RarResultFactory(target=first_feature)
+        rar_result = ResultFactory(target=first_feature)
         second_feature = FeatureFactory(dataset=first_feature.dataset)
         redundancy = RedundancyFactory(first_feature=first_feature,
                                        second_feature=second_feature,

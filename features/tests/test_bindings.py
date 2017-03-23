@@ -1,5 +1,5 @@
 from channels.tests import ChannelTestCase, HttpClient
-from features.tests.factories import ExperimentFactory, RarResultFactory, DatasetFactory
+from features.tests.factories import ExperimentFactory, ResultFactory, DatasetFactory
 from features.models import Dataset
 
 
@@ -36,7 +36,7 @@ class TestDatasetBinding(ChannelTestCase):
         self.assertIsNone(client.receive())
 
 
-class TestRarResultBinding(ChannelTestCase):
+class TestResultBinding(ChannelTestCase):
     def test_outbound_create(self):
         experiment = ExperimentFactory()
 
@@ -44,10 +44,10 @@ class TestRarResultBinding(ChannelTestCase):
         client.force_login(experiment.user)
         client.join_group('user-{}-updates'.format(experiment.user_id))
 
-        rar_result = RarResultFactory(target=experiment.target)
+        rar_result = ResultFactory(target=experiment.target)
 
         # It should not receive this one as it's on a different channel
-        RarResultFactory()
+        ResultFactory()
 
         received = client.receive()
         self.assertIsNotNone(received)
@@ -56,7 +56,7 @@ class TestRarResultBinding(ChannelTestCase):
         self.assertEqual(received['payload'].pop('data'), {})
 
         self.assertEqual(received['payload'].pop('action'), 'update')
-        self.assertEqual(received['payload'].pop('model'), 'features.rarresult')
+        self.assertEqual(received['payload'].pop('model'), 'features.result')
         self.assertEqual(received['payload'].pop('pk'), str(rar_result.pk))
         self.assertEqual(received.pop('payload'), {})
 

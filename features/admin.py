@@ -1,5 +1,5 @@
 from django.contrib import admin
-from features.models import RarResult, Feature
+from features.models import Result, Feature
 from django import forms
 from features.tasks import calculate_hics
 import json
@@ -10,7 +10,7 @@ class RarResultJsonForm(forms.ModelForm):
     target = forms.ModelChoiceField(queryset=Feature.objects.all(), required=True)
 
     class Meta:
-        model = RarResult
+        model = Result
         fields = ['rar_result_json', 'target']
 
     def clean(self):
@@ -32,4 +32,4 @@ class RarResultJsonAdmin(admin.ModelAdmin):
         calculate_hics.delay(target_id=target.id, precomputed_data=rar_result_json)
 
 
-admin.site.register(RarResult, RarResultJsonAdmin)
+admin.site.register(Result, RarResultJsonAdmin)

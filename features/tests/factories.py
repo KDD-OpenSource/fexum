@@ -1,5 +1,5 @@
 from factory import DjangoModelFactory, Sequence, SubFactory
-from features.models import Sample, Feature, Bin, Slice, Dataset, Experiment, RarResult, Redundancy, Relevancy
+from features.models import Sample, Feature, Bin, Slice, Dataset, Experiment, Result, Redundancy, Relevancy
 from factory.fuzzy import FuzzyFloat, FuzzyInteger, FuzzyText
 from factory.django import FileField
 from users.tests.factories import UserFactory
@@ -35,6 +35,7 @@ class ExperimentFactory(DjangoModelFactory):
     dataset = SubFactory(DatasetFactory)
     target = SubFactory(FeatureFactory)
 
+
 class BinFactory(DjangoModelFactory):
     class Meta:
         model = Bin
@@ -54,9 +55,9 @@ class SampleFactory(DjangoModelFactory):
     order = Sequence(lambda n: n)
 
 
-class RarResultFactory(DjangoModelFactory):
+class ResultFactory(DjangoModelFactory):
     class Meta:
-        model = RarResult
+        model = Result
 
     target = SubFactory(FeatureFactory)
 
@@ -68,7 +69,7 @@ class RelevancyFactory(DjangoModelFactory):
     feature = SubFactory(FeatureFactory)
     relevancy = FuzzyFloat(0, 1)
     rank = FuzzyInteger(0, 100)
-    rar_result = SubFactory(RarResultFactory)
+    rar_result = SubFactory(ResultFactory)
 
 
 class RedundancyFactory(DjangoModelFactory):
@@ -79,7 +80,7 @@ class RedundancyFactory(DjangoModelFactory):
     redundancy = FuzzyFloat(0, 1)
     second_feature = SubFactory(FeatureFactory)
     weight = 1
-    rar_result = SubFactory(RarResultFactory)
+    rar_result = SubFactory(ResultFactory)
 
 
 class SliceFactory(DjangoModelFactory):

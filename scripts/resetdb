@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+docker-compose run web_wsgi python3 manage.py reset_db;
