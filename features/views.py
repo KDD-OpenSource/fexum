@@ -122,7 +122,7 @@ class FeatureDensityView(APIView):
         # Maybe run the celery task and wait for the result? But we might need a high
         # priority queue or sth to ensure the request is handled quickly
 
-        densities = tasks.calculate_densities(feature_id, target_id)
+        densities = tasks.calculate_densities(target_id, feature_id)
         serializer = DensitySerializer(instance=densities, many=True)
         return Response(serializer.data)
 

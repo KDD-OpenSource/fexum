@@ -85,7 +85,7 @@ def calculate_feature_statistics(feature_id):
 
 
 @shared_task
-def calculate_densities(feature_id, target_feature_id):
+def calculate_densities(target_feature_id, feature_id):
     feature = Feature.objects.get(pk=feature_id)
     target_feature = Feature.objects.get(pk=target_feature_id)
 
