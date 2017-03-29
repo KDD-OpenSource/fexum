@@ -118,11 +118,8 @@ class FeatureDensityView(APIView):
         get_object_or_404(Feature, id=feature_id)
         get_object_or_404(Feature, id=target_id)
 
-        # TODO what's the point of the celery task when I call this directly?
-        # Maybe run the celery task and wait for the result? But we might need a high
-        # priority queue or sth to ensure the request is handled quickly
-
-        densities = tasks.calculate_densities(target_id, feature_id)
+        densities_task = tasks.calculate_densities.apply_async(args=[target_id, feature_id])
+        densities = densities_task.get()
         serializer = DensitySerializer(instance=densities, many=True)
         return Response(serializer.data)
 
