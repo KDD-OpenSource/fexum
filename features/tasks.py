@@ -104,7 +104,7 @@ def calculate_densities(target_feature_id, feature_id):
         # We need the last dimension again
         X_plot = np.expand_dims(X_plot, axis=1)
         log_dens = kde.score_samples(X_plot)
-        return np.exp(log_dens)
+        return np.exp(log_dens).tolist()
 
     return [{
                 'target_class': category,
