@@ -122,3 +122,8 @@ class ConditionalDistributionRequestSerializer(Serializer):
 class ConditionalDistributionResultSerializer(Serializer):
     value = FloatField(required=True)
     probability = FloatField(required=True)
+
+
+class DensitySerializer(Serializer):
+    target_class = FloatField(required=True)
+    density_values = ListField(required=True)

@@ -1,9 +1,11 @@
 from rest_framework.views import APIView
+
+from features import tasks
 from features.models import Feature, Bin, Sample, Dataset, Experiment, RarResult, Slice, Relevancy, Redundancy
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
     SampleSerializer, SliceSerializer, DatasetSerializer, RedundancySerializer, \
     ExperimentTargetSerializer, RelevancySerializer, FeatureSliceSerializer, \
-    ConditionalDistributionRequestSerializer, ConditionalDistributionResultSerializer
+    ConditionalDistributionRequestSerializer, ConditionalDistributionResultSerializer, DensitySerializer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
@@ -108,6 +110,20 @@ class FeatureSamplesView(APIView):
     def get(self, _, feature_id):
         samples = Sample.objects.filter(feature_id=feature_id).all()
         serializer = SampleSerializer(instance=samples, many=True)
+        return Response(serializer.data)
+
+
+class FeatureDensityView(APIView):
+    def get(self, _, feature_id, target_id):
+        get_object_or_404(Feature, id=feature_id)
+        get_object_or_404(Feature, id=target_id)
+
+        # TODO what's the point of the celery task when I call this directly?
+        # Maybe run the celery task and wait for the result? But we might need a high
+        # priority queue or sth to ensure the request is handled quickly
+
+        densities = tasks.calculate_densities(feature_id, target_id)
+        serializer = DensitySerializer(instance=densities, many=True)
         return Response(serializer.data)
 
 
