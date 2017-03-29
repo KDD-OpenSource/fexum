@@ -99,8 +99,8 @@ def calculate_densities(target_feature_id, feature_id):
         # Fitting requires expanding dimensions
         X = np.expand_dims(X, axis=1)
         kde.fit(X)
-        # We'd like to sample 1000 values
-        X_plot = np.linspace(feature.min, feature.max, 1000)
+        # We'd like to sample 100 values
+        X_plot = np.linspace(feature.min, feature.max, 100)
         # We need the last dimension again
         X_plot = np.expand_dims(X_plot, axis=1)
         log_dens = kde.score_samples(X_plot)
