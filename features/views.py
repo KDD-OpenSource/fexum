@@ -1,6 +1,5 @@
 from rest_framework.views import APIView
 
-from features import tasks
 from features.models import Feature, Bin, Sample, Dataset, Experiment, RarResult, Slice, Relevancy, Redundancy
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
     SampleSerializer, SliceSerializer, DatasetSerializer, RedundancySerializer, \
@@ -9,10 +8,9 @@ from features.serializers import FeatureSerializer, BinSerializer, ExperimentSer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
-from features.tasks import calculate_rar, calculate_conditional_distributions
+from features.tasks import calculate_rar, calculate_conditional_distributions, initialize_from_dataset,\
+    calculate_densities
 from rest_framework.parsers import MultiPartParser, FormParser
-from features.tasks import initialize_from_dataset
-from django.contrib.auth import get_user_model
 import logging
 import zipfile
 from features.exceptions import NoCSVInArchiveFoundError, NotZIPFileError
@@ -118,7 +116,7 @@ class FeatureDensityView(APIView):
         get_object_or_404(Feature, id=feature_id)
         get_object_or_404(Feature, id=target_id)
 
-        densities_task = tasks.calculate_densities.apply_async(args=[target_id, feature_id])
+        densities_task = calculate_densities.apply_async(args=[target_id, feature_id])
         densities = densities_task.get()
         serializer = DensitySerializer(instance=densities, many=True)
         return Response(serializer.data)
