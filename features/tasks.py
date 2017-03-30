@@ -106,10 +106,7 @@ def calculate_densities(target_feature_id, feature_id):
         log_dens = kde.score_samples(X_plot)
         return np.exp(log_dens).tolist()
 
-    return [{
-                'target_class': category,
-                'density_values': calc_density(category)
-            } for category in categories]
+    return [{'target_class': category, 'density_values': calc_density(category)} for category in categories]
 
 
 @shared_task
