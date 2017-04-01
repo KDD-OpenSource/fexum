@@ -1,6 +1,6 @@
 from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
-    calculate_feature_statistics, calculate_rar
+    calculate_feature_statistics, calculate_rar, calculate_densities
 from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
     RarResult
 from features.tests.factories import FeatureFactory, DatasetFactory, RelevancyFactory, \
@@ -63,6 +63,32 @@ class TestBuildHistogramTask(TestCase):
         for bin_obj in Bin.objects.all():
             self.assertEqual(bin_obj.feature, feature)
             self.assertIn(bin_obj.count, bin_values)
+
+
+class TestCalculateDensities(TestCase):
+    def test_calculate_densities(self):
+        dataset = _build_test_dataset()
+        feature = Feature.objects.get(dataset=dataset, name='Col1')
+        target_feature = Feature.objects.get(dataset=dataset, name='Col3')
+
+        target_feature.categories = [0, 1, 2]
+        target_feature.save()
+        count_categories = len(target_feature.categories)
+        validation_category = 1.0
+
+        densities = calculate_densities(str(target_feature.id), str(feature.id))
+
+        self.assertIsInstance(densities, list)
+        self.assertEqual(len(densities), count_categories)
+        self.assertIn(validation_category, (d['target_class'] for d in densities))
+        validation_category_density = next(d for d in densities if d['target_class'] == validation_category)
+        validation_category_density_values = validation_category_density['density_values']
+
+        # Kernel density is not deterministic, therefore we only check result length and valid range
+        self.assertEqual(len(validation_category_density_values), 100)
+        for y in validation_category_density_values:
+            self.assertGreater(y, 0.2)
+            self.assertLess(y, 0.3)
 
 
 class TestDownsampleTask(TestCase):

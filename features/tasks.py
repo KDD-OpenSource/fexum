@@ -2,6 +2,8 @@ from __future__ import absolute_import, unicode_literals
 from celery import shared_task
 import pandas as pd
 import numpy as np
+from sklearn.neighbors import KernelDensity
+
 from features.models import Feature, Bin, Slice, Sample, Dataset, RarResult, \
     Redundancy, Relevancy
 from subprocess import Popen, PIPE
@@ -80,6 +82,31 @@ def calculate_feature_statistics(feature_id):
     feature.save(update_fields=['min', 'max', 'variance', 'mean', 'is_categorical', 'categories'])
 
     del unique_values, feature
+
+
+@shared_task
+def calculate_densities(target_feature_id, feature_id):
+    feature = Feature.objects.get(pk=feature_id)
+    target_feature = Feature.objects.get(pk=target_feature_id)
+
+    df = _get_dataframe(feature.dataset.id)
+    target_col = df[target_feature.name]
+    categories = target_feature.categories
+
+    def calc_density(category):
+        kde = KernelDensity(kernel='gaussian', bandwidth=0.75)
+        X = df[target_col == category][feature.name]
+        # Fitting requires expanding dimensions
+        X = np.expand_dims(X, axis=1)
+        kde.fit(X)
+        # We'd like to sample 100 values
+        X_plot = np.linspace(feature.min, feature.max, 100)
+        # We need the last dimension again
+        X_plot = np.expand_dims(X_plot, axis=1)
+        log_dens = kde.score_samples(X_plot)
+        return np.exp(log_dens).tolist()
+
+    return [{'target_class': category, 'density_values': calc_density(category)} for category in categories]
 
 
 @shared_task
