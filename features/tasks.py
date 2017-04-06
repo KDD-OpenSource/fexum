@@ -13,6 +13,7 @@ from celery.task import chord
 from celery.utils.log import get_task_logger
 from multiprocessing import Manager
 import SharedArray as sa
+import ccwt
 
 
 logger = get_task_logger(__name__)
@@ -108,6 +109,15 @@ def calculate_densities(target_feature_id, feature_id):
 
     return [{'target_class': category, 'density_values': calc_density(category)} for category in categories]
 
+@shared_task
+def build_spectrogram(feature_id):
+    feature = Feature.objects.get(pk=feature_id)
+    df = _get_dataframe(feature.dataset.id)
+
+    frequency_range = len(target_col)
+    frequency_band = ccwt.frequency_band(128, frequency_range)
+    fourier_transformed_signal = ccwt.fft(df[feature.name])
+    ccwt.render_png('spectrograms/'+feature_id+'.png', ccwt.EQUIPOTENTIAL, 0.0, fourier_transformed_signal, frequency_band, 256)
 
 @shared_task
 def build_histogram(feature_id):
@@ -259,12 +269,14 @@ def initialize_from_dataset(dataset_id):
     calculate_feature_statistics_subtasks = [
         calculate_feature_statistics.subtask(kwargs={'feature_id': feature_id}) for feature_id in
         feature_ids]
+    build_spectrogram_subtasks = [build_spectrogram.subtask(kwargs={'feature_id': feature_id}) for
+                                feature_id in feature_ids]
     build_histogram_subtasks = [build_histogram.subtask(kwargs={'feature_id': feature_id}) for
                                 feature_id in feature_ids]
     downsample_feature_subtasks = [downsample_feature.subtask(kwargs={'feature_id': feature_id}) for
                                    feature_id in feature_ids]
 
-    subtasks = calculate_feature_statistics_subtasks + build_histogram_subtasks + downsample_feature_subtasks
+    subtasks = calculate_feature_statistics_subtasks + build_spectrogram_subtasks + build_histogram_subtasks + downsample_feature_subtasks
 
     chord(subtasks)(initialize_from_dataset_processing_callback.subtask(kwargs={'dataset_id': dataset_id}))
 

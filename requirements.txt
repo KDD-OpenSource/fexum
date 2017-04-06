@@ -11,6 +11,7 @@ flower==0.9.1
 SharedArray==2.0.2
 gunicorn
 celery[redis]
+ccwt==0.0.2
 
 # Disable these for docker envs
 # scipy
