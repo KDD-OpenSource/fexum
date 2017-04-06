@@ -9,7 +9,7 @@ services:
   postgres:
     image: postgres:9.4
     volumes:
-      - /var/lib/postgresql
+      - ./postgres-data:/var/lib/postgresql/data
     networks:
       - predots
 
