@@ -180,5 +180,5 @@ class TestSpectrogramSerializer(TestCase):
 
         self.assertEqual(data.pop('width'), spectrogram.width)
         self.assertEqual(data.pop('height'), spectrogram.height)
-        self.assertEqual(data.pop('image_url'), spectrogram.image.url)
+        self.assertEqual(data.pop('image_url'), '/media/spectrograms/{0}.png'.format(spectrogram.feature.id))
         self.assertEqual(len(data), 0)

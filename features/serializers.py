@@ -137,4 +137,5 @@ class SpectrogramSerializer(ModelSerializer):
         fields = ('width', 'height', 'image_url')
 
     def get_image_url(self, obj):
-        return obj.image.url
+        # FIXME: Use obj.image.url instead of hardcoded path
+        return '/media/spectrograms/{0}.png'.format(obj.feature.id)

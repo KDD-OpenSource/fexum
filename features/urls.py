@@ -22,7 +22,7 @@ urlpatterns = [
     url(r'features/(?P<feature_id>[a-zA-Z0-9-]+)/samples$', FeatureSamplesView.as_view(),
         name='feature-samples'),
     url(r'features/(?P<feature_id>[a-zA-Z0-9-]+)/spectrogram', FeatureSpectrogramView.as_view(),
-        name='feature-spectogram'),
+        name='feature-spectrogram'),
     url(r'features/(?P<feature_id>[a-zA-Z0-9-]+)/histogram$', FeatureHistogramView.as_view(),
         name='feature-histogram'),
     url(r'features/(?P<feature_id>[a-zA-Z0-9-]+)/density/(?P<target_id>[a-zA-Z0-9-]+)$',
