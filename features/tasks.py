@@ -315,3 +315,8 @@ def calculate_conditional_distributions(target_id, feature_constraints) -> list:
     logger.info('Result: {0}'.format(result))
 
     return result
+
+
+@shared_task
+def remove_unused_dataset():
+    pass
