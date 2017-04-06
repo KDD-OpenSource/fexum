@@ -3,9 +3,8 @@ from celery import shared_task
 import pandas as pd
 import numpy as np
 from sklearn.neighbors import KernelDensity
-
 from features.models import Feature, Bin, Slice, Sample, Dataset, RarResult, \
-    Redundancy, Relevancy
+    Redundancy, Relevancy, Spectrogram
 from subprocess import Popen, PIPE
 import json
 from django.db.models.signals import post_save, pre_save
@@ -14,6 +13,8 @@ from celery.utils.log import get_task_logger
 from multiprocessing import Manager
 import SharedArray as sa
 import ccwt
+from django.conf import settings
+import os
 
 
 logger = get_task_logger(__name__)
@@ -109,15 +110,29 @@ def calculate_densities(target_feature_id, feature_id):
 
     return [{'target_class': category, 'density_values': calc_density(category)} for category in categories]
 
+
 @shared_task
-def build_spectrogram(feature_id):
+def build_spectrogram(feature_id, width=256, height=128):
     feature = Feature.objects.get(pk=feature_id)
     df = _get_dataframe(feature.dataset.id)
 
-    frequency_range = len(target_col)
-    frequency_band = ccwt.frequency_band(128, frequency_range)
-    fourier_transformed_signal = ccwt.fft(df[feature.name])
-    ccwt.render_png('spectrograms/'+feature_id+'.png', ccwt.EQUIPOTENTIAL, 0.0, fourier_transformed_signal, frequency_band, 256)
+    # TODO: Zscore normalization
+    feature_column = df[feature.name].values
+    frequency_range = len(feature_column)/2
+    frequency_band = ccwt.frequency_band(height, frequency_range)
+    fourier_transformed_signal = ccwt.fft(feature_column)
+
+    filename = '{0}/spectrograms/{1}.png'.format(settings.MEDIA_ROOT, feature_id)
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    with open(filename, 'w') as output_file:
+        ccwt.render_png(output_file, ccwt.EQUIPOTENTIAL, 0.0, fourier_transformed_signal, frequency_band, width)
+
+    Spectrogram.objects.create(
+        feature=feature,
+        width=width,
+        height=height,
+        image=filename
+    )
 
 @shared_task
 def build_histogram(feature_id):

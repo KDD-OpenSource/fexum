@@ -233,7 +233,7 @@ class TestDatasetListView(APITestCase):
                          {'detail': 'Authentication credentials were not provided.'})
 
 class TestDatasetUploadView(APITestCase):
-    file_name = 'features/tests/test_file.csv'
+    file_name = 'features/tests/assets/test_file.csv'
     url = reverse('dataset-upload')
     zip_file_name = 'archive.zip'
 
@@ -653,3 +653,7 @@ class TestCondiditonalDistributionsView(APITestCase):
             task_mock.assert_called_once_with(args=[target.id, data_categorical])
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(), [])
+
+
+class TestFeatureSpectrogramView(APITestCase):
+    pass

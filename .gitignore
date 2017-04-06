@@ -104,3 +104,6 @@ media/*
 *.log
 *.sqlite*
 celery/*
+
+
+secret

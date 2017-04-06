@@ -1,11 +1,12 @@
 from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
-    calculate_feature_statistics, calculate_rar, calculate_densities
+    calculate_feature_statistics, calculate_rar, calculate_densities, build_spectrogram
 from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
-    RarResult
+    RarResult, Spectrogram
 from features.tests.factories import FeatureFactory, DatasetFactory, RelevancyFactory, \
     RedundancyFactory, RarResultFactory
 from unittest.mock import patch, call
+from os import stat
 
 # TODO: test for results
 
@@ -194,6 +195,23 @@ class TestCalculateRar(TestCase):
     def test_calculate_rar_use_precalulated_data(self):
         # TODO: Write test
         pass
+
+
+class TestBuildSpectrogram(TestCase):
+    def test_build_spectrogram(self):
+        width = 10
+        height = 34
+        dataset = _build_test_dataset()
+        feature = Feature.objects.get(dataset=dataset, name='Col1')
+
+        build_spectrogram(feature.id, height=height, width=width)
+
+        spectrogram = Spectrogram.objects.get(feature=feature)
+
+        self.assertEqual(spectrogram.feature, feature)
+        self.assertEqual(spectrogram.width, width)
+        self.assertEqual(spectrogram.height, height)
+        self.assertEqual(stat(spectrogram.image.name).st_size, 677)
 
 
 class TestCalculateArbitarySlices(TestCase):

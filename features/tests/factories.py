@@ -1,7 +1,8 @@
 from factory import DjangoModelFactory, Sequence, SubFactory
-from features.models import Sample, Feature, Bin, Slice, Dataset, Experiment, RarResult, Redundancy, Relevancy
+from features.models import Sample, Feature, Bin, Slice, Dataset, Experiment, RarResult, Redundancy, Relevancy, \
+    Spectrogram
 from factory.fuzzy import FuzzyFloat, FuzzyInteger, FuzzyText
-from factory.django import FileField
+from factory.django import FileField, ImageField
 from users.tests.factories import UserFactory
 
 
@@ -10,7 +11,7 @@ class DatasetFactory(DjangoModelFactory):
         model = Dataset
 
     name = FuzzyText(suffix='.csv')
-    content = FileField(from_path='features/tests/test_file.csv')
+    content = FileField(from_path='features/tests/assets/test_file.csv')
     status = Dataset.PROCESSING
 
 
@@ -93,3 +94,13 @@ class SliceFactory(DjangoModelFactory):
     conditional_distribution = [0, 1, 0]
     deviation = FuzzyFloat(0, 1)
     frequency = FuzzyFloat(0, 1)
+
+
+class SpectrogramFactory(DjangoModelFactory):
+    class Meta:
+        model = Spectrogram
+
+    feature = SubFactory(FeatureFactory)
+    width = FuzzyInteger(100, 500)
+    height = FuzzyInteger(100, 500)
+    image = ImageField(from_path='features/tests/assets/test_image.png')
