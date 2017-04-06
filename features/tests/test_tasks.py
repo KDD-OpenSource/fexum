@@ -29,23 +29,27 @@ class TestInitializeFromDatasetTask(TestCase):
             with patch('features.tasks.downsample_feature.subtask') as downsample_feature_mock:
                 with patch('features.tasks.calculate_feature_statistics.subtask') \
                         as calculate_feature_statistics_mock:
-                    with patch('features.tasks.initialize_from_dataset_processing_callback.subtask') \
-                            as initialize_from_dataset_processing_callback_mock:
-                        with patch('features.tasks.chord') \
-                                as chord_mock:
+                    with patch('features.tasks.build_spectrogram.subtask') \
+                            as build_spectrogram_mock:
+                        with patch('features.tasks.initialize_from_dataset_processing_callback.subtask') \
+                                as initialize_from_dataset_processing_callback_mock:
+                            with patch('features.tasks.chord') \
+                                    as chord_mock:
 
-                            initialize_from_dataset(dataset_id=dataset.id)
+                                initialize_from_dataset(dataset_id=dataset.id)
 
-                            # Make sure that we call the preprocessing task for each feature
-                            features = Feature.objects.filter(name__in=feature_names).all()
-                            kalls = [call(kwargs={'feature_id': feature.id}) for feature in features]
+                                # Make sure that we call the preprocessing task for each feature
+                                features = Feature.objects.filter(name__in=feature_names).all()
+                                kalls = [call(kwargs={'feature_id': feature.id}) for feature in features]
 
-                            build_histogram_mock.assert_has_calls(kalls, any_order=True)
-                            calculate_feature_statistics_mock.assert_has_calls(kalls, any_order=True)
-                            downsample_feature_mock.assert_has_calls(kalls, any_order=True)
-                            initialize_from_dataset_processing_callback_mock.assert_called_once_with(
-                                kwargs={'dataset_id': dataset.id})
-                            chord_mock.assert_called_once()
+                                build_histogram_mock.assert_has_calls(kalls, any_order=True)
+                                calculate_feature_statistics_mock.assert_has_calls(kalls, any_order=True)
+                                downsample_feature_mock.assert_has_calls(kalls, any_order=True)
+                                build_spectrogram_mock.assert_has_calls(kalls, any_order=True)
+
+                                initialize_from_dataset_processing_callback_mock.assert_called_once_with(
+                                    kwargs={'dataset_id': dataset.id})
+                                chord_mock.assert_called_once()
 
         self.assertEqual(feature_names, [feature.name for feature in Feature.objects.all()])
 
