@@ -1,6 +1,6 @@
 from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
-    calculate_feature_statistics, calculate_rar, calculate_densities, remove_unused_datasets
+    calculate_feature_statistics, calculate_rar, calculate_densities, remove_unused_dataframes
 from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
     RarResult
 from features.tests.factories import FeatureFactory, DatasetFactory, RarResultFactory
@@ -211,7 +211,7 @@ class TestRemoveUnusedDatasets(TestCase):
         self.assertEqual(list(dataframe_columns[str(dataset.id)]), [feature.name for feature in dataset.feature_set.all()])
         self.assertIn(str(dataset.id), [dataset.name.decode('ascii') for dataset in sa.list()])
 
-        remove_unused_datasets(max_delta=0)
+        remove_unused_dataframes(max_delta=0)
 
         self.assertNotIn(str(dataset.id), dataframe_last_access)
         self.assertNotIn(str(dataset.id), dataframe_columns)

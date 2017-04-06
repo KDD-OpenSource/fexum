@@ -325,7 +325,7 @@ def calculate_conditional_distributions(target_id, feature_constraints) -> list:
 
 
 @shared_task
-def remove_unused_datasets(max_delta=3600):
+def remove_unused_dataframes(max_delta=3600):
     """
     Delete all in-memory information of a dataset if it wasn't accessed in the last max_delta seconds
 

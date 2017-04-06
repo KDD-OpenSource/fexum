@@ -119,6 +119,13 @@ CELERY_RESULT_BACKEND = 'redis://redis:6379/1'
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_IGNORE_RESULT = False
 
+#
+CELERYBEAT_SCHEDULE = {
+    'remove_unused_dataframes-every-10-minutes': {
+        'task': 'features.tasks.remove_unused_dataframes',
+        'schedule': 60.0*10
+    },
+}
 
 REST_FRAMEWORK = {
     'COERCE_DECIMAL_TO_STRING': False,
