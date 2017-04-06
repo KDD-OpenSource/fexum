@@ -1,11 +1,14 @@
 from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
-    calculate_feature_statistics, calculate_rar, calculate_densities
+    calculate_feature_statistics, calculate_rar, calculate_densities, remove_unused_datasets
 from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
     RarResult
-from features.tests.factories import FeatureFactory, DatasetFactory, RelevancyFactory, \
-    RedundancyFactory, RarResultFactory
+from features.tests.factories import FeatureFactory, DatasetFactory, RarResultFactory
 from unittest.mock import patch, call
+from time import time
+import SharedArray as sa
+from features.tasks import dataframe_columns, dataframe_last_access, _get_dataframe
+
 
 # TODO: test for results
 
@@ -194,6 +197,25 @@ class TestCalculateRar(TestCase):
     def test_calculate_rar_use_precalulated_data(self):
         # TODO: Write test
         pass
+
+
+class TestRemoveUnusedDatasets(TestCase):
+    def test_remove_unused_datasets(self):
+        dataset = _build_test_dataset()
+
+        # Manually load the dataframe into memory
+        _get_dataframe(dataset.id)
+
+        self.assertLess(dataframe_last_access[str(dataset.id)], time())
+        self.assertGreater(dataframe_last_access[str(dataset.id)], time() - 60)
+        self.assertEqual(list(dataframe_columns[str(dataset.id)]), [feature.name for feature in dataset.feature_set.all()])
+        self.assertIn(str(dataset.id), [dataset.name.decode('ascii') for dataset in sa.list()])
+
+        remove_unused_datasets(max_delta=0)
+
+        self.assertNotIn(str(dataset.id), dataframe_last_access)
+        self.assertNotIn(str(dataset.id), dataframe_columns)
+        self.assertNotIn(str(dataset.id), sa.list())
 
 
 class TestCalculateArbitarySlices(TestCase):

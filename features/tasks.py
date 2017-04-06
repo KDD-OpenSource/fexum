@@ -13,6 +13,7 @@ from celery.task import chord
 from celery.utils.log import get_task_logger
 from multiprocessing import Manager
 import SharedArray as sa
+from time import time
 
 
 logger = get_task_logger(__name__)
@@ -21,6 +22,7 @@ logger = get_task_logger(__name__)
 manager = Manager()
 dataframe_columns = manager.dict()
 dataframe_lock = manager.Lock()
+dataframe_last_access = manager.dict()
 
 # Fix bindings in celery context
 from features.bindings import RarResultBinding, DatasetBinding
@@ -35,10 +37,15 @@ def _get_dataset_and_file(dataset_id) -> (Dataset, str):
 
 
 def _get_dataframe(dataset_id: str) -> pd.DataFrame:
+    # TODO: Write test
     dataframe_lock.acquire()
 
     dataset_id = str(dataset_id)
 
+    # Update last_access time with UNIX timestamp
+    dataframe_last_access[dataset_id] = int(time())
+
+    # Either fetch RAM or load the dataset from disk
     try:
         shared_array = sa.attach('shm://{0}'.format(dataset_id))
         columns = dataframe_columns[dataset_id]
@@ -318,5 +325,19 @@ def calculate_conditional_distributions(target_id, feature_constraints) -> list:
 
 
 @shared_task
-def remove_unused_dataset():
-    pass
+def remove_unused_datasets(max_delta=3600):
+    """
+    Delete all in-memory information of a dataset if it wasn't accessed in the last max_delta seconds
+
+    :param max_delta: Maximum delta in seconds
+    """
+    dataframe_lock.acquire()
+
+    min_time = int(time()) - max_delta
+    for dataset_id, timestamp in dataframe_last_access.items():
+        if timestamp < min_time:
+            del dataframe_last_access[dataset_id]
+            del dataframe_columns[dataset_id]
+            sa.delete(dataset_id)
+
+    dataframe_lock.release()
