@@ -83,7 +83,7 @@ services:
       - predots
     volumes:
       - .:/code
-    command: "celery worker --app=predots --loglevel=INFO"
+    command: "celery -A predots worker --beat --loglevel=info"
     shm_size: 8g
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
