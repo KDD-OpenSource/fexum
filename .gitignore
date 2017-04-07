@@ -95,12 +95,16 @@ db.sqlite3
 /predots.sublime-project
 /predots.sublime-workspace
 
+# Django related stuff
+postgres-data/*
 media/*
+*.log
+*.sqlite*
+celery/*
+
 ._.DS_Store
 .DS_Store
 
 .fuse_*
 
-*.log
-*.sqlite*
-celery/*
+secret

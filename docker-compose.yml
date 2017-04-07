@@ -120,6 +120,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    volumes:
+      - ./media:/media
     environment:
       NGINX_HOST: 0.0.0.0
     command: /bin/bash -c "envsubst '$$NGINX_HOST' < /setup/nginx.conf > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"

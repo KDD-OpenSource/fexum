@@ -1,6 +1,10 @@
 FROM nikriek/python3-java-ml:latest
 ENV PYTHONUNBUFFERED 1
 
+# Install dependencies for ccwt package
+RUN export CFLAGS='-Wall -Wextra -std=c99'
+RUN apt-get install -y libfftw3-dev libpng-dev
+
 COPY requirements.txt /setup/
 RUN pip3 install -r /setup/requirements.txt
 

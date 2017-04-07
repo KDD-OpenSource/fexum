@@ -1,11 +1,12 @@
 from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
-    calculate_feature_statistics, calculate_rar, calculate_densities
+    calculate_feature_statistics, calculate_rar, calculate_densities, build_spectrogram
 from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
-    RarResult
+    RarResult, Spectrogram
 from features.tests.factories import FeatureFactory, DatasetFactory, RelevancyFactory, \
     RedundancyFactory, RarResultFactory
 from unittest.mock import patch, call
+from os import stat
 
 # TODO: test for results
 
@@ -28,23 +29,27 @@ class TestInitializeFromDatasetTask(TestCase):
             with patch('features.tasks.downsample_feature.subtask') as downsample_feature_mock:
                 with patch('features.tasks.calculate_feature_statistics.subtask') \
                         as calculate_feature_statistics_mock:
-                    with patch('features.tasks.initialize_from_dataset_processing_callback.subtask') \
-                            as initialize_from_dataset_processing_callback_mock:
-                        with patch('features.tasks.chord') \
-                                as chord_mock:
+                    with patch('features.tasks.build_spectrogram.subtask') \
+                            as build_spectrogram_mock:
+                        with patch('features.tasks.initialize_from_dataset_processing_callback.subtask') \
+                                as initialize_from_dataset_processing_callback_mock:
+                            with patch('features.tasks.chord') \
+                                    as chord_mock:
 
-                            initialize_from_dataset(dataset_id=dataset.id)
+                                initialize_from_dataset(dataset_id=dataset.id)
 
-                            # Make sure that we call the preprocessing task for each feature
-                            features = Feature.objects.filter(name__in=feature_names).all()
-                            kalls = [call(kwargs={'feature_id': feature.id}) for feature in features]
+                                # Make sure that we call the preprocessing task for each feature
+                                features = Feature.objects.filter(name__in=feature_names).all()
+                                kalls = [call(kwargs={'feature_id': feature.id}) for feature in features]
 
-                            build_histogram_mock.assert_has_calls(kalls, any_order=True)
-                            calculate_feature_statistics_mock.assert_has_calls(kalls, any_order=True)
-                            downsample_feature_mock.assert_has_calls(kalls, any_order=True)
-                            initialize_from_dataset_processing_callback_mock.assert_called_once_with(
-                                kwargs={'dataset_id': dataset.id})
-                            chord_mock.assert_called_once()
+                                build_histogram_mock.assert_has_calls(kalls, any_order=True)
+                                calculate_feature_statistics_mock.assert_has_calls(kalls, any_order=True)
+                                downsample_feature_mock.assert_has_calls(kalls, any_order=True)
+                                build_spectrogram_mock.assert_has_calls(kalls, any_order=True)
+
+                                initialize_from_dataset_processing_callback_mock.assert_called_once_with(
+                                    kwargs={'dataset_id': dataset.id})
+                                chord_mock.assert_called_once()
 
         self.assertEqual(feature_names, [feature.name for feature in Feature.objects.all()])
 
@@ -194,6 +199,23 @@ class TestCalculateRar(TestCase):
     def test_calculate_rar_use_precalulated_data(self):
         # TODO: Write test
         pass
+
+
+class TestBuildSpectrogram(TestCase):
+    def test_build_spectrogram(self):
+        width = 10
+        height = 34
+        dataset = _build_test_dataset()
+        feature = Feature.objects.get(dataset=dataset, name='Col1')
+
+        build_spectrogram(feature.id, height=height, width=width)
+
+        spectrogram = Spectrogram.objects.get(feature=feature)
+
+        self.assertEqual(spectrogram.feature, feature)
+        self.assertEqual(spectrogram.width, width)
+        self.assertEqual(spectrogram.height, height)
+        self.assertEqual(stat(spectrogram.image.name).st_size, 677)
 
 
 class TestCalculateArbitarySlices(TestCase):

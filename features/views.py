@@ -1,10 +1,12 @@
 from rest_framework.views import APIView
 
-from features.models import Feature, Bin, Sample, Dataset, Experiment, RarResult, Slice, Relevancy, Redundancy
+from features.models import Feature, Bin, Sample, Dataset, Experiment, RarResult, Slice, Relevancy, Redundancy, \
+    Spectrogram
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
     SampleSerializer, SliceSerializer, DatasetSerializer, RedundancySerializer, \
     ExperimentTargetSerializer, RelevancySerializer, FeatureSliceSerializer, \
-    ConditionalDistributionRequestSerializer, ConditionalDistributionResultSerializer, DensitySerializer
+    ConditionalDistributionRequestSerializer, ConditionalDistributionResultSerializer, DensitySerializer, \
+    SpectrogramSerializer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.status import HTTP_204_NO_CONTENT
@@ -127,6 +129,14 @@ class FeatureHistogramView(APIView):
         feature = get_object_or_404(Feature, id=feature_id)
         bins = Bin.objects.filter(feature=feature).order_by('id').all()
         serializer = BinSerializer(instance=bins, many=True)
+        return Response(serializer.data)
+
+
+class FeatureSpectrogramView(APIView):
+    def get(self, _, feature_id):
+        feature = get_object_or_404(Feature, id=feature_id)
+        spectrogram = get_object_or_404(Spectrogram, feature=feature)
+        serializer = SpectrogramSerializer(instance=spectrogram)
         return Response(serializer.data)
 
 
