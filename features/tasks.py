@@ -13,6 +13,7 @@ from celery.utils.log import get_task_logger
 from multiprocessing import Manager
 import SharedArray as sa
 import ccwt
+from scipy import stats
 from django.conf import settings
 import os
 
@@ -112,15 +113,21 @@ def calculate_densities(target_feature_id, feature_id):
 
 
 @shared_task
-def build_spectrogram(feature_id, width=256, height=128):
+def build_spectrogram(feature_id, width=256, height=128, frequency_base=1.0):
     feature = Feature.objects.get(pk=feature_id)
     df = _get_dataframe(feature.dataset.id)
 
-    # TODO: Zscore normalization
-    feature_column = df[feature.name].values
-    frequency_range = len(feature_column)/2
-    frequency_band = ccwt.frequency_band(height, frequency_range)
+    feature_column = stats.zscore(df[feature.name].values)
     fourier_transformed_signal = ccwt.fft(feature_column)
+
+    minimum_frequency = 0.001*len(feature_column)
+    maximum_frequency = 0.5*len(feature_column)
+    if frequency_base == 1.0:
+        frequency_band = ccwt.frequency_band(height, maximum_frequency-minimum_frequency, minimum_frequency) # Linear
+    else:
+        minimum_octave = math.log(minimum_frequency)/math.log(frequency_base)
+        maximum_octave = math.log(maximum_frequency)/math.log(frequency_base)
+        frequency_band = ccwt.frequency_band(height, maximum_octave-minimum_octave, minimum_octave, frequency_base) # Exponential
 
     filename = '{0}/spectrograms/{1}.png'.format(settings.MEDIA_ROOT, feature_id)
     os.makedirs(os.path.dirname(filename), exist_ok=True)
@@ -133,6 +140,7 @@ def build_spectrogram(feature_id, width=256, height=128):
         height=height,
         image=filename
     )
+
 
 @shared_task
 def build_histogram(feature_id):
