@@ -13,9 +13,10 @@ from celery.utils.log import get_task_logger
 from multiprocessing import Manager
 import SharedArray as sa
 import ccwt
-from scipy import stats
+from scipy.stats import zscore
 from django.conf import settings
 import os
+from math import log
 
 
 logger = get_task_logger(__name__)
@@ -31,13 +32,13 @@ DatasetBinding.register()
 RarResultBinding.register()
 
 
-def _get_dataset_and_file(dataset_id) -> (Dataset, str):
-    dataset = Dataset.objects.get(pk=dataset_id)
-    filename = dataset.content.path
-    return dataset, filename
-
-
 def _get_dataframe(dataset_id: str) -> pd.DataFrame:
+    """
+    Get a dataset from the system's shared memory (/dev/shm). If it can't be found, it blocks all access to load it.
+
+    :param dataset_id: The uuid of a dataset
+    :return: Pandas Dataframe containing the whole dataset
+    """
     dataframe_lock.acquire()
 
     dataset_id = str(dataset_id)
@@ -51,7 +52,8 @@ def _get_dataframe(dataset_id: str) -> pd.DataFrame:
         logger.info('Cache miss for dataset {0}'.format(dataset_id))
 
         # Fetch dataset from disk and put it into RAM
-        _, filename = _get_dataset_and_file(dataset_id=dataset_id)
+        dataset = Dataset.objects.get(pk=dataset_id)
+        filename = dataset.content.path
         dataframe = pd.read_csv(filename)
         shared_array = sa.create('shm://{0}'.format(dataset_id), dataframe.shape)
         shared_array[:] = dataframe.values
@@ -114,10 +116,18 @@ def calculate_densities(target_feature_id, feature_id):
 
 @shared_task
 def build_spectrogram(feature_id, width=256, height=128, frequency_base=1.0):
+    """
+    Builds a spectrogram using @Lichtso's ccwt library
+
+    :param feature_id: The feature uuid to be analyzed.
+    :param width: Width of the exported image (should be smaller than the number of samples)
+    :param height: Height of the exported image
+    :param frequency_base: Basic frequency of the signal
+    """
     feature = Feature.objects.get(pk=feature_id)
     df = _get_dataframe(feature.dataset.id)
 
-    feature_column = stats.zscore(df[feature.name].values)
+    feature_column = zscore(df[feature.name].values)
     fourier_transformed_signal = ccwt.fft(feature_column)
 
     minimum_frequency = 0.001*len(feature_column)
@@ -125,10 +135,11 @@ def build_spectrogram(feature_id, width=256, height=128, frequency_base=1.0):
     if frequency_base == 1.0:
         frequency_band = ccwt.frequency_band(height, maximum_frequency-minimum_frequency, minimum_frequency) # Linear
     else:
-        minimum_octave = math.log(minimum_frequency)/math.log(frequency_base)
-        maximum_octave = math.log(maximum_frequency)/math.log(frequency_base)
+        minimum_octave = log(minimum_frequency)/log(frequency_base)
+        maximum_octave = log(maximum_frequency)/log(frequency_base)
         frequency_band = ccwt.frequency_band(height, maximum_octave-minimum_octave, minimum_octave, frequency_base) # Exponential
 
+    # Write into the spectrogram path
     filename = '{0}/spectrograms/{1}.png'.format(settings.MEDIA_ROOT, feature_id)
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, 'w') as output_file:
@@ -236,8 +247,8 @@ def _parse_and_save_rar_results(target: Feature, rar_result_dict: dict):
 @shared_task
 def calculate_rar(target_id, precomputed_data=None):
     target = Feature.objects.get(pk=target_id)
-    _, filename = _get_dataset_and_file(target.dataset.id)
-
+    dataset = Dataset.objects.get(pk=target.dataset.id)
+    filename = dataset.content.path
     # TODO: Add test
 
     # Only execute rar if don't insert data manually
