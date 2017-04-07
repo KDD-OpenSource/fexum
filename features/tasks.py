@@ -135,7 +135,7 @@ def build_spectrogram(feature_id, width=256, height=128, frequency_base=1.0):
     :param feature_id: The feature uuid to be analyzed.
     :param width: Width of the exported image (should be smaller than the number of samples)
     :param height: Height of the exported image
-    :param frequency_base: Basic frequency of the signal
+    :param frequency_base: Base for exponential frequency scales or 1.0 for linear scale
     """
     feature = Feature.objects.get(pk=feature_id)
     df = _get_dataframe(feature.dataset.id)
