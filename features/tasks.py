@@ -14,6 +14,8 @@ from celery.utils.log import get_task_logger
 from multiprocessing import Manager
 import SharedArray as sa
 from time import time
+from celery.schedules import crontab
+from celery.decorators import periodic_task
 
 
 logger = get_task_logger(__name__)
@@ -324,7 +326,7 @@ def calculate_conditional_distributions(target_id, feature_constraints) -> list:
     return result
 
 
-@shared_task
+@periodic_task(run_every=(crontab(minute=15)), ignore_result=True)
 def remove_unused_dataframes(max_delta=3600):
     """
     Delete all in-memory information of a dataset if it wasn't accessed in the last max_delta seconds
