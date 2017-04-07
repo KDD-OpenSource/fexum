@@ -45,7 +45,7 @@ def _get_dataframe(dataset_id: str) -> pd.DataFrame:
     dataset_id = str(dataset_id)
 
     # Update last_access time with UNIX timestamp
-    dataframe_last_access[dataset_id] = int(time())
+    dataframe_last_access[dataset_id] = time()
 
     # Either fetch RAM or load the dataset from disk
     try:
@@ -335,7 +335,7 @@ def remove_unused_dataframes(max_delta=3600):
     """
     dataframe_lock.acquire()
 
-    min_time = int(time()) - max_delta
+    min_time = time() - max_delta
     for dataset_id, timestamp in dataframe_last_access.items():
         if timestamp < min_time:
             del dataframe_last_access[dataset_id]
