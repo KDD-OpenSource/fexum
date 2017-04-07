@@ -40,7 +40,10 @@ RarResultBinding.register()
 def _get_dataframe(dataset_id: str) -> pd.DataFrame:
     """
     Get a dataset from the system's shared memory (/dev/shm). If it can't be found, it blocks all access to load it.
-
+    
+    IMPORTANT NOTE: Dataset get remove after 1 hour if they are not used. This means that if you use a really long running 
+    task, you have to update dataframe_last_access manually!
+    
     :param dataset_id: The uuid of a dataset
     :return: Pandas Dataframe containing the whole dataset
     """
