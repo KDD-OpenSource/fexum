@@ -3,9 +3,9 @@ from features.serializers import FeatureSerializer, BinSerializer, ExperimentTar
     SliceSerializer, SampleSerializer, DatasetSerializer, ExperimentSerializer, \
     RedundancySerializer, RelevancySerializer, \
     ConditionalDistributionRequestSerializer, ConditionalDistributionResultSerializer, \
-    FeatureSliceSerializer
+    FeatureSliceSerializer, SpectrogramSerializer
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
-    DatasetFactory, SampleFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory
+    DatasetFactory, SampleFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, SpectrogramFactory
 from decimal import Decimal
 from rest_framework.exceptions import ValidationError
 
@@ -170,3 +170,15 @@ class TestConditionalDistributionResultSerializer(TestCase):
         serializer = ConditionalDistributionResultSerializer(data=data)
         self.assertTrue(serializer.is_valid(raise_exception=True))
         self.assertEqual(serializer.data, data)
+
+
+class TestSpectrogramSerializer(TestCase):
+    def test_serialize_one(self):
+        spectrogram = SpectrogramFactory()
+        serializer = SpectrogramSerializer(instance=spectrogram)
+        data = serializer.data
+
+        self.assertEqual(data.pop('width'), spectrogram.width)
+        self.assertEqual(data.pop('height'), spectrogram.height)
+        self.assertEqual(data.pop('image_url'), '/media/spectrograms/{0}.png'.format(spectrogram.feature.id))
+        self.assertEqual(len(data), 0)

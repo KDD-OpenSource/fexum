@@ -4,11 +4,10 @@
 ## Get started
 ## Development
 1. Install Docker, Docker Compose and NFS using the [setup script](deployment/ubuntu-setup.sh). **Do not install docker.io using apt-get!**
-2. Run `$ docker-machine ip default` to get IP of Docker machine (mac only)
-3. Run `$ docker-compose build` to build all containers (do that when you are changing dependencies
-4. Run `$ docker-compose up` to start all containers. Put `-d` for headless mode
-5. Run `$ docker-compose run web_wsgi python3 manage.py migrate` to apply migrations
-6. Access the docker ip at port 8000.
+2. Run `$ docker-compose build` to build all containers (do that when you are changing dependencies
+3. Run `$ docker-compose up` to start all containers. Put `-d` for headless mode
+4. Run `$ docker-compose run web_wsgi python3 manage.py migrate` to apply migrations
+5. Access the docker ip (mostly localhost) at port 80.
 
 ## Testing
 For testing simply run:

@@ -96,7 +96,7 @@ class Feature(models.Model):
     def __str__(self):
         return '{0} in {1} dataset'.format(self.name, self.dataset)
 
-# Dataset are not separated
+
 class Sample(models.Model):
     class Meta:
         ordering = ('order',)
@@ -127,3 +127,9 @@ class Slice(models.Model):
     conditional_distribution = JSONField(default=[])
 
 
+class Spectrogram(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
+    width = models.IntegerField()
+    height = models.IntegerField()
+    image = models.FileField()

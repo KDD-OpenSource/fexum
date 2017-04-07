@@ -1,7 +1,7 @@
 from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRelatedField, \
-    SerializerMethodField, Serializer, ListField, FloatField
+    SerializerMethodField, Serializer, ListField, FloatField, IntegerField
 from features.models import Sample, Feature, Bin, Slice, Experiment, Dataset, Redundancy, \
-    Relevancy
+    Relevancy, Spectrogram
 from rest_framework.validators import ValidationError
 
 
@@ -127,3 +127,15 @@ class ConditionalDistributionResultSerializer(Serializer):
 class DensitySerializer(Serializer):
     target_class = FloatField(required=True)
     density_values = ListField(required=True)
+
+
+class SpectrogramSerializer(ModelSerializer):
+    image_url = SerializerMethodField()
+
+    class Meta:
+        model = Spectrogram
+        fields = ('width', 'height', 'image_url')
+
+    def get_image_url(self, obj):
+        # FIXME: Use obj.image.url instead of hardcoded path
+        return '/media/spectrograms/{0}.png'.format(obj.feature.id)
