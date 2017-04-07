@@ -215,7 +215,7 @@ class TestRemoveUnusedDatasets(TestCase):
 
         self.assertNotIn(str(dataset.id), dataframe_last_access)
         self.assertNotIn(str(dataset.id), dataframe_columns)
-        self.assertNotIn(str(dataset.id), sa.list())
+        self.assertNotIn(str(dataset.id), [dataset.name.decode('ascii') for dataset in sa.list()])
 
 
 class TestCalculateArbitarySlices(TestCase):
