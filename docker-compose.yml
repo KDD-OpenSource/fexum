@@ -103,7 +103,7 @@ services:
       - .:/code
     ports:
       - "5555:5555"
-    command: "celery flower -A predots beat --address=0.0.0.0"
+    command: "celery flower -A predots --address=0.0.0.0"
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
       HOST: "*"
