@@ -306,7 +306,7 @@ def calculate_hics(target_id, bivariate=True):
 
 
 @shared_task
-def fixed_features_hics(target_id, fixed_feature_ids, bivariate=True):
+def compute_fixed_features_hics(target_id, fixed_feature_ids, bivariate=True):
     target = Feature.objects.get(pk=target_id)
     dataframe = _get_dataframe(target.dataset.id)
     features = Feature.objects.filter(dataset=target.dataset).exclude(id=target.id).all()
@@ -328,7 +328,7 @@ def fixed_features_hics(target_id, fixed_feature_ids, bivariate=True):
 
 
 @shared_task
-def feature_set_hics(target_id, feature_ids, bivariate=True):
+def compute_feature_set_hics(target_id, feature_ids, bivariate=True):
     target = Feature.objects.get(pk=target_id)
     dataframe = _get_dataframe(target.dataset.id)
     features = Feature.objects.filter(dataset=target.dataset).exclude(id=target.id).all()
