@@ -16,6 +16,7 @@ import zipfile
 from features.exceptions import NoCSVInArchiveFoundError, NotZIPFileError
 from django.core.files import File
 from django.utils.datastructures import MultiValueDictKeyError
+from celery import chain
 
 
 logger = logging.getLogger(__name__)
@@ -47,8 +48,11 @@ class TargetDetailView(APIView):
         serializer = ExperimentTargetSerializer(instance=experiment, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        
-        calculate_hics.delay(target_id=serializer.instance.target.id)
+
+        number_of_iterations = 10
+        tasks = [calculate_hics.subtask(immutable=True,
+                                        kwargs={'target_id': serializer.instance.target.id})] * number_of_iterations
+        chain(tasks).apply_async()
 
         return Response(serializer.data)
 

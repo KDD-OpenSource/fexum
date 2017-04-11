@@ -1,5 +1,5 @@
 from channels.binding.websockets import WebsocketBinding
-from features.models import Dataset, Result, Experiment
+from features.models import Dataset, Calculation, Experiment
 
 
 class DatasetBinding(WebsocketBinding):
@@ -19,10 +19,10 @@ class DatasetBinding(WebsocketBinding):
         return False
 
 
-class ResultBinding(WebsocketBinding):
-    model = Result
-    stream = 'result'
-    fields = ['id', 'status']
+class CalculationBinding(WebsocketBinding):
+    model = Calculation
+    stream = 'calculation'
+    fields = ['id', 'status', 'type']
 
     @classmethod
     def group_names(cls, instance):

@@ -55,13 +55,6 @@ class SampleFactory(DjangoModelFactory):
     order = Sequence(lambda n: n)
 
 
-class ResultFactory(DjangoModelFactory):
-    class Meta:
-        model = Result
-
-    target = SubFactory(FeatureFactory)
-
-
 class RelevancyFactory(DjangoModelFactory):
     class Meta:
         model = Relevancy
