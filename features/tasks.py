@@ -306,7 +306,7 @@ def calculate_hics(target_id, bivariate=True):
 
 
 @shared_task
-def fixed_features_hics(target_id, fixed_feature_ids, bivariate=True):
+def fixed_features_hics(target_id, fixed_feature_ids):
     target = Feature.objects.get(pk=target_id)
     dataframe = _get_dataframe(target.dataset.id)
     features = Feature.objects.filter(dataset=target.dataset).exclude(id=target.id).all()
@@ -318,17 +318,14 @@ def fixed_features_hics(target_id, fixed_feature_ids, bivariate=True):
     correlation = IncrementalCorrelation(data=dataframe, target=target.name, result_storage=result_storage,
                                          iterations=10, alpha=0.1, drop_discrete=False)
 
-    if bivariate:
-        correlation.update_multivariate_relevancies(fixed_feature_names, k=5, runs=10)
-    else:
-        raise NotImplementedError()
+    correlation.update_multivariate_relevancies(fixed_feature_names, k=5, runs=10)
 
     result.status = Result.DONE
     result.save(update_fields=['status'])
 
 
 @shared_task
-def feature_set_hics(target_id, feature_ids, bivariate=True):
+def feature_set_hics(target_id, feature_ids):
     target = Feature.objects.get(pk=target_id)
     dataframe = _get_dataframe(target.dataset.id)
     features = Feature.objects.filter(dataset=target.dataset).exclude(id=target.id).all()
@@ -340,10 +337,7 @@ def feature_set_hics(target_id, feature_ids, bivariate=True):
     correlation = IncrementalCorrelation(data=dataframe, target=target.name, result_storage=result_storage,
                                          iterations=10, alpha=0.1, drop_discrete=False)
 
-    if bivariate:
-        correlation.update_multivariate_relevancies(feature_names, k=len(feature_names), runs=5)
-    else:
-        raise NotImplementedError()
+    correlation.update_multivariate_relevancies(feature_names, k=len(feature_names), runs=5)
 
     result.status = Result.DONE
     result.save(update_fields=['status'])
