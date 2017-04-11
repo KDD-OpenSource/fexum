@@ -24,3 +24,4 @@ git+ssh://git@github.com/KDD-OpenSource/predots-python-hics.git@0.7
 pytest-django==3.0.0
 factory-boy
 django-extensions
+pytest-pep8==1.0.6
