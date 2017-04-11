@@ -3,7 +3,7 @@ from celery import shared_task
 import pandas as pd
 import numpy as np
 from features.models import Feature, Bin, Slice, Sample, Dataset, Result, \
-    Redundancy, Relevancy
+    Redundancy, Relevancy, Spectrogram
 from celery.task import chord
 from celery.utils.log import get_task_logger
 from multiprocessing import Manager
@@ -12,6 +12,14 @@ from hics.incremental_correlation import IncrementalCorrelation
 from hics.result_storage import AbstractResultStorage
 from hics.scored_slices import ScoredSlices
 from features.bindings import ResultBinding, DatasetBinding
+from time import time
+from celery.schedules import crontab
+from celery.decorators import periodic_task
+import ccwt
+from scipy.stats import zscore
+from django.conf import settings
+import os
+from math import log
 
 
 logger = get_task_logger(__name__)
@@ -20,46 +28,56 @@ logger = get_task_logger(__name__)
 manager = Manager()
 dataframe_columns = manager.dict()
 dataframe_lock = manager.Lock()
+dataframe_last_access = manager.dict()
 
 # Fix bindings in celery context
 DatasetBinding.register()
 ResultBinding.register()
 
 
-def _get_dataset_and_file(dataset_id) -> (Dataset, str):
-    dataset = Dataset.objects.get(pk=dataset_id)
-    filename = dataset.content.path
-    return dataset, filename
-
-
+# TODO: Write test
 def _get_dataframe(dataset_id: str) -> pd.DataFrame:
+    """
+    Get a dataset from the system's shared memory (/dev/shm). If it can't be found, it blocks all access to load it.
+    
+    IMPORTANT NOTE: Datasets get removed after 1 hour if they are not used. This means that if you use a really long running 
+    task, you have to update dataframe_last_access manually!
+    
+    :param dataset_id: The uuid of a dataset
+    :return: Pandas Dataframe containing the whole dataset
+    """
+
     dataframe_lock.acquire()
 
     dataset_id = str(dataset_id)
 
+    # Update last_access time with UNIX timestamp
+    dataframe_last_access[dataset_id] = time()
+
+    # Either fetch RAM or load the dataset from disk
     try:
         shared_array = sa.attach('shm://{0}'.format(dataset_id))
         columns = dataframe_columns[dataset_id]
-
-        dataframe_lock.release()
-
-        dataframe = pd.DataFrame(shared_array, columns=columns)
 
         logger.info('Cache hit for dataset {0}'.format(dataset_id))
     except FileNotFoundError:
         logger.info('Cache miss for dataset {0}'.format(dataset_id))
 
         # Fetch dataset from disk and put it into RAM
-        _, filename = _get_dataset_and_file(dataset_id=dataset_id)
+        dataset = Dataset.objects.get(pk=dataset_id)
+        filename = dataset.content.path
         dataframe = pd.read_csv(filename)
         shared_array = sa.create('shm://{0}'.format(dataset_id), dataframe.shape)
         shared_array[:] = dataframe.values
-        dataframe_columns[dataset_id] = dataframe.columns
-
-        dataframe_lock.release()
+        columns = dataframe.columns
+        dataframe_columns[dataset_id] = columns
+        del dataframe
 
         logger.info('Cache save for dataset {0}'.format(dataset_id))
 
+    dataframe = pd.DataFrame(shared_array, columns=columns)
+
+    dataframe_lock.release()
     return dataframe
 
 
@@ -152,6 +170,72 @@ def calculate_feature_statistics(feature_id):
         feature.categories = list(unique_values)
     feature.save(update_fields=['min', 'max', 'variance', 'mean', 'is_categorical', 'categories'])
 
+    del unique_values, feature
+
+
+@shared_task
+def calculate_densities(target_feature_id, feature_id):
+    feature = Feature.objects.get(pk=feature_id)
+    target_feature = Feature.objects.get(pk=target_feature_id)
+
+    df = _get_dataframe(feature.dataset.id)
+    target_col = df[target_feature.name]
+    categories = target_feature.categories
+
+    def calc_density(category):
+        kde = KernelDensity(kernel='gaussian', bandwidth=0.75)
+        X = df[target_col == category][feature.name]
+        # Fitting requires expanding dimensions
+        X = np.expand_dims(X, axis=1)
+        kde.fit(X)
+        # We'd like to sample 100 values
+        X_plot = np.linspace(feature.min, feature.max, 100)
+        # We need the last dimension again
+        X_plot = np.expand_dims(X_plot, axis=1)
+        log_dens = kde.score_samples(X_plot)
+        return np.exp(log_dens).tolist()
+
+    return [{'target_class': category, 'density_values': calc_density(category)} for category in categories]
+
+
+@shared_task
+def build_spectrogram(feature_id, width=256, height=128, frequency_base=1.0):
+    """
+    Builds a spectrogram using @Lichtso's ccwt library
+
+    :param feature_id: The feature uuid to be analyzed.
+    :param width: Width of the exported image (should be smaller than the number of samples)
+    :param height: Height of the exported image
+    :param frequency_base: Base for exponential frequency scales or 1.0 for linear scale
+    """
+    feature = Feature.objects.get(pk=feature_id)
+    df = _get_dataframe(feature.dataset.id)
+
+    feature_column = zscore(df[feature.name].values)
+    fourier_transformed_signal = ccwt.fft(feature_column)
+
+    minimum_frequency = 0.001*len(feature_column)
+    maximum_frequency = 0.5*len(feature_column)
+    if frequency_base == 1.0:
+        frequency_band = ccwt.frequency_band(height, maximum_frequency-minimum_frequency, minimum_frequency) # Linear
+    else:
+        minimum_octave = log(minimum_frequency)/log(frequency_base)
+        maximum_octave = log(maximum_frequency)/log(frequency_base)
+        frequency_band = ccwt.frequency_band(height, maximum_octave-minimum_octave, minimum_octave, frequency_base) # Exponential
+
+    # Write into the spectrogram path
+    filename = '{0}/spectrograms/{1}.png'.format(settings.MEDIA_ROOT, feature_id)
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    with open(filename, 'w') as output_file:
+        ccwt.render_png(output_file, ccwt.EQUIPOTENTIAL, 0.0, fourier_transformed_signal, frequency_band, width)
+
+    Spectrogram.objects.create(
+        feature=feature,
+        width=width,
+        height=height,
+        image=filename
+    )
+
 
 @shared_task
 def build_histogram(feature_id):
@@ -161,7 +245,7 @@ def build_histogram(feature_id):
     dataframe = _get_dataframe(feature.dataset.id)
 
     bin_set = []
-    bins, bin_edges = np.histogram(dataframe[feature.name], bins='auto')
+    bins, bin_edges = np.histogram(dataframe[feature.name], bins=50)
     for bin_index, bin_value in enumerate(bins):
         from_value = bin_edges[bin_index]
         to_value = bin_edges[bin_index + 1]
@@ -173,6 +257,8 @@ def build_histogram(feature_id):
         )
         bin_set.append(bin)
     Bin.objects.bulk_create(bin_set)
+
+    del bins, bin_edges, bin_set
 
 
 @shared_task
@@ -195,6 +281,8 @@ def downsample_feature(feature_id, sample_count=1000):
         sample_set.append(sample)
 
     Sample.objects.bulk_create(sample_set)
+
+    del sample_set, sampling
 
 
 @shared_task
@@ -234,12 +322,14 @@ def initialize_from_dataset(dataset_id):
     calculate_feature_statistics_subtasks = [
         calculate_feature_statistics.subtask(kwargs={'feature_id': feature_id}) for feature_id in
         feature_ids]
+    build_spectrogram_subtasks = [build_spectrogram.subtask(kwargs={'feature_id': feature_id}) for
+                                feature_id in feature_ids]
     build_histogram_subtasks = [build_histogram.subtask(kwargs={'feature_id': feature_id}) for
                                 feature_id in feature_ids]
     downsample_feature_subtasks = [downsample_feature.subtask(kwargs={'feature_id': feature_id}) for
                                    feature_id in feature_ids]
 
-    subtasks = calculate_feature_statistics_subtasks + build_histogram_subtasks + downsample_feature_subtasks
+    subtasks = calculate_feature_statistics_subtasks + build_spectrogram_subtasks + build_histogram_subtasks + downsample_feature_subtasks
 
     chord(subtasks)(initialize_from_dataset_processing_callback.subtask(kwargs={'dataset_id': dataset_id}))
 
@@ -292,6 +382,20 @@ def calculate_conditional_distributions(target_id, feature_constraints) -> list:
     return result
 
 
+@periodic_task(run_every=(crontab(minute=15)), ignore_result=True)
+def remove_unused_dataframes(max_delta=3600):
+    """
+    Delete all in-memory information of a dataset if it wasn't accessed in the last max_delta seconds
 
+    :param max_delta: Maximum delta in seconds
+    """
+    dataframe_lock.acquire()
 
+    min_time = time() - max_delta
+    for dataset_id, timestamp in dataframe_last_access.items():
+        if timestamp < min_time:
+            del dataframe_last_access[dataset_id]
+            del dataframe_columns[dataset_id]
+            sa.delete(dataset_id)
 
+    dataframe_lock.release()

@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'features',
     'channels',
     'users',
+    'tasks',
 ]
 
 MIDDLEWARE = [
@@ -118,7 +119,6 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_RESULT_BACKEND = 'redis://redis:6379/1'
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_IGNORE_RESULT = False
-
 
 REST_FRAMEWORK = {
     'COERCE_DECIMAL_TO_STRING': False,
