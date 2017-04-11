@@ -8,6 +8,8 @@ services:
 
   postgres:
     image: postgres:9.4
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
     networks:
       - predots
 
@@ -81,7 +83,7 @@ services:
       - predots
     volumes:
       - .:/code
-    command: "celery worker --app=predots --loglevel=INFO"
+    command: "celery -A predots worker --beat --loglevel=info"
     shm_size: 8g
     environment:
       DJANGO_SETTINGS_MODULE: predots.settings
@@ -118,6 +120,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    volumes:
+      - ./media:/media
     environment:
       NGINX_HOST: 0.0.0.0
     command: /bin/bash -c "envsubst '$$NGINX_HOST' < /setup/nginx.conf > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
@@ -127,5 +131,5 @@ networks:
     ipam:
       driver: default
       config:
-      - subnet: 10.151.0.0/16
-        gateway: 10.151.0.1
+      - subnet: 10.151.100.0/24
+        gateway: 10.151.100.1

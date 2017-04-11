@@ -127,3 +127,9 @@ class Slice(models.Model):
     features = models.ManyToManyField('Feature')  # TODO: Consider ManyToMany trough for relation uniquess
     result = models.ForeignKey(Result, on_delete=models.CASCADE)
 
+class Spectrogram(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
+    width = models.IntegerField()
+    height = models.IntegerField()
+    image = models.FileField()

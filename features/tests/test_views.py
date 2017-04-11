@@ -1,13 +1,13 @@
 from rest_framework.test import APITestCase
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
     SampleFactory, DatasetFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, \
-    ResultFactory
+    ResultFactory, SpectrogramFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, \
     HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, \
     SampleSerializer, DatasetSerializer, ExperimentSerializer, ExperimentTargetSerializer, \
-    RelevancySerializer, RedundancySerializer
+    RelevancySerializer, RedundancySerializer, SpectrogramSerializer
 from unittest.mock import patch
 from features.models import Experiment, Dataset
 import os
@@ -233,7 +233,7 @@ class TestDatasetListView(APITestCase):
                          {'detail': 'Authentication credentials were not provided.'})
 
 class TestDatasetUploadView(APITestCase):
-    file_name = 'features/tests/test_file.csv'
+    file_name = 'features/tests/assets/test_file.csv'
     url = reverse('dataset-upload')
     zip_file_name = 'archive.zip'
 
@@ -653,3 +653,36 @@ class TestCondiditonalDistributionsView(APITestCase):
             task_mock.assert_called_once_with(args=[target.id, data_categorical])
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(), [])
+
+
+class TestFeatureSpectrogramView(APITestCase):
+    def test_retrieve_spectrogram(self):
+        user = UserFactory()
+        self.client.force_authenticate(user)
+        spectrogram = SpectrogramFactory()
+        serializer = SpectrogramSerializer(instance=spectrogram)
+
+        url = reverse('feature-spectrogram', args=[spectrogram.feature.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), serializer.data)
+
+
+    def test_retrieve_spectrogram_not_found(self):
+        user = UserFactory()
+        self.client.force_authenticate(user)
+
+        url = reverse('feature-spectrogram', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})
+
+    def test_retrieve_spectrogram_authenticated(self):
+        url = reverse('feature-spectrogram', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+        self.assertEqual(response.json(),
+                         {'detail': 'Authentication credentials were not provided.'})

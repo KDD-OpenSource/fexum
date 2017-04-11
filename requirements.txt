@@ -1,15 +1,18 @@
+sklearn==0.0
 Django==1.10.3
 djangorestframework==3.5.2
 jsonfield==1.0.3
 celery==4.0.2
 psycopg2==2.6.2
-channels==1.0.3
+channels==1.1.2
 asgi_redis==1.0.0
 daphne==1.0.3
 flower==0.9.1
 SharedArray==2.0.2
 gunicorn
 celery[redis]
+ccwt==0.0.6
+pillow==4.1.0
 git+ssh://git@github.com/KDD-OpenSource/predots-python-hics.git@0.7
 
 # Disable these for docker envs
