@@ -209,8 +209,51 @@ def calculate_hics(target_id, bivariate=True):
                                          iterations=10, alpha=0.1, drop_discrete=False)
 
     if bivariate:
-        correlation.update_bivariate_relevancies(runs=1)
-        correlation.update_bivariate_relevancies(runs=1)
+        correlation.update_bivariate_relevancies(runs=10)
+    else:
+        correlation.update_multivariate_relevancies(k=5, runs=100)
+
+    result.status = Result.DONE
+    result.save(update_fields=['status'])
+
+
+@shared_task
+def fixed_features_hics(target_id, fixed_feature_ids, bivariate=True):
+    target = Feature.objects.get(pk=target_id)
+    dataframe = _get_dataframe(target.dataset.id)
+    features = Feature.objects.filter(dataset=target.dataset).exclude(id=target.id).all()
+
+    fixed_feature_names = [feature.name for feature in Feature.objects.filter(id__in=fixed_feature_ids).all()]  
+
+    result = Result.objects.create(target=target)
+    result_storage = DjangoHICSResultStorage(result=result, features=features)
+    correlation = IncrementalCorrelation(data=dataframe, target=target.name, result_storage=result_storage,
+                                         iterations=10, alpha=0.1, drop_discrete=False)
+
+    if bivariate:
+        correlation.update_multivariate_relevancies(fixed_feature_names, k=5, runs=10)
+    else:
+        raise NotImplementedError()
+
+    result.status = Result.DONE
+    result.save(update_fields=['status'])
+
+
+@shared_task
+def feature_set_hics(target_id, feature_ids, bivariate=True):
+    target = Feature.objects.get(pk=target_id)
+    dataframe = _get_dataframe(target.dataset.id)
+    features = Feature.objects.filter(dataset=target.dataset).exclude(id=target.id).all()
+
+    feature_names = [feature.name for feature in Feature.objects.filter(id__in=feature_ids).all()]  
+
+    result = Result.objects.create(target=target)
+    result_storage = DjangoHICSResultStorage(result=result, features=features)
+    correlation = IncrementalCorrelation(data=dataframe, target=target.name, result_storage=result_storage,
+                                         iterations=10, alpha=0.1, drop_discrete=False)
+
+    if bivariate:
+        correlation.update_multivariate_relevancies(feature_names, k=len(feature_names), runs=5)
     else:
         raise NotImplementedError()
 
