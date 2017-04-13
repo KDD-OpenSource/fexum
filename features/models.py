@@ -74,7 +74,7 @@ class Relevancy(models.Model):
 
 class Redundancy(models.Model):
     class Meta:
-        unique_together = ('first_feature', 'second_feature', 'result')
+        unique_together = ('first_feature', 'second_feature', 'result_calculation_map')
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     result_calculation_map = models.ForeignKey(ResultCalculationMap, on_delete=models.CASCADE)

@@ -53,7 +53,7 @@ class TestFeatureHistogramUrl(TestCase):
 class TestFeatureSlicesUrl(TestCase):
     def test_feature_slices_url(self):
         url = reverse('target-feature-slices', args=['391ec5ac-f741-45c9-855a-7615c89ce129',
-                                                       '391ec5ac-f741-45c9-855a-7615c89ce128'])
+                                                     '391ec5ac-f741-45c9-855a-7615c89ce128'])
         self.assertEqual(url,'/api/targets/391ec5ac-f741-45c9-855a-7615c89ce129/' +
                          'features/391ec5ac-f741-45c9-855a-7615c89ce128/slices')
 

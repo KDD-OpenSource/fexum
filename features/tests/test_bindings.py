@@ -1,5 +1,5 @@
 from channels.tests import ChannelTestCase, HttpClient
-from features.tests.factories import ExperimentFactory, ResultFactory, DatasetFactory
+from features.tests.factories import ExperimentFactory, ResultCalculationMapFactory, DatasetFactory
 from features.models import Dataset
 
 
@@ -44,20 +44,20 @@ class TestResultBinding(ChannelTestCase):
         client.force_login(experiment.user)
         client.join_group('user-{}-updates'.format(experiment.user_id))
 
-        rar_result = ResultFactory(target=experiment.target)
+        result = ResultCalculationMapFactory(target=experiment.target)
 
         # It should not receive this one as it's on a different channel
-        ResultFactory()
+        ResultCalculationMapFactory()
 
         received = client.receive()
         self.assertIsNotNone(received)
 
-        self.assertEqual(received['payload']['data'].pop('status'), rar_result.status)
+        self.assertEqual(received['payload']['data'].pop('status'), result.status)
         self.assertEqual(received['payload'].pop('data'), {})
 
         self.assertEqual(received['payload'].pop('action'), 'update')
         self.assertEqual(received['payload'].pop('model'), 'features.result')
-        self.assertEqual(received['payload'].pop('pk'), str(rar_result.pk))
+        self.assertEqual(received['payload'].pop('pk'), str(result.pk))
         self.assertEqual(received.pop('payload'), {})
 
         self.assertEqual(received.pop('stream'), 'rar_result')

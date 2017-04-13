@@ -1,7 +1,7 @@
 from rest_framework.test import APITestCase
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
     SampleFactory, DatasetFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, \
-    ResultFactory, SpectrogramFactory
+    ResultCalculationMapFactory, SpectrogramFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, \
     HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
@@ -66,13 +66,6 @@ class TestExperimentListView(APITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(response.json(), {'dataset': [
             'Invalid pk "079a60fc-c3b1-48ee-8bb6-ba19f061e9e0" - object does not exist.']})
-
-    def test_get_experiment_list_unauthenticated(self):
-        url = reverse('experiment-list')
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(), {})
 
     def test_get_experiment_list_unauthenticated(self):
         url = reverse('experiment-list')
@@ -164,16 +157,16 @@ class TestTargetDetailView(APITestCase):
         self.assertEqual(experiment.dataset, target.dataset)
 
         url = reverse('experiment-targets-detail', args=[experiment.id])
-        with patch('features.views.calculate_rar.delay') as calculate_rar:
+        with patch('features.views.calculate_hics.subtask') as calculate_hics:
             response = self.client.put(url, data={'target': target.id}, format='json')
 
             self.assertEqual(response.status_code, HTTP_200_OK)
-
+            
             experiment = Experiment.objects.get(id=experiment.id)
             data = ExperimentTargetSerializer(instance=experiment).data
             self.assertEqual(experiment.target, target)
             self.assertEqual(response.json(), {'target': str(data['target'])})
-            calculate_rar.assert_called_once_with(target_id=target.id)
+            calculate_hics.assert_called_once_with(target_id=target.id)
 
     def test_select_target_feature_not_found(self):
         user = UserFactory()
@@ -232,6 +225,7 @@ class TestDatasetListView(APITestCase):
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
+
 class TestDatasetUploadView(APITestCase):
     file_name = 'features/tests/assets/test_file.csv'
     url = reverse('dataset-upload')
@@ -289,6 +283,7 @@ class TestDatasetUploadView(APITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
+
     def tearDown(self):
         # Remove that shitty file
         if os.path.isfile(self.zip_file_name):
@@ -339,6 +334,7 @@ class TestFeatureListView(APITestCase):
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
+
 class TestFeatureSamplesView(APITestCase):
     def test_retrieve_samples(self):
         user = UserFactory()
@@ -366,6 +362,7 @@ class TestFeatureSamplesView(APITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
+
 
 class TestFeatureHistogramView(APITestCase):
     def test_retrieve_histogram(self):
@@ -453,7 +450,7 @@ class TestFeatureSlicesView(APITestCase):
         self.client.force_authenticate(user)
 
         url = reverse('target-feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e',
-                                                      '8a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+                                                     '8a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
@@ -519,15 +516,15 @@ class TestFeatureRedundancyResults(APITestCase):
         self.client.force_authenticate(user)
 
         first_feature = FeatureFactory()
-        rar_result = ResultFactory(target=first_feature)
+        result_calculation_map = ResultCalculationMapFactory(target=first_feature)
         second_feature = FeatureFactory(dataset=first_feature.dataset)
         redundancy = RedundancyFactory(first_feature=first_feature,
                                        second_feature=second_feature,
-                                       rar_result=rar_result)
+                                       result_calculation_map=result_calculation_map)
         serializer = RedundancySerializer(instance=redundancy)
 
         url = reverse('feature-redundancy_results',
-                      args=[rar_result.target.id])
+                      args=[result_calculation_map.target.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -635,7 +632,7 @@ class TestCondiditonalDistributionsView(APITestCase):
         }]
 
         with patch('features.views.calculate_conditional_distributions.apply_async',) as task_mock:
-            task_mock.get.return_value = [] # TODO: Proper data
+            task_mock.get.return_value = []  # TODO: Proper data
             response = self.client.post(url, data=data_range, format='json')
             task_mock.assert_called_once_with(args=[target.id,data_range])
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -667,7 +664,6 @@ class TestFeatureSpectrogramView(APITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(), serializer.data)
-
 
     def test_retrieve_spectrogram_not_found(self):
         user = UserFactory()

@@ -1,5 +1,6 @@
 from rest_framework.views import APIView
-from features.models import Feature, Bin, Sample, Dataset, Experiment, Result, Slice, Relevancy, Redundancy, Spectrogram
+from features.models import Feature, Bin, Sample, Dataset, Experiment, Slice, Relevancy, Redundancy, Spectrogram, \
+    ResultCalculationMap
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
     SampleSerializer, SliceSerializer, DatasetSerializer, RedundancySerializer, \
     ExperimentTargetSerializer, RelevancySerializer, FeatureSliceSerializer, \
@@ -157,8 +158,8 @@ class FeatureRelevancyResultsView(APIView):
     def get(self, _, target_id):
         target = get_object_or_404(Feature, pk=target_id)
         # TODO: Filter for same result set
-        rar_result = Result.objects.filter(target=target).last()
-        relevancies = Relevancy.objects.filter(rar_result=rar_result)
+        result = ResultCalculationMap.objects.filter(target=target).last()
+        relevancies = Relevancy.objects.filter(result_calculation_map=result)
         serializer = RelevancySerializer(instance=relevancies, many=True)
         return Response(serializer.data)
 
@@ -166,8 +167,8 @@ class FeatureRelevancyResultsView(APIView):
 class TargetRedundancyResults(APIView):
     def get(self, _, target_id):
         target = get_object_or_404(Feature, pk=target_id)
-        rar_result = Result.objects.filter(target=target).last()
-        redundancies = Redundancy.objects.filter(rar_result=rar_result)
+        result = ResultCalculationMap.objects.filter(target=target).last()
+        redundancies = Redundancy.objects.filter(result_calculation_map=result)
         serializer = RedundancySerializer(instance=redundancies, many=True)
         return Response(serializer.data)
 
@@ -176,8 +177,8 @@ class FilteredSlicesView(APIView):
     def get(self, request, target_id):
         target = get_object_or_404(Feature, pk=target_id)
         feature_ids = request.query_params.get('feature__in', '').split(',')
-        rar_result = Result.objects.get(target=target)
-        slices = Slice.objects.filter(relevancy__rar_result=rar_result,
+        result = ResultCalculationMap.objects.get(target=target)
+        slices = Slice.objects.filter(relevancy__result_calculation_map=result,
                                       relevancy__feature_id__in=feature_ids)
         serializer = FeatureSliceSerializer(instance=slices, many=True)
         return Response(serializer.data)

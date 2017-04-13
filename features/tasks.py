@@ -308,9 +308,9 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
 
     # Calculate relevancies
     if bivariate:
-        correlation.update_bivariate_relevancies(runs=10)
+        correlation.update_bivariate_relevancies(runs=5)
     elif not bivariate and len(feature_ids) == 0:
-        correlation.update_multivariate_relevancies(k=5, runs=100)
+        correlation.update_multivariate_relevancies(k=5, runs=50)
     elif not bivariate and len(feature_ids) > 0 and calculate_supersets:
         feature_names = [feature.name for feature in Feature.objects.filter(id__in=feature_ids).all()]
         if calculate_supersets:
@@ -322,7 +322,7 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
 
     # Calculate redundancies
     if bivariate and calculate_redundancies:
-        correlation.update_redundancies(k=5, runs=10)
+        correlation.update_redundancies(k=5, runs=20)
 
     calculation.status = Calculation.DONE
     calculation.save(update_fields=['status'])

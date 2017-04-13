@@ -3,17 +3,16 @@ from features.tasks import initialize_from_dataset, build_histogram, downsample_
     calculate_feature_statistics, calculate_hics, calculate_densities, remove_unused_dataframes, \
     build_spectrogram
 from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
-    Result, Spectrogram
-from features.tests.factories import FeatureFactory, DatasetFactory, RelevancyFactory, \
-    RedundancyFactory, ResultFactory
+    ResultCalculationMap, Spectrogram
+from features.tests.factories import FeatureFactory, DatasetFactory, ResultCalculationMapFactory
 from unittest.mock import patch, call
 from time import time
 import SharedArray as sa
-from features.tasks import dataframe_columns, dataframe_last_access, _get_dataframe
+from features.tasks import _dataframe_columns, _dataframe_last_access, _get_dataframe
 from os import stat
 
-# TODO: test for results
 
+# TODO: test for results
 def _build_test_dataset() -> Dataset:
     dataset = DatasetFactory()
     feature_names = ['Col1', 'Col2', 'Col3']
@@ -203,7 +202,7 @@ class TestCalculateHics(TestCase):
         self.assertEqual(Result.objects.count(), 1,
                          msg='Should still only contain result for the one feature')
 
-    def test_calculate_rar_use_precalulated_data(self):
+    def test_calculate_hics_use_precalulated_data(self):
         # TODO: Write test
         pass
 
@@ -215,15 +214,15 @@ class TestRemoveUnusedDatasets(TestCase):
         # Manually load the dataframe into memory
         _get_dataframe(dataset.id)
 
-        self.assertLess(dataframe_last_access[str(dataset.id)], time())
-        self.assertGreater(dataframe_last_access[str(dataset.id)], time() - 60)
-        self.assertEqual(list(dataframe_columns[str(dataset.id)]), [feature.name for feature in dataset.feature_set.all()])
+        self.assertLess(_dataframe_last_access[str(dataset.id)], time())
+        self.assertGreater(_dataframe_last_access[str(dataset.id)], time() - 60)
+        self.assertEqual(list(_dataframe_columns[str(dataset.id)]), [feature.name for feature in dataset.feature_set.all()])
         self.assertIn(str(dataset.id), [dataset.name.decode('ascii') for dataset in sa.list()])
 
         remove_unused_dataframes(max_delta=0)
 
-        self.assertNotIn(str(dataset.id), dataframe_last_access)
-        self.assertNotIn(str(dataset.id), dataframe_columns)
+        self.assertNotIn(str(dataset.id), _dataframe_last_access)
+        self.assertNotIn(str(dataset.id), _dataframe_columns)
         self.assertNotIn(str(dataset.id), [dataset.name.decode('ascii') for dataset in sa.list()])
 
  
