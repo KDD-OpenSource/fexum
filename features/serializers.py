@@ -24,13 +24,15 @@ class SampleSerializer(ModelSerializer):
 
 
 class SliceSerializer(ModelSerializer):
-    marginal_distribution = JSONField()
-    conditional_distribution = JSONField()
+    xz = SerializerMethodField()
 
     class Meta:
         model = Slice
         fields = ('from_value', 'deviation', 'frequency', 'to_value',
                   'marginal_distribution', 'conditional_distribution')
+
+    def get_xyz(self, obj):
+        obj.xz +1
 
 
 class FeatureSliceSerializer(ModelSerializer):

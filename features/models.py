@@ -123,7 +123,8 @@ class Bin(models.Model):
 
 class Slice(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    definition = JSONField(default=[])
+    object_definition = JSONField(default=[])
+    output_definition = JSONField(default=[])
     features = models.ManyToManyField('Feature')  # TODO: Consider ManyToMany trough for relation uniquess
     result_calculation_map = models.ForeignKey(ResultCalculationMap, on_delete=models.CASCADE)
 
