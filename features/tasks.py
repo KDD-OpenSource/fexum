@@ -241,14 +241,14 @@ def build_spectrogram(feature_id, width=256, height=128, frequency_base=1.0):
 
 
 @shared_task
-def build_histogram(feature_id):
+def build_histogram(feature_id, bins=50):
     feature = Feature.objects.get(pk=feature_id)
 
     # Only read column with that name
     dataframe = _get_dataframe(feature.dataset.id)
 
     bin_set = []
-    bins, bin_edges = np.histogram(dataframe[feature.name], bins=50)
+    bins, bin_edges = np.histogram(dataframe[feature.name], bins=bins)
     for bin_index, bin_value in enumerate(bins):
         from_value = bin_edges[bin_index]
         to_value = bin_edges[bin_index + 1]

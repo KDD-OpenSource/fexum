@@ -43,7 +43,7 @@ class TestInitializeFromDatasetTask(TestCase):
 
                                 # Make sure that we call the preprocessing task for each feature
                                 features = Feature.objects.filter(name__in=feature_names).all()
-                                kalls = [call(kwargs={'feature_id': feature.id}) for feature in features]
+                                kalls = [call(immutable=True, kwargs={'feature_id': feature.id}) for feature in features]
 
                                 build_histogram_mock.assert_has_calls(kalls, any_order=True)
                                 calculate_feature_statistics_mock.assert_has_calls(kalls, any_order=True)
@@ -63,11 +63,12 @@ class TestBuildHistogramTask(TestCase):
         feature = Feature.objects.get(dataset=dataset, name='Col1')
 
         bin_values = [3, 1, 4, 0, 2]
+        bin_count = len(bin_values)
 
-        build_histogram(feature_id=feature.id)
+        build_histogram(feature_id=feature.id, bins=bin_count)
 
         # Rudementary check bins only for its values
-        self.assertEqual(Bin.objects.count(), len(bin_values))
+        self.assertEqual(Bin.objects.count(), bin_count)
         for bin_obj in Bin.objects.all():
             self.assertEqual(bin_obj.feature, feature)
             self.assertIn(bin_obj.count, bin_values)
@@ -240,7 +241,7 @@ class TestBuildSpectrogram(TestCase):
         self.assertEqual(spectrogram.feature, feature)
         self.assertEqual(spectrogram.width, width)
         self.assertEqual(spectrogram.height, height)
-        self.assertEqual(stat(spectrogram.image.name).st_size, 677)
+        self.assertEqual(stat(spectrogram.image.name).st_size, 610)
 
 
 class TestCalculateArbitarySlices(TestCase):
