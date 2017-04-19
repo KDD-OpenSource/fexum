@@ -3,7 +3,7 @@ from features.tasks import initialize_from_dataset, build_histogram, downsample_
     calculate_feature_statistics, calculate_hics, calculate_densities, remove_unused_dataframes, \
     build_spectrogram
 from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
-    ResultCalculationMap, Spectrogram
+    Spectrogram
 from features.tests.factories import FeatureFactory, DatasetFactory, ResultCalculationMapFactory
 from unittest.mock import patch, call
 from time import time

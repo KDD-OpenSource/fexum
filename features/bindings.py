@@ -26,7 +26,7 @@ class CalculationBinding(WebsocketBinding):
 
     @classmethod
     def group_names(cls, instance):
-        experiments = Experiment.objects.filter(target=instance.target)
+        experiments = Experiment.objects.filter(target=instance.result_calculation_map.target)
         return ['user-{0}-updates'.format(experiment.user_id) for experiment in experiments]
 
     def has_permission(self, user, action, pk):

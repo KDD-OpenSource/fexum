@@ -8,6 +8,7 @@ from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
     DatasetFactory, SampleFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, SpectrogramFactory
 from decimal import Decimal
 from rest_framework.exceptions import ValidationError
+from features.models import Feature
 
 
 class TestFeatureSerializer(TestCase):
@@ -45,12 +46,8 @@ class TestSliceSerializer(TestCase):
         serializer = SliceSerializer(instance=a_slice)
         data = serializer.data
 
-        self.assertEqual(Decimal(data.pop('from_value')), a_slice.from_value)
-        self.assertEqual(Decimal(data.pop('to_value')), a_slice.to_value)
-        self.assertEqual(Decimal(data.pop('deviation')), a_slice.deviation)
-        self.assertEqual(Decimal(data.pop('frequency')), a_slice.frequency)
-        self.assertEqual(data.pop('marginal_distribution'), a_slice.marginal_distribution)
-        self.assertEqual(data.pop('conditional_distribution'), a_slice.conditional_distribution)
+        self.assertEqual(data.pop('output_definition'), a_slice.output_definition)
+        self.assertEqual(data.pop('features'), [str(feature.id) for feature in Feature.objects.all()]) # TODO
         self.assertEqual(len(data), 0)
 
 
@@ -91,14 +88,15 @@ class TestExperimentSerializer(TestCase):
 
 class TestRelevancySerializer(TestCase):
     def test_serialize_one(self):
-        relevancy = RelevancyFactory()
+        features = [FeatureFactory()]
+        relevancy = RelevancyFactory(features=features)
         serializer = RelevancySerializer(instance=relevancy)
         data = serializer.data
 
         self.assertEqual(data.pop('id'), str(relevancy.id))
-        self.assertEqual(data.pop('feature'), relevancy.feature.id)
+        self.assertEqual(data.pop('features'), [feature.id for feature in features])
         self.assertEqual(data.pop('relevancy'), relevancy.relevancy)
-        self.assertEqual(data.pop('rank'), relevancy.rank)
+        self.assertEqual(data.pop('iteration'), relevancy.iteration)
         self.assertEqual(len(data), 0)
 
 
