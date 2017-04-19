@@ -152,60 +152,103 @@ class TestCalculateHics(TestCase):
     def test_calculate_incremental_hics(self):
         pass
 
-    def test_calculate_hics(self):
+    def test_calculate_bivariate_hics(self):
+        dataset = _build_test_dataset()
+        feature1 = Feature.objects.get(dataset=dataset, name='Col1')
+        feature2 = Feature.objects.get(dataset=dataset, name='Col2')
+        target = Feature.objects.get(dataset=dataset, name='Col3')
+        features = [feature1, feature2]
+
+        # Select first feature as target
+        calculate_hics(target_id=target.id, bivariate=True, calculate_redundancies=True)
+
+        # Result
+        self.assertEqual(Result.objects.count(), 1)
+
+        # Relevancies
+        for relevancy in Relevancy.objects.all():
+            self.assertIsNotNone(relevancy.relevancy)
+            self.assertEqual(relevancy.result_calculation_map.target, target)
+            self.assertEqual(relevancy.result_calculation_map.iteration, 5)
+            self.assertIn(relevancy.feature, features)
+        self.assertEqual(Relevancy.objects.filter(feature=feature1).count(), 1)
+        self.assertEqual(Relevancy.objects.filter(feature=feature2).count(), 1)
+
+        # Slices
+        for fslice in Slice.objects.all():
+            self.assertNotEqual(fslice.object_definition, [])
+            self.assertNotEqual(fslice.output_definition, [])
+            self.assertEqual(fslice.result_calculation_map.target, target)
+            self.assertIn(fslice.features, features)
+        self.assertEqual(Slice.objects.filter(features=feature1).count(), 1)
+        self.assertEqual(Slice.objects.filter(features=feature2).count(), 1)
+
+        # Redundancies
+        self.assertEqual(Redundancy.objects.count(), 1)
+        self.assertTrue((Redundancy.objects.first().feature1 == feature1 and Redundancy.objects.first().feature2 == feature2)
+            or (Redundancy.objects.first().feature2 == feature1 and Redundancy.objects.first().feature1 == feature2))
+
+    def test_calculate_feature_set_hics(self):
+        dataset = _build_test_dataset()
+        feature1 = Feature.objects.get(dataset=dataset, name='Col1')
+        feature2 = Feature.objects.get(dataset=dataset, name='Col2')
+        target = Feature.objects.get(dataset=dataset, name='Col3')
+        features = [feature1, feature2]
+        
+        feature_ids = [feature1.id, feature2.id]
+        calculate_hics(target_id=target.id, bivariate=False, feature_ids=feature_ids)
+
+        # Relevancy
+        relevancy_features = Relevancy.objects.filter(feature=feature1)
+        relevancy_features = relevancy_features.filter(feature=feature2)
+        self.assertEqual(relevancy_features.count(), Relevancy.objects.count())
+        self.assertEqual(relevancy_features.count(), 1)
+        self.assertEqual(relevancy_features.first().iteration, 5)
+        self.assertEqual(relevancy_features.first().result_calculation_map.target, target)
+        self.assertIsNotNone(relevancy_features.first().relevancy)
+
+        for feature in relevancy_features.first().features.all():
+            self.assertIn(feature, features)
+
+        # Slices
+        slices_features = Slice.objects.filter(features=feature1)
+        slices_features = slices_features.filter(features=feature2)
+        self.assertEqual(slices_features.count(), Slice.objects.count())
+        self.assertEqual(slices_features.count(), 1)
+        self.assertEqual(slices_features.first().result_calculation_map.target, target)
+        self.assertNotEqual(slices_features.first().output_definition, [])
+        self.assertNotEqual(slices_features.first().object_definition, [])
+
+    def test_calculate_super_set_hics(self):
         dataset = _build_test_dataset()
         feature1 = Feature.objects.get(dataset=dataset, name='Col1')
         feature2 = Feature.objects.get(dataset=dataset, name='Col2')
         target = Feature.objects.get(dataset=dataset, name='Col3')
 
-        # Select first feature as target
-        calculate_hics(target_id=target.id)
+        feature_ids = [feature1.id]
+        calculate_hics(target_id=target.id, bivariate=False, feature_ids=feature_ids, calculate_supersets=True)
 
-        self.assertEqual(Result.objects.count(), 1)
+        # Relevancy
+        relevancy_supersets = Relevancy.objects.filter(feature=feature1)
+        self.assertEqual(relevancy_supersets.count(), Relevancy.objects.count())
+        self.assertGreater(relevancy_supersets.count(), 0)
 
-        # Relevancies
-        self.assertEqual(Relevancy.objects.count(), 2,
-                         msg='Should only contain relevancy for the one feature')
-        for relevancy in Relevancy.objects.all():
+        iteration_sum = 0
+        for relevancy in relevancy_supersets.all():
+            iteration_sum += relevancy.iteration
+            self.assertEqual(relevancy.result_calculation_map.target, target)
             self.assertIsNotNone(relevancy.relevancy)
-            self.assertIsNotNone(relevancy.rank)
-            self.assertEqual(relevancy.rar_result.target, target)
-            assert relevancy.feature == feature1 or relevancy.feature == feature2
-            self.assertEqual(Slice.objects.filter(relevancy=relevancy).count(), 6)
+        self.assertEqual(iteration_sum, 50)
 
-        # Redundancies
-        self.assertEqual(Redundancy.objects.count(), 1,
-                         msg='Should only contain redundancy for one feature pair')
+        # Slices
+        slices_supersets = Slice.objects.filter(features=feature1)
+        self.assertEqual(slices_supersets.count(), Slice.objects.count())
+        self.assertGreater(slices_supersets.count(), 0)
 
-        redundancy = Redundancy.objects.first()
-        self.assertIsNotNone(redundancy.redundancy)
-        assert redundancy.first_feature == feature1 or redundancy.first_feature == feature2
-        assert redundancy.second_feature == feature1 or redundancy.second_feature == feature2
-
-    def test_calculate_hics_catch_if_already_calcalulated_for_target(self):
-        dataset = _build_test_dataset()
-        target = Feature.objects.get(dataset=dataset, name='Col2')
-
-        # Init a typical result configuration
-        rar_result = ResultFactory(target=target)
-        self.assertEqual(Result.objects.count(), 1,
-                         msg='Should only contain result for the one feature')
-
-        # Signals are called manually
-        with patch('features.tasks.pre_save.send') as pre_save_signal_mock:
-            with patch('features.tasks.post_save.send') as post_save_signal_mock:
-                calculate_hics(target_id=target.id)
-
-                post_save_signal_mock.assert_called_once_with(Result, created=False,
-                                                              instance=rar_result)
-                pre_save_signal_mock.assert_called_once_with(Result, instance=rar_result)
-
-        self.assertEqual(Result.objects.count(), 1,
-                         msg='Should still only contain result for the one feature')
-
-    def test_calculate_hics_use_precalulated_data(self):
-        # TODO: Write test
-        pass
+        for fslices in slices_supersets.all():
+            self.assertEqual(fslices.result_calculation_map.target, target)
+            self.assertNotEqual(fslices.output_definition, [])
+            self.assertNotEqual(fslices.object_definition, [])
 
 
 class TestRemoveUnusedDatasets(TestCase):

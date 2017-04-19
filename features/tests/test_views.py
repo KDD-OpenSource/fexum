@@ -432,8 +432,7 @@ class TestFeatureSlicesView(APITestCase):
         url = reverse('target-feature-slices',
                       args=[fslice.result_calculation_map.target.id])
         response = self.client.post(url)
-        print(response.json())
-
+        
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(), [])
 
