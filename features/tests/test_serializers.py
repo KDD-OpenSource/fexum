@@ -112,21 +112,6 @@ class TestExperimentTargetSerializer(TestCase):
         self.assertEqual(len(data), 0)
 
 
-class TestFeatureSliceSerializer(TestCase):
-    def test_serialize_one(self):
-        slice = SliceFactory()
-        serializer = FeatureSliceSerializer(instance=slice)
-
-        data = serializer.data
-        self.assertAlmostEqual(data.pop('deviation'), slice.deviation)
-        self.assertAlmostEqual(data.pop('frequency'), slice.frequency)
-        first_feature = data.pop('features').pop(0)
-        self.assertEqual(len(data), 0)
-        self.assertEqual(first_feature.pop('feature'), slice.relevancy.feature.id)
-        self.assertAlmostEqual(first_feature['range'].pop('from_value'), slice.from_value)
-        self.assertAlmostEqual(first_feature['range'].pop('to_value'), slice.to_value)
-
-
 class TestConditionalDistributionRequestSerializer(TestCase):
     def test_deserialize_one(self):
         feature = FeatureFactory()
