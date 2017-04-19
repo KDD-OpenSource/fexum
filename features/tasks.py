@@ -145,12 +145,14 @@ class DjangoHICSResultStorage(AbstractResultStorage):
                 slice in slices}
 
     def update_slices(self, new_slices: dict()):
+        name_mapping = lambda name: Feature.objects.get(name=name, dataset=self.target.dataset).name
+
         for feature_set, slices in new_slices.items():
             features = Feature.objects.filter(name__in=feature_set, dataset=self.target.dataset)
             Slice.objects.update_or_create(
                 result_calculation_map=self.result_calculation_map,
                 features=features,
-                defaults={'object_definition': slices.to_dict(), 'output_definition': slices.to_output()}
+                defaults={'object_definition': slices.to_dict(), 'output_definition': slices.to_output(name_mapping)}
             )
 
 
