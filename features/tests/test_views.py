@@ -5,7 +5,7 @@ from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, \
     HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
-from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, \
+from features.serializers import FeatureSerializer, BinSerializer, \
     SampleSerializer, DatasetSerializer, ExperimentSerializer, ExperimentTargetSerializer, \
     RelevancySerializer, RedundancySerializer, SpectrogramSerializer
 from unittest.mock import patch
@@ -409,28 +409,33 @@ class TestFeatureSlicesView(APITestCase):
         user = UserFactory()
         self.client.force_authenticate(user)
 
-        fslice = SliceFactory()
+        test_data = {'key': 'dummy_data'}
+        features = [FeatureFactory(), FeatureFactory()]
+        fslice = SliceFactory(output_definition=test_data, features=features)
+        request_data = {'features': [str(feature.id) for feature in features]}
 
         url = reverse('target-feature-slices',
-                      args=[fslice.relevancy.rar_result.target.id,
-                            fslice.relevancy.feature.id])
-        response = self.client.get(url)
+                      args=[fslice.result_calculation_map.target.id])
+        response = self.client.post(url, data=request_data, format='json')
+        print(response.json())
 
         self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), test_data)
 
-        data = SliceSerializer(instance=fslice).data
-        json_data = response.json()
-        self.assertEqual(len(json_data), 1)
-        first_obj = json_data.pop(0)
-        self.assertEqual(len(json_data), 0)
-        self.assertEqual(first_obj.pop('conditional_distribution'),
-                         data['conditional_distribution'])
-        self.assertEqual(first_obj.pop('marginal_distribution'), data['marginal_distribution'])
-        self.assertAlmostEqual(first_obj.pop('to_value'), data['to_value'])
-        self.assertAlmostEqual(first_obj.pop('from_value'), data['from_value'])
-        self.assertAlmostEqual(first_obj.pop('deviation'), data['deviation'])
-        self.assertAlmostEqual(first_obj.pop('frequency'), data['frequency'])
-        self.assertEqual(len(first_obj), 0)
+    def test_retrieve_slices_empty_body(self):
+        user = UserFactory()
+        self.client.force_authenticate(user)
+
+        test_data = {'key': 'dummy_data'}
+        fslice = SliceFactory(output_definition=test_data)
+
+        url = reverse('target-feature-slices',
+                      args=[fslice.result_calculation_map.target.id])
+        response = self.client.post(url)
+        print(response.json())
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), [])
 
     def test_retrieve_slices_feature_not_found(self):
         user = UserFactory()
@@ -438,9 +443,8 @@ class TestFeatureSlicesView(APITestCase):
 
         target = FeatureFactory()
 
-        url = reverse('target-feature-slices',
-                      args=[target.id, '7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.get(url)
+        url = reverse('target-feature-slices', args=[target.id])
+        response = self.client.post(url)
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
@@ -449,17 +453,15 @@ class TestFeatureSlicesView(APITestCase):
         user = UserFactory()
         self.client.force_authenticate(user)
 
-        url = reverse('target-feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e',
-                                                     '8a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.get(url)
+        url = reverse('target-feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+        response = self.client.post(url)
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
     def test_retrieve_slices_target_not_authenticated(self):
-        url = reverse('target-feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e',
-                                                     '8a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.get(url)
+        url = reverse('target-feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+        response = self.client.post(url)
 
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),

@@ -1,7 +1,6 @@
 from django.test import TestCase
-from features.serializers import FeatureSerializer, BinSerializer, ExperimentTargetSerializer, \
-    SliceSerializer, SampleSerializer, DatasetSerializer, ExperimentSerializer, \
-    RedundancySerializer, RelevancySerializer, \
+from features.serializers import FeatureSerializer, BinSerializer, ExperimentTargetSerializer, SampleSerializer, \
+    DatasetSerializer, ExperimentSerializer, RedundancySerializer, RelevancySerializer, \
     ConditionalDistributionRequestSerializer, ConditionalDistributionResultSerializer, \
     FeatureSliceSerializer, SpectrogramSerializer
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
@@ -37,17 +36,6 @@ class TestBinSerializer(TestCase):
         self.assertEqual(Decimal(data.pop('from_value')), bin.from_value)
         self.assertEqual(Decimal(data.pop('to_value')), bin.to_value)
         self.assertEqual(data.pop('count'), bin.count)
-        self.assertEqual(len(data), 0)
-
-
-class TestSliceSerializer(TestCase):
-    def test_serialize_one(self):
-        a_slice = SliceFactory()
-        serializer = SliceSerializer(instance=a_slice)
-        data = serializer.data
-
-        self.assertEqual(data.pop('output_definition'), a_slice.output_definition)
-        self.assertEqual(data.pop('features'), [str(feature.id) for feature in Feature.objects.all()]) # TODO
         self.assertEqual(len(data), 0)
 
 

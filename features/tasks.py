@@ -81,81 +81,6 @@ def _get_dataframe(dataset_id: str) -> DataFrame:
     return dataframe
 
 
-class DjangoHICSResultStorage(AbstractResultStorage):
-    def __init__(self, result_calculation_map, features):
-        self.features = features
-        self.target = result_calculation_map.target
-        self.result_calculation_map = result_calculation_map
-
-    def get_relevancies(self):
-        relevancies = Relevancy.objects.filter(result_calculation_map=self.result_calculation_map).all()
-        feature_set_list = []
-        relevancy_list = []
-        iteration_list = []
-
-        for relevancy in relevancies:
-            feature_set_list += [tuple([feature.name for feature in relevancy.features.all()])]
-            relevancy_list += [relevancy.relevancy]
-            iteration_list += [relevancy.iteration]
-
-        dataframe = DataFrame({'relevancy': relevancy_list, 'iteration': iteration_list},
-                                 index=feature_set_list)
-
-        return dataframe
-
-    def update_relevancies(self, new_relevancies: DataFrame):
-        for feature_set, data in new_relevancies.iterrows():
-            features = Feature.objects.filter(name__in=list(feature_set), id__in=self.features)
-            Relevancy.objects.update_or_create(
-                result_calculation_map=self.result_calculation_map,
-                features=features,
-                defaults={'iteration': data.iteration, 'relevancy': data.relevancy}
-            )
-
-    def get_redundancies(self):
-        feature_names = [feature.name for feature in self.features]
-        redundancies_dataframe = DataFrame(data=0, columns=feature_names, index=feature_names)
-        weights_dataframe = DataFrame(data=0, columns=feature_names, index=feature_names)
-
-        redundancies = Redundancy.objects.filter(first_feature__in=self.features,
-                                                 second_feature__in=self.features,
-                                                 result=self.result_calculation_map).all()
-        for redundancy in redundancies:
-            first_feature_name = redundancy.first_feature.name
-            second_feature_name = redundancy.second_feature.name
-            redundancies_dataframe[first_feature_name, second_feature_name] = redundancy.redundancy
-            redundancies_dataframe[second_feature_name, first_feature_name] = redundancy.redundancy
-            weights_dataframe[first_feature_name, second_feature_name] = redundancy.weight
-            weights_dataframe[second_feature_name, first_feature_name] = redundancy.weight
-
-        return redundancies_dataframe, weights_dataframe
-
-    def update_redundancies(self, new_redundancies: DataFrame, new_weights: DataFrame):
-        for first_feature in self.features:
-            for second_feature in self.features:
-                Redundancy.objects.update_or_create(
-                    result_calculation_map=self.result_calculation_map,
-                    first_feature=(first_feature if first_feature.id < second_feature.id else second_feature),
-                    second_feature=(first_feature if first_feature.id >= second_feature.id else second_feature),
-                    defaults={'redundancy': 0, 'weight': 0})
-
-    def get_slices(self):
-        slices = Slice.objects.filter(features__in=self.features, result_calculation_map=self.result_calculation_map)
-        return {tuple([feature.name for feature in slice.features.all()]): ScoredSlices.from_dict(slice.object_definition) for
-                slice in slices}
-
-    def update_slices(self, new_slices: dict()):
-        name_mapping = lambda name: Feature.objects.get(name=name, dataset=self.target.dataset).name
-
-        for feature_set, slices in new_slices.items():
-            features = Feature.objects.filter(name__in=feature_set, dataset=self.target.dataset)
-            Slice.objects.update_or_create(
-                result_calculation_map=self.result_calculation_map,
-                features=features,
-                defaults={'object_definition': slices.to_dict(), 'output_definition': slices.to_output(name_mapping)}
-            )
-
-
 @shared_task
 def calculate_feature_statistics(feature_id):
     feature = Feature.objects.get(pk=feature_id)
@@ -292,6 +217,84 @@ def downsample_feature(feature_id, sample_count=1000):
 
 @shared_task
 def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_supersets=False, calculate_redundancies=False):
+    class DjangoHICSResultStorage(AbstractResultStorage):
+        def __init__(self, result_calculation_map, features):
+            self.features = features
+            self.target = result_calculation_map.target
+            self.result_calculation_map = result_calculation_map
+
+        def get_relevancies(self):
+            relevancies = Relevancy.objects.filter(result_calculation_map=self.result_calculation_map).all()
+            feature_set_list = []
+            relevancy_list = []
+            iteration_list = []
+
+            for relevancy in relevancies:
+                feature_set_list += [tuple([feature.name for feature in relevancy.features.all()])]
+                relevancy_list += [relevancy.relevancy]
+                iteration_list += [relevancy.iteration]
+
+            dataframe = DataFrame({'relevancy': relevancy_list, 'iteration': iteration_list},
+                                  index=feature_set_list)
+
+            return dataframe
+
+        def update_relevancies(self, new_relevancies: DataFrame):
+            for feature_set, data in new_relevancies.iterrows():
+                features = Feature.objects.filter(name__in=list(feature_set), id__in=self.features)
+                Relevancy.objects.update_or_create(
+                    result_calculation_map=self.result_calculation_map,
+                    features=features,
+                    defaults={'iteration': data.iteration, 'relevancy': data.relevancy}
+                )
+
+        def get_redundancies(self):
+            feature_names = [feature.name for feature in self.features]
+            redundancies_dataframe = DataFrame(data=0, columns=feature_names, index=feature_names)
+            weights_dataframe = DataFrame(data=0, columns=feature_names, index=feature_names)
+
+            redundancies = Redundancy.objects.filter(first_feature__in=self.features,
+                                                     second_feature__in=self.features,
+                                                     result=self.result_calculation_map).all()
+            for redundancy in redundancies:
+                first_feature_name = redundancy.first_feature.name
+                second_feature_name = redundancy.second_feature.name
+                redundancies_dataframe[first_feature_name, second_feature_name] = redundancy.redundancy
+                redundancies_dataframe[second_feature_name, first_feature_name] = redundancy.redundancy
+                weights_dataframe[first_feature_name, second_feature_name] = redundancy.weight
+                weights_dataframe[second_feature_name, first_feature_name] = redundancy.weight
+
+            return redundancies_dataframe, weights_dataframe
+
+        def update_redundancies(self, new_redundancies: DataFrame, new_weights: DataFrame):
+            for first_feature in self.features:
+                for second_feature in self.features:
+                    Redundancy.objects.update_or_create(
+                        result_calculation_map=self.result_calculation_map,
+                        first_feature=(first_feature if first_feature.id < second_feature.id else second_feature),
+                        second_feature=(first_feature if first_feature.id >= second_feature.id else second_feature),
+                        defaults={'redundancy': 0, 'weight': 0})
+
+        def get_slices(self):
+            slices = Slice.objects.filter(features__in=self.features,
+                                          result_calculation_map=self.result_calculation_map)
+            return {
+            tuple([feature.name for feature in slice.features.all()]): ScoredSlices.from_dict(slice.object_definition)
+            for
+            slice in slices}
+
+        def update_slices(self, new_slices: dict()):
+            name_mapping = lambda name: Feature.objects.get(name=name, dataset=self.target.dataset).name
+
+            for feature_set, slices in new_slices.items():
+                features = Feature.objects.filter(name__in=feature_set, dataset=self.target.dataset)
+                Slice.objects.update_or_create(
+                    result_calculation_map=self.result_calculation_map,
+                    features=features,
+                    defaults={'object_definition': slices.to_dict(),
+                              'output_definition': slices.to_output(name_mapping)}
+                )
+
     assert not bivariate or (len(feature_ids) == 0)  # If bivarite true, then features_ids has to be empty
     assert not bivariate or calculate_supersets
     assert not calculate_supersets or (len(feature_ids) > 0)

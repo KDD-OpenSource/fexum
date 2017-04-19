@@ -23,14 +23,6 @@ class SampleSerializer(ModelSerializer):
         fields = ('value', 'order')
 
 
-class SliceSerializer(ModelSerializer):
-    features = PrimaryKeyRelatedField(many=True, read_only=True)
-
-    class Meta:
-        model = Slice
-        fields = ('output_definition', 'features')
-
-
 class FeatureSliceSerializer(ModelSerializer):
     features = SerializerMethodField()
 

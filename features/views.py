@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from features.models import Feature, Bin, Sample, Dataset, Experiment, Slice, Relevancy, Redundancy, Spectrogram, \
     ResultCalculationMap
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
-    SampleSerializer, SliceSerializer, DatasetSerializer, RedundancySerializer, \
+    SampleSerializer, DatasetSerializer, RedundancySerializer, \
     ExperimentTargetSerializer, RelevancySerializer, FeatureSliceSerializer, \
     ConditionalDistributionRequestSerializer, ConditionalDistributionResultSerializer, DensitySerializer, \
     SpectrogramSerializer
@@ -145,12 +145,19 @@ class FeatureSpectrogramView(APIView):
 
 class FeatureSlicesView(APIView):
     def post(self, request, target_id):
-        feature_ids = request.data.get('features')
-        features = [get_object_or_404(Feature, pk=feature_id) for feature_id in feature_ids]
+        feature_ids = request.data.get('features') or []
+        features_queryset = Feature.objects.filter(id__in=feature_ids)
+
+        # Make sure that we filtered for all feature ids
+        if features_queryset.count() != len(feature_ids) and len(feature_ids) > 0:
+            return Response([])
+
         target = get_object_or_404(Feature, pk=target_id)
         result = ResultCalculationMap.objects.filter(target=target).last()
-        slices = Slice.objects.filter(features=features, result_calculation_map=result)
-        output_definition = slices.output_definition
+        slices_queryset = Slice.objects.filter(result_calculation_map=result)
+        for feature in features_queryset.all():
+            slices_queryset = slices_queryset.filter(features=feature)
+        output_definition = slices_queryset.last().output_definition
         return Response(output_definition)
 
 
