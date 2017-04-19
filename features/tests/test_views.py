@@ -161,12 +161,12 @@ class TestTargetDetailView(APITestCase):
             response = self.client.put(url, data={'target': target.id}, format='json')
 
             self.assertEqual(response.status_code, HTTP_200_OK)
-            
+
             experiment = Experiment.objects.get(id=experiment.id)
             data = ExperimentTargetSerializer(instance=experiment).data
             self.assertEqual(experiment.target, target)
             self.assertEqual(response.json(), {'target': str(data['target'])})
-            calculate_hics.assert_called_once_with(target_id=target.id)
+            calculate_hics.assert_called_once_with(immutable=True, kwargs={'target_id': target.id})
 
     def test_select_target_feature_not_found(self):
         user = UserFactory()

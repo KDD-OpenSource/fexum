@@ -59,7 +59,8 @@ class Calculation(models.Model):
         (FIXED_FEATURES_HICS, 'HiCS with fixed features'),
         (FEATURE_SET_HICS, 'HiCS with feature set')
     )
-
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    result_calculation_map = models.ForeignKey(ResultCalculationMap, on_delete=models.CASCADE)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=EMPTY)
     type = models.CharField(max_length=10, choices=RESULT_TYPE, default=EMPTY)
 

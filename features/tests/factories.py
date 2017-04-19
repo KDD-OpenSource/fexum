@@ -1,9 +1,10 @@
 from factory import DjangoModelFactory, Sequence, SubFactory
 from features.models import Sample, Feature, Bin, Slice, Dataset, Experiment, ResultCalculationMap, Redundancy, \
-    Relevancy, Spectrogram
+    Relevancy, Spectrogram, Calculation
 from factory.fuzzy import FuzzyFloat, FuzzyInteger, FuzzyText
 from factory.django import FileField, ImageField
 from users.tests.factories import UserFactory
+from factory import post_generation
 
 
 class DatasetFactory(DjangoModelFactory):
@@ -66,10 +67,17 @@ class RelevancyFactory(DjangoModelFactory):
     class Meta:
         model = Relevancy
 
-    feature = SubFactory(FeatureFactory)
+    iteration = FuzzyInteger(1,100)
     relevancy = FuzzyFloat(0, 1)
-    rank = FuzzyInteger(0, 100)
     result_calculation_map = SubFactory(ResultCalculationMapFactory)
+
+    @post_generation
+    def features(self, create, extracted, **kwargs):
+        if not create:
+            return
+        if extracted:
+            for feature in extracted:
+                self.features.add(feature)
 
 
 class RedundancyFactory(DjangoModelFactory):
@@ -87,13 +95,17 @@ class SliceFactory(DjangoModelFactory):
     class Meta:
         model = Slice
 
-    relevancy = SubFactory(RelevancyFactory)
-    from_value = FuzzyFloat(-200.0, 0)
-    to_value = FuzzyFloat(0, 200)
-    marginal_distribution = [0, 1, 0]
-    conditional_distribution = [0, 1, 0]
-    deviation = FuzzyFloat(0, 1)
-    frequency = FuzzyFloat(0, 1)
+    object_definition = []
+    output_definition = []
+    result_calculation_map = SubFactory(ResultCalculationMapFactory)
+
+    @post_generation
+    def features(self, create, extracted, **kwargs):
+        if not create:
+            return
+        if extracted:
+            for feature in extracted:
+                self.features.add(feature)
 
 
 class SpectrogramFactory(DjangoModelFactory):
@@ -104,3 +116,11 @@ class SpectrogramFactory(DjangoModelFactory):
     width = FuzzyInteger(100, 500)
     height = FuzzyInteger(100, 500)
     image = ImageField(from_path='features/tests/assets/test_image.png')
+
+
+class CalculationFactory(DjangoModelFactory):
+    class Meta:
+        model = Calculation
+
+    result_calculation_map = SubFactory(ResultCalculationMapFactory)
+

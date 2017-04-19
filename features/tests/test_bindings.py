@@ -1,5 +1,5 @@
 from channels.tests import ChannelTestCase, HttpClient
-from features.tests.factories import ExperimentFactory, ResultCalculationMapFactory, DatasetFactory
+from features.tests.factories import ExperimentFactory, CalculationFactory, DatasetFactory
 from features.models import Dataset
 
 
@@ -36,7 +36,7 @@ class TestDatasetBinding(ChannelTestCase):
         self.assertIsNone(client.receive())
 
 
-class TestResultBinding(ChannelTestCase):
+class TestCalculationBinding(ChannelTestCase):
     def test_outbound_create(self):
         experiment = ExperimentFactory()
 
@@ -44,23 +44,24 @@ class TestResultBinding(ChannelTestCase):
         client.force_login(experiment.user)
         client.join_group('user-{}-updates'.format(experiment.user_id))
 
-        result = ResultCalculationMapFactory(target=experiment.target)
+        calculation = CalculationFactory(result_calculation_map__target=experiment.target)
 
         # It should not receive this one as it's on a different channel
-        ResultCalculationMapFactory()
+        CalculationFactory()
 
         received = client.receive()
         self.assertIsNotNone(received)
 
-        self.assertEqual(received['payload']['data'].pop('status'), result.status)
+        self.assertEqual(received['payload']['data'].pop('status'), calculation.status)
+        self.assertEqual(received['payload']['data'].pop('type'), calculation.status)
         self.assertEqual(received['payload'].pop('data'), {})
 
-        self.assertEqual(received['payload'].pop('action'), 'update')
-        self.assertEqual(received['payload'].pop('model'), 'features.result')
-        self.assertEqual(received['payload'].pop('pk'), str(result.pk))
+        self.assertEqual(received['payload'].pop('action'), 'create')
+        self.assertEqual(received['payload'].pop('model'), 'features.calculation')
+        self.assertEqual(received['payload'].pop('pk'), str(calculation.pk))
         self.assertEqual(received.pop('payload'), {})
 
-        self.assertEqual(received.pop('stream'), 'rar_result')
+        self.assertEqual(received.pop('stream'), 'calculation')
 
         self.assertEqual(received, {})
         self.assertIsNone(client.receive())
