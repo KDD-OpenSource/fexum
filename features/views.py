@@ -144,14 +144,14 @@ class FeatureSpectrogramView(APIView):
 
 
 class FeatureSlicesView(APIView):
-    def get(self, _, target_id, feature_id):
+    def post(self, request, target_id):
+        feature_ids = request.data.get('features')
+        features = [get_object_or_404(Feature, pk=feature_id) for feature_id in feature_ids]
         target = get_object_or_404(Feature, pk=target_id)
-        feature = get_object_or_404(Feature, pk=feature_id)
-        rar_result = Result.objects.get(target=target)
-        slices = Slice.objects.filter(relevancy__rar_result=rar_result,
-                                      relevancy__feature=feature)
-        serializer = SliceSerializer(instance=slices, many=True)
-        return Response(serializer.data)
+        result = ResultCalculationMap.objects.filter(target=target).last()
+        slices = Slice.objects.filter(features=features, result_calculation_map=result)
+        output_definition = slices.output_definition
+        return Response(output_definition)
 
 
 class FeatureRelevancyResultsView(APIView):

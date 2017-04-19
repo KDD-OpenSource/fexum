@@ -29,7 +29,7 @@ urlpatterns = [
         FeatureDensityView.as_view(), name='feature-density'),
 
     # Results
-    url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/features/(?P<feature_id>[a-zA-Z0-9-]+)/slices$',
+    url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/slices$',
         FeatureSlicesView.as_view(), name='target-feature-slices'),
     url('targets/(?P<target_id>[a-zA-Z0-9-]+)/slices$', FilteredSlicesView.as_view(),
         name='target-filtered-slices'),

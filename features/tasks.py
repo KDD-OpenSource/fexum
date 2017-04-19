@@ -141,7 +141,7 @@ class DjangoHICSResultStorage(AbstractResultStorage):
 
     def get_slices(self):
         slices = Slice.objects.filter(features__in=self.features, result_calculation_map=self.result_calculation_map)
-        return {tuple([feature.name for feature in slice.features.all()]): ScoredSlices.from_dict(slice.definition) for
+        return {tuple([feature.name for feature in slice.features.all()]): ScoredSlices.from_dict(slice.object_definition) for
                 slice in slices}
 
     def update_slices(self, new_slices: dict()):
@@ -150,7 +150,7 @@ class DjangoHICSResultStorage(AbstractResultStorage):
             Slice.objects.update_or_create(
                 result_calculation_map=self.result_calculation_map,
                 features=features,
-                defaults={'definition': slices.to_dict()}
+                defaults={'object_definition': slices.to_dict(), 'output_definition': slices.to_output()}
             )
 
 
