@@ -10,6 +10,7 @@ from time import time
 import SharedArray as sa
 from features.tasks import _dataframe_columns, _dataframe_last_access, _get_dataframe
 from os import stat
+from features.models import ResultCalculationMap
 
 
 # TODO: test for results
@@ -163,13 +164,13 @@ class TestCalculateHics(TestCase):
         calculate_hics(target_id=target.id, bivariate=True, calculate_redundancies=True)
 
         # Result
-        self.assertEqual(Result.objects.count(), 1)
+        self.assertEqual(ResultCalculationMap.objects.count(), 1)
 
         # Relevancies
         for relevancy in Relevancy.objects.all():
             self.assertIsNotNone(relevancy.relevancy)
             self.assertEqual(relevancy.result_calculation_map.target, target)
-            self.assertEqual(relevancy.result_calculation_map.iteration, 5)
+            self.assertEqual(relevancy.iteration, 5)
             self.assertIn(relevancy.feature, features)
         self.assertEqual(Relevancy.objects.filter(feature=feature1).count(), 1)
         self.assertEqual(Relevancy.objects.filter(feature=feature2).count(), 1)

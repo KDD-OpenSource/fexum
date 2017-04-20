@@ -295,9 +295,9 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
                               'output_definition': slices.to_output(name_mapping)}
                 )
 
-    assert not bivariate or (len(feature_ids) == 0)                 # If bivarite true, then features_ids has to be empty
-    assert not bivariate or not calculate_supersets                 # bivariate => not calculate_superset
-    assert not calculate_supersets or (len(feature_ids) > 0)        # superset => len > 0
+    assert not bivariate or (len(feature_ids) == 0)  # If bivarite true, then features_ids has to be empty
+    assert not bivariate or not calculate_supersets  # bivariate => not calculate_superset
+    assert not calculate_supersets or (len(feature_ids) > 0)  # superset => len > 0
 
     target = Feature.objects.get(id=target_id)
     dataframe = _get_dataframe(target.dataset.id)

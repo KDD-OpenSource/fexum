@@ -62,7 +62,7 @@ class Calculation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     result_calculation_map = models.ForeignKey(ResultCalculationMap, on_delete=models.CASCADE)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=EMPTY)
-    type = models.CharField(max_length=10, choices=RESULT_TYPE, default=EMPTY)
+    type = models.CharField(max_length=30, choices=RESULT_TYPE, default=EMPTY)
 
 
 class Relevancy(models.Model):
