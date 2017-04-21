@@ -171,23 +171,23 @@ class TestCalculateHics(TestCase):
             self.assertIsNotNone(relevancy.relevancy)
             self.assertEqual(relevancy.result_calculation_map.target, target)
             self.assertEqual(relevancy.iteration, 5)
-            self.assertIn(relevancy.feature, features)
-        self.assertEqual(Relevancy.objects.filter(feature=feature1).count(), 1)
-        self.assertEqual(Relevancy.objects.filter(feature=feature2).count(), 1)
+            self.assertIn(relevancy.features.first(), [feature1, feature2])
+        self.assertEqual(Relevancy.objects.filter(features=feature1).count(), 1)
+        self.assertEqual(Relevancy.objects.filter(features=feature2).count(), 1)
 
         # Slices
         for fslice in Slice.objects.all():
             self.assertNotEqual(fslice.object_definition, [])
             self.assertNotEqual(fslice.output_definition, [])
             self.assertEqual(fslice.result_calculation_map.target, target)
-            self.assertIn(fslice.features, features)
+            self.assertIn(fslice.features.first(), features)
         self.assertEqual(Slice.objects.filter(features=feature1).count(), 1)
         self.assertEqual(Slice.objects.filter(features=feature2).count(), 1)
 
         # Redundancies
         self.assertEqual(Redundancy.objects.count(), 1)
-        self.assertTrue((Redundancy.objects.first().feature1 == feature1 and Redundancy.objects.first().feature2 == feature2)
-            or (Redundancy.objects.first().feature2 == feature1 and Redundancy.objects.first().feature1 == feature2))
+        self.assertTrue((Redundancy.objects.first().first_feature == feature1 and Redundancy.objects.first().second_feature == feature2)
+            or (Redundancy.objects.first().second_feature == feature1 and Redundancy.objects.first().first_feature == feature2))
 
     def test_calculate_feature_set_hics(self):
         dataset = _build_test_dataset()
@@ -200,8 +200,8 @@ class TestCalculateHics(TestCase):
         calculate_hics(target_id=target.id, bivariate=False, feature_ids=feature_ids)
 
         # Relevancy
-        relevancy_features = Relevancy.objects.filter(feature=feature1)
-        relevancy_features = relevancy_features.filter(feature=feature2)
+        relevancy_features = Relevancy.objects.filter(features=feature1)
+        relevancy_features = relevancy_features.filter(features=feature2)
         self.assertEqual(relevancy_features.count(), Relevancy.objects.count())
         self.assertEqual(relevancy_features.count(), 1)
         self.assertEqual(relevancy_features.first().iteration, 5)
@@ -230,7 +230,7 @@ class TestCalculateHics(TestCase):
         calculate_hics(target_id=target.id, bivariate=False, feature_ids=feature_ids, calculate_supersets=True)
 
         # Relevancy
-        relevancy_supersets = Relevancy.objects.filter(feature=feature1)
+        relevancy_supersets = Relevancy.objects.filter(features=feature1)
         self.assertEqual(relevancy_supersets.count(), Relevancy.objects.count())
         self.assertGreater(relevancy_supersets.count(), 0)
 

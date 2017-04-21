@@ -220,6 +220,7 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
     class DjangoHICSResultStorage(AbstractResultStorage):
         def __init__(self, result_calculation_map, features):
             self.features = features
+            self.feature_ids = [feature.id for feature in self.features]
             self.target = result_calculation_map.target
             self.result_calculation_map = result_calculation_map
 
@@ -241,7 +242,7 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
 
         def update_relevancies(self, new_relevancies: DataFrame):
             for feature_set, data in new_relevancies.iterrows():
-                features = Feature.objects.filter(name__in=list(feature_set), id__in=self.features)
+                features = Feature.objects.filter(name__in=list(feature_set), id__in=self.feature_ids).all()
                 Relevancy.objects.update_or_create(
                     result_calculation_map=self.result_calculation_map,
                     features=features,
@@ -269,11 +270,12 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
         def update_redundancies(self, new_redundancies: DataFrame, new_weights: DataFrame):
             for first_feature in self.features:
                 for second_feature in self.features:
-                    Redundancy.objects.update_or_create(
-                        result_calculation_map=self.result_calculation_map,
-                        first_feature=(first_feature if first_feature.id < second_feature.id else second_feature),
-                        second_feature=(first_feature if first_feature.id >= second_feature.id else second_feature),
-                        defaults={'redundancy': 0, 'weight': 0})
+                    if first_feature.id < second_feature.id:
+                        Redundancy.objects.update_or_create(
+                            result_calculation_map=self.result_calculation_map,
+                            first_feature=(first_feature if first_feature.id < second_feature.id else second_feature),
+                            second_feature=(first_feature if first_feature.id >= second_feature.id else second_feature),
+                            defaults={'redundancy': 0, 'weight': 0})
 
         def get_slices(self):
             slices = Slice.objects.filter(features__in=self.features,
@@ -284,11 +286,10 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
             slice in slices}
 
         def update_slices(self, new_slices: dict()):
-            name_mapping = lambda name: Feature.objects.get(name=name, dataset=self.target.dataset).name
-
+            name_mapping = lambda name: str(Feature.objects.get(name=name, dataset=self.target.dataset).id)
             for feature_set, slices in new_slices.items():
-                features = Feature.objects.filter(name__in=feature_set, dataset=self.target.dataset)
-                Slice.objects.update_or_create(
+                features = Feature.objects.filter(name__in=feature_set, dataset=self.target.dataset).all()
+                slice_obj, _ = Slice.objects.update_or_create(
                     result_calculation_map=self.result_calculation_map,
                     features=features,
                     defaults={'object_definition': slices.to_dict(),
@@ -316,7 +317,7 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
         correlation.update_bivariate_relevancies(runs=5)
     elif not bivariate and len(feature_ids) == 0:
         correlation.update_multivariate_relevancies(k=5, runs=50)
-    elif not bivariate and len(feature_ids) > 0 and calculate_supersets:
+    elif not bivariate and len(feature_ids) > 0:
         feature_names = [feature.name for feature in Feature.objects.filter(id__in=feature_ids).all()]
         if calculate_supersets:
             correlation.update_multivariate_relevancies(feature_names, k=5, runs=10)
