@@ -239,7 +239,7 @@ class TestCalculateHics(TestCase):
             iteration_sum += relevancy.iteration
             self.assertEqual(relevancy.result_calculation_map.target, target)
             self.assertIsNotNone(relevancy.relevancy)
-        self.assertEqual(iteration_sum, 50)
+        self.assertEqual(iteration_sum, 10)
 
         # Slices
         slices_supersets = Slice.objects.filter(features=feature1)
