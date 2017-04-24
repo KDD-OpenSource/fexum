@@ -64,6 +64,22 @@ class TargetDetailView(APIView):
         return Response(status=HTTP_204_NO_CONTENT)
 
 
+class ExplictHicsView(APIView):
+    def post(self, request, target_id):
+        target = get_object_or_404(Feature, id=target_id)
+        feature_ids = request.data.get('features') or []
+        features = Feature.objects.filter(id__in=feature_ids).all()
+
+        calculate_hics.subtask(immutable=True, kwargs={
+            'target_id': target.id,
+            'feature_ids': [feature.id for feature in features],
+            'bivariate': False,
+            'calculate_supersets': False,
+            'calculate_redundancies': False})
+
+        return Response(status=HTTP_204_NO_CONTENT)
+
+
 class DatasetListView(APIView):
     def get(self, _):
         datasets = Dataset.objects.all()
