@@ -289,12 +289,27 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
             name_mapping = lambda name: str(Feature.objects.get(name=name, dataset=self.target.dataset).id)
             for feature_set, slices in new_slices.items():
                 features = Feature.objects.filter(name__in=feature_set, dataset=self.target.dataset).all()
-                slice_obj, _ = Slice.objects.update_or_create(
-                    result_calculation_map=self.result_calculation_map,
-                    features=features,
-                    defaults={'object_definition': slices.to_dict(),
-                              'output_definition': slices.to_output(name_mapping)}
-                )
+                
+                slice_query = Slice.objects.filter(result_calculation_map=self.result_calculation_map)
+                slice_query = slice_query.filter(features__count=len(features))
+                for feature in features:
+                    slice_query = slice_query.filter(features=feature)
+                
+                if slice_query.count() == 0:
+                    slice_object = Slice.objects.create(result_calculation_map=self.result_calculation_map)
+                    slice_object.features.add(*[feature for feature in features])
+                elif slice_query.count() == 1:
+                    slice_object = slice_query.first()
+                else:
+                    raise AssertionError('Should not reach this condition')
+                
+                slice_object.update(object_definition=slices.to_dict(), output_definition = slices.to_output(name_mapping))
+                #Slice.objects.update_or_create(
+                #    result_calculation_map=self.result_calculation_map,
+                #    features=features,
+                #    defaults={'object_definition': slices.to_dict(),
+                #              'output_definition': slices.to_output(name_mapping)}
+                #)
 
     assert not bivariate or (len(feature_ids) == 0)  # If bivarite true, then features_ids has to be empty
     assert not bivariate or not calculate_supersets  # bivariate => not calculate_superset
