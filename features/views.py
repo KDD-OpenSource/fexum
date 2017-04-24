@@ -18,7 +18,7 @@ from features.exceptions import NoCSVInArchiveFoundError, NotZIPFileError
 from django.core.files import File
 from django.utils.datastructures import MultiValueDictKeyError
 from celery import chain
-
+from django.db.models import Count
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +154,7 @@ class FeatureSlicesView(APIView):
 
         target = get_object_or_404(Feature, pk=target_id)
         result = ResultCalculationMap.objects.filter(target=target).last()
-        slices_queryset = Slice.objects.filter(result_calculation_map=result).filter(features__count=len(feature_ids))
+        slices_queryset = Slice.objects.filter(result_calculation_map=result).annotate(feature_count=Count('features')).filter(feature_count=len(feature_ids))
         for feature in features_queryset.all():
             slices_queryset = slices_queryset.filter(features=feature)
         output_definition = slices_queryset.last().output_definition

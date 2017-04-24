@@ -21,6 +21,7 @@ from django.conf import settings
 import os
 from math import log
 from ccwt import fft, frequency_band, render_png, EQUIPOTENTIAL
+from django.db.models import Count
 
 logger = get_task_logger(__name__)
 
@@ -291,19 +292,21 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
                 features = Feature.objects.filter(name__in=feature_set, dataset=self.target.dataset).all()
                 
                 slice_query = Slice.objects.filter(result_calculation_map=self.result_calculation_map)
-                slice_query = slice_query.filter(features__count=len(features))
+                slice_query = slice_query.annotate(feature_count=Count('features')).filter(feature_count=len(features))
                 for feature in features:
                     slice_query = slice_query.filter(features=feature)
                 
                 if slice_query.count() == 0:
                     slice_object = Slice.objects.create(result_calculation_map=self.result_calculation_map)
-                    slice_object.features.add(*[feature for feature in features])
+                    slice_object.features.set(list(features))
                 elif slice_query.count() == 1:
                     slice_object = slice_query.first()
                 else:
                     raise AssertionError('Should not reach this condition')
                 
-                slice_object.update(object_definition=slices.to_dict(), output_definition = slices.to_output(name_mapping))
+                slice_object.object_definition = slices.to_dict()
+                slice_object.output_definition = slices.to_output(name_mapping)
+                slice_object.save()
                 #Slice.objects.update_or_create(
                 #    result_calculation_map=self.result_calculation_map,
                 #    features=features,
