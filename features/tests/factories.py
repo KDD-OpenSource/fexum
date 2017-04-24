@@ -76,7 +76,7 @@ class RelevancyFactory(DjangoModelFactory):
         if not create:
             return
         if extracted:
-            for feature in extracted:
+            for feature in extracted:    
                 self.features.add(feature)
 
 

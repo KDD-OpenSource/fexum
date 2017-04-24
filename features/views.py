@@ -8,7 +8,7 @@ from features.serializers import FeatureSerializer, BinSerializer, ExperimentSer
     SpectrogramSerializer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from rest_framework.status import HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 from features.tasks import calculate_hics, calculate_conditional_distributions, initialize_from_dataset,\
     calculate_densities
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -150,14 +150,18 @@ class FeatureSlicesView(APIView):
 
         # Make sure that we filtered for all feature ids
         if features_queryset.count() != len(feature_ids) and len(feature_ids) > 0:
-            return Response([])
+            return Response(status=HTTP_404_NOT_FOUND, data={'detail' : 'Not found.'})
 
         target = get_object_or_404(Feature, pk=target_id)
         result = ResultCalculationMap.objects.filter(target=target).last()
         slices_queryset = Slice.objects.filter(result_calculation_map=result).annotate(feature_count=Count('features')).filter(feature_count=len(feature_ids))
         for feature in features_queryset.all():
             slices_queryset = slices_queryset.filter(features=feature)
-        output_definition = slices_queryset.last().output_definition
+
+        if slices_queryset.count() == 1:
+            output_definition = slices_queryset.last().output_definition
+        else:
+            return Response([])
         return Response(output_definition)
 
 
@@ -166,7 +170,7 @@ class FeatureRelevancyResultsView(APIView):
         target = get_object_or_404(Feature, pk=target_id)
         # TODO: Filter for same result set
         result = ResultCalculationMap.objects.filter(target=target).last()
-        relevancies = Relevancy.objects.filter(result_calculation_map=result)
+        relevancies = Relevancy.objects.annotate(feature_count=Count('features')).filter(result_calculation_map=result, feature_count=1)
         serializer = RelevancySerializer(instance=relevancies, many=True)
         return Response(serializer.data)
 
@@ -177,17 +181,6 @@ class TargetRedundancyResults(APIView):
         result = ResultCalculationMap.objects.filter(target=target).last()
         redundancies = Redundancy.objects.filter(result_calculation_map=result)
         serializer = RedundancySerializer(instance=redundancies, many=True)
-        return Response(serializer.data)
-
-
-class FilteredSlicesView(APIView):
-    def get(self, request, target_id):
-        target = get_object_or_404(Feature, pk=target_id)
-        feature_ids = request.query_params.get('feature__in', '').split(',')
-        result = ResultCalculationMap.objects.get(target=target)
-        slices = Slice.objects.filter(relevancy__result_calculation_map=result,
-                                      relevancy__feature_id__in=feature_ids)
-        serializer = FeatureSliceSerializer(instance=slices, many=True)
         return Response(serializer.data)
 
 

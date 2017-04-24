@@ -13,6 +13,7 @@ from features.models import Experiment, Dataset
 import os
 import zipfile
 from users.tests.factories import UserFactory
+from uuid import uuid4
 
 
 class TestExperimentListView(APITestCase):
@@ -425,13 +426,14 @@ class TestFeatureSlicesView(APITestCase):
     def test_retrieve_slices_empty_body(self):
         user = UserFactory()
         self.client.force_authenticate(user)
-
-        test_data = {'key': 'dummy_data'}
-        fslice = SliceFactory(output_definition=test_data)
+        
+        target = FeatureFactory()
+        features = [FeatureFactory(), FeatureFactory()]
+        request_data = {'features': [str(feature.id) for feature in features]}
 
         url = reverse('target-feature-slices',
-                      args=[fslice.result_calculation_map.target.id])
-        response = self.client.post(url)
+                      args=[target.id])
+        response = self.client.post(url, data=request_data, format='json')
         
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(), [])
@@ -441,9 +443,10 @@ class TestFeatureSlicesView(APITestCase):
         self.client.force_authenticate(user)
 
         target = FeatureFactory()
+        request_data = {'features': [str(uuid4())]}
 
         url = reverse('target-feature-slices', args=[target.id])
-        response = self.client.post(url)
+        response = self.client.post(url, data=request_data, format='json')
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
@@ -472,10 +475,12 @@ class TestFeatureRelevancyResultsView(APITestCase):
         user = UserFactory()
         self.client.force_authenticate(user)
 
+        feature = FeatureFactory()
         relevancy = RelevancyFactory()
+        relevancy.features.set([feature])
 
         url = reverse('target-feature-relevancy_results',
-                      args=[relevancy.rar_result.target.id])
+                      args=[relevancy.result_calculation_map.target.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -485,9 +490,9 @@ class TestFeatureRelevancyResultsView(APITestCase):
         first_obj = json_data.pop(0)
         self.assertEqual(len(json_data), 0)
         self.assertEqual(first_obj.pop('id'), str(data['id']))
-        self.assertEqual(first_obj.pop('feature'), str(data['feature']))
+        self.assertEqual(str(first_obj.pop('features')), str([str(ft) for ft in data['features']]))
         self.assertAlmostEqual(first_obj.pop('relevancy'), data['relevancy'])
-        self.assertEqual(first_obj.pop('rank'), data['rank'])
+        self.assertAlmostEqual(first_obj.pop('iteration'), data['iteration'])
         self.assertEqual(len(first_obj), 0)
 
     def test_retrieve_relevancy_results_target_not_found(self):
@@ -551,44 +556,6 @@ class TestFeatureRedundancyResults(APITestCase):
 
     def test_retrieve_redundancy_results_dataset_not_authenticated(self):
         url = reverse('feature-redundancy_results', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
-
-
-class TestFilteredSlicesView(APITestCase):
-    def test_retrieve_filtered_slices(self):
-        user = UserFactory()
-        self.client.force_authenticate(user)
-
-        slice1 = SliceFactory()
-        SliceFactory()
-
-        url = '{0}?feature__in={1}'.format(
-            reverse('target-filtered-slices', args=[slice1.relevancy.rar_result.target.id]),
-            slice1.relevancy.feature.id)
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        response_data = response.json()
-        self.assertEqual(len(response_data), 1)
-        self.assertEqual(response_data[0]['features'][0]['feature'],
-                         str(slice1.relevancy.feature.id))
-
-    def test_retrieve_filtered_slices_target_not_found(self):
-        user = UserFactory()
-        self.client.force_authenticate(user)
-
-        url = reverse('target-filtered-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
-        self.assertEqual(response.json(), {'detail': 'Not found.'})
-
-    def test_retrieve_filtered_slices_target_not_authenticated(self):
-        url = reverse('target-filtered-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)

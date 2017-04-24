@@ -70,12 +70,6 @@ class TestDatasetRedundancyResultsUrl(TestCase):
                          '/api/targets/391ec5ac-f741-45c9-855a-7615c89ce129/redundancy_results')
 
 
-class TestTargetFilteredSlicesUrl(TestCase):
-    def test_target_filtered_slices_url(self):
-        url = reverse('target-filtered-slices', args=['391ec5ac-f741-45c9-855a-7615c89ce128'])
-        self.assertEqual(url,'/api/targets/391ec5ac-f741-45c9-855a-7615c89ce128/slices')
-
-
 class TestFeatureSpectrogramUrl(TestCase):
     def test_feature_spectrogram_url(self):
         url = reverse('feature-spectrogram', args=['391ec5ac-f741-45c9-855a-7615c89ce128'])
