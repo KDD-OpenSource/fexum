@@ -1,6 +1,5 @@
 from channels.generic.websockets import WebsocketDemultiplexer
-from features.bindings import DatasetBinding, RarResultBinding
-from features.models import RarResult, Experiment
+from features.bindings import DatasetBinding, CalculationBinding
 
 
 class Demultiplexer(WebsocketDemultiplexer):
@@ -8,7 +7,7 @@ class Demultiplexer(WebsocketDemultiplexer):
 
     consumers = {
         'dataset': DatasetBinding.consumer,
-        'rar_result': RarResultBinding.consumer
+        'calculation': CalculationBinding.consumer
     }
 
     def connection_groups(self, **kwargs):
