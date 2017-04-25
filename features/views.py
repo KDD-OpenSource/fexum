@@ -192,7 +192,7 @@ class FeatureRelevancyResultsView(APIView):
         target = get_object_or_404(Feature, pk=target_id)
         # TODO: Filter for same result set
         result = ResultCalculationMap.objects.filter(target=target).last()
-        relevancies = Relevancy.objects.annotate(feature_count=Count('features')).filter(result_calculation_map=result, feature_count=1)
+        relevancies = Relevancy.objects.annotate(feature_count=Count('features')).filter(result_calculation_map=result, feature_count=1)    # annotate to return only bivariate correlation 
         serializer = RelevancySerializer(instance=relevancies, many=True)
         return Response(serializer.data)
 

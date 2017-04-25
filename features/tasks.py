@@ -326,7 +326,20 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
     result_storage = DjangoHICSResultStorage(result_calculation_map=result_calculation_map, features=features)
     correlation = IncrementalCorrelation(data=dataframe, target=target.name, result_storage=result_storage,
                                          iterations=10, alpha=0.1, drop_discrete=False)
-    calculation = Calculation.objects.create(type=Calculation.DEFAULT_HICS,  #TODO: WRONG TYPE!!!!!!!!!!!111!
+    
+    # determine calculation type
+    if bivariate:
+        current_type = Calculation.DEFAULT_HICS
+    elif not bivariate and len(feature_ids) == 0:
+        current_type = Calculation.RANDOM_FEATURE_SET_HICS
+    elif not bivariate and len(feature_ids) > 0:
+        if calculate_supersets:
+            current_type = Calculation.FEATURE_SUPER_SET_HICS
+        else:
+            current_type = Calculation.FIXED_FEATURE_SET_HICS
+    else:
+        raise AssertionError('Should not reach this condition')
+    calculation = Calculation.objects.create(type=current_type, 
                                              status=Calculation.EMPTY,
                                              result_calculation_map=result_calculation_map)
 

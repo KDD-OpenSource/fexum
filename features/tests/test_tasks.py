@@ -10,7 +10,7 @@ from time import time
 import SharedArray as sa
 from features.tasks import _dataframe_columns, _dataframe_last_access, _get_dataframe
 from os import stat
-from features.models import ResultCalculationMap
+from features.models import ResultCalculationMap, Calculation
 
 
 # TODO: test for results
@@ -189,6 +189,12 @@ class TestCalculateHics(TestCase):
         self.assertTrue((Redundancy.objects.first().first_feature == feature1 and Redundancy.objects.first().second_feature == feature2)
             or (Redundancy.objects.first().second_feature == feature1 and Redundancy.objects.first().first_feature == feature2))
 
+        # Calculation
+        calculation = Calculation.objects.filter(result_calculation_map=ResultCalculationMap.objects.get(target=target)).last()
+        self.assertIsNotNone(calculation)
+        self.assertEqual(calculation.status, Calculation.DONE)
+        self.assertEqual(calculation.type, Calculation.DEFAULT_HICS)
+
     def test_calculate_feature_set_hics(self):
         dataset = _build_test_dataset()
         feature1 = Feature.objects.get(dataset=dataset, name='Col1')
@@ -220,6 +226,12 @@ class TestCalculateHics(TestCase):
         self.assertNotEqual(slices_features.first().output_definition, [])
         self.assertNotEqual(slices_features.first().object_definition, [])
 
+        # Calculation
+        calculation = Calculation.objects.filter(result_calculation_map=ResultCalculationMap.objects.get(target=target)).last()
+        self.assertIsNotNone(calculation)
+        self.assertEqual(calculation.status, Calculation.DONE)
+        self.assertEqual(calculation.type, Calculation.FIXED_FEATURE_SET_HICS)
+
     def test_calculate_super_set_hics(self):
         dataset = _build_test_dataset()
         feature1 = Feature.objects.get(dataset=dataset, name='Col1')
@@ -250,6 +262,12 @@ class TestCalculateHics(TestCase):
             self.assertEqual(fslices.result_calculation_map.target, target)
             self.assertNotEqual(fslices.output_definition, [])
             self.assertNotEqual(fslices.object_definition, [])
+
+        # Calculation
+        calculation = Calculation.objects.filter(result_calculation_map=ResultCalculationMap.objects.get(target=target)).last()
+        self.assertIsNotNone(calculation)
+        self.assertEqual(calculation.status, Calculation.DONE)
+        self.assertEqual(calculation.type, Calculation.FEATURE_SUPER_SET_HICS)
 
 
 class TestRemoveUnusedDatasets(TestCase):

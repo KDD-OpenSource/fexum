@@ -50,14 +50,16 @@ class Calculation(models.Model):
 
     NONE = 'none'
     DEFAULT_HICS = 'default_hics'
-    FIXED_FEATURES_HICS = 'fixed_features_hics'
-    FEATURE_SET_HICS = 'feature_set_hics'
+    RANDOM_FEATURE_SET_HICS = 'random_feature_set_hics'
+    FIXED_FEATURE_SET_HICS = 'fixed_feature_set_hics'
+    FEATURE_SUPER_SET_HICS = 'feature_super_set_hics'
 
     RESULT_TYPE = (
         (NONE, 'None'),
         (DEFAULT_HICS, 'Default HiCS'),
-        (FIXED_FEATURES_HICS, 'HiCS with fixed features'),
-        (FEATURE_SET_HICS, 'HiCS with feature set')
+        (RANDOM_FEATURE_SET_HICS, 'HiCS on random feature set'),
+        (FIXED_FEATURE_SET_HICS, 'HiCS with fixed feature set'),
+        (FEATURE_SUPER_SET_HICS, 'HiCS with super set of given feature set')
     )
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     result_calculation_map = models.ForeignKey(ResultCalculationMap, on_delete=models.CASCADE)
@@ -124,8 +126,8 @@ class Bin(models.Model):
 
 class Slice(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    object_definition = JSONField(default=[])
-    output_definition = JSONField(default=[])
+    object_definition = JSONField(default=[])   # json of hics internal slice representation for easy reconstruction 
+    output_definition = JSONField(default=[])   # json representation of slices for frontend
     features = models.ManyToManyField('Feature')  # TODO: Consider ManyToMany trough for relation uniquess
     result_calculation_map = models.ForeignKey(ResultCalculationMap, on_delete=models.CASCADE)
 
