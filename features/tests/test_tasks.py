@@ -1,18 +1,19 @@
 from django.test import TestCase
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
-    calculate_feature_statistics, calculate_rar, calculate_densities, remove_unused_dataframes, \
+    calculate_feature_statistics, calculate_hics, calculate_densities, remove_unused_dataframes, \
     build_spectrogram
 from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
-    RarResult, Spectrogram
-from features.tests.factories import FeatureFactory, DatasetFactory, RarResultFactory
+    Spectrogram
+from features.tests.factories import FeatureFactory, DatasetFactory, ResultCalculationMapFactory
 from unittest.mock import patch, call
 from time import time
 import SharedArray as sa
-from features.tasks import dataframe_columns, dataframe_last_access, _get_dataframe
+from features.tasks import _dataframe_columns, _dataframe_last_access, _get_dataframe
 from os import stat
+from features.models import ResultCalculationMap, Calculation
+
 
 # TODO: test for results
-
 def _build_test_dataset() -> Dataset:
     dataset = DatasetFactory()
     feature_names = ['Col1', 'Col2', 'Col3']
@@ -43,7 +44,7 @@ class TestInitializeFromDatasetTask(TestCase):
 
                                 # Make sure that we call the preprocessing task for each feature
                                 features = Feature.objects.filter(name__in=feature_names).all()
-                                kalls = [call(kwargs={'feature_id': feature.id}) for feature in features]
+                                kalls = [call(immutable=True, kwargs={'feature_id': feature.id}) for feature in features]
 
                                 build_histogram_mock.assert_has_calls(kalls, any_order=True)
                                 calculate_feature_statistics_mock.assert_has_calls(kalls, any_order=True)
@@ -63,11 +64,12 @@ class TestBuildHistogramTask(TestCase):
         feature = Feature.objects.get(dataset=dataset, name='Col1')
 
         bin_values = [3, 1, 4, 0, 2]
+        bin_count = len(bin_values)
 
-        build_histogram(feature_id=feature.id)
+        build_histogram(feature_id=feature.id, bins=bin_count)
 
         # Rudementary check bins only for its values
-        self.assertEqual(Bin.objects.count(), len(bin_values))
+        self.assertEqual(Bin.objects.count(), bin_count)
         for bin_obj in Bin.objects.all():
             self.assertEqual(bin_obj.feature, feature)
             self.assertIn(bin_obj.count, bin_values)
@@ -147,61 +149,125 @@ class TestCalculateFeatureStatistics(TestCase):
         self.assertEqual(feature.categories, [0, 1, 2])
 
 
-class TestCalculateRar(TestCase):
-    def test_calculate_rar(self):
+class TestCalculateHics(TestCase):
+    def test_calculate_incremental_hics(self):
+        pass
+
+    def test_calculate_bivariate_hics(self):
+        dataset = _build_test_dataset()
+        feature1 = Feature.objects.get(dataset=dataset, name='Col1')
+        feature2 = Feature.objects.get(dataset=dataset, name='Col2')
+        target = Feature.objects.get(dataset=dataset, name='Col3')
+        features = [feature1, feature2]
+
+        # Select first feature as target
+        calculate_hics(target_id=target.id, bivariate=True, calculate_redundancies=True)
+
+        # Result
+        self.assertEqual(ResultCalculationMap.objects.count(), 1)
+
+        # Relevancies
+        for relevancy in Relevancy.objects.all():
+            self.assertIsNotNone(relevancy.relevancy)
+            self.assertEqual(relevancy.result_calculation_map.target, target)
+            self.assertEqual(relevancy.iteration, 5)
+            self.assertIn(relevancy.features.first(), [feature1, feature2])
+        self.assertEqual(Relevancy.objects.filter(features=feature1).count(), 1)
+        self.assertEqual(Relevancy.objects.filter(features=feature2).count(), 1)
+
+        # Slices
+        for fslice in Slice.objects.all():
+            self.assertNotEqual(fslice.object_definition, [])
+            self.assertNotEqual(fslice.output_definition, [])
+            self.assertEqual(fslice.result_calculation_map.target, target)
+            self.assertIn(fslice.features.first(), features)
+        self.assertEqual(Slice.objects.filter(features=feature1).count(), 1)
+        self.assertEqual(Slice.objects.filter(features=feature2).count(), 1)
+
+        # Redundancies
+        self.assertEqual(Redundancy.objects.count(), 1)
+        self.assertTrue((Redundancy.objects.first().first_feature == feature1 and Redundancy.objects.first().second_feature == feature2)
+            or (Redundancy.objects.first().second_feature == feature1 and Redundancy.objects.first().first_feature == feature2))
+
+        # Calculation
+        calculation = Calculation.objects.filter(result_calculation_map=ResultCalculationMap.objects.get(target=target)).last()
+        self.assertIsNotNone(calculation)
+        self.assertEqual(calculation.status, Calculation.DONE)
+        self.assertEqual(calculation.type, Calculation.DEFAULT_HICS)
+
+    def test_calculate_feature_set_hics(self):
+        dataset = _build_test_dataset()
+        feature1 = Feature.objects.get(dataset=dataset, name='Col1')
+        feature2 = Feature.objects.get(dataset=dataset, name='Col2')
+        target = Feature.objects.get(dataset=dataset, name='Col3')
+        features = [feature1, feature2]
+        
+        feature_ids = [feature1.id, feature2.id]
+        calculate_hics(target_id=target.id, bivariate=False, feature_ids=feature_ids)
+
+        # Relevancy
+        relevancy_features = Relevancy.objects.filter(features=feature1)
+        relevancy_features = relevancy_features.filter(features=feature2)
+        self.assertEqual(relevancy_features.count(), Relevancy.objects.count())
+        self.assertEqual(relevancy_features.count(), 1)
+        self.assertEqual(relevancy_features.first().iteration, 5)
+        self.assertEqual(relevancy_features.first().result_calculation_map.target, target)
+        self.assertIsNotNone(relevancy_features.first().relevancy)
+
+        for feature in relevancy_features.first().features.all():
+            self.assertIn(feature, features)
+
+        # Slices
+        slices_features = Slice.objects.filter(features=feature1)
+        slices_features = slices_features.filter(features=feature2)
+        self.assertEqual(slices_features.count(), Slice.objects.count())
+        self.assertEqual(slices_features.count(), 1)
+        self.assertEqual(slices_features.first().result_calculation_map.target, target)
+        self.assertNotEqual(slices_features.first().output_definition, [])
+        self.assertNotEqual(slices_features.first().object_definition, [])
+
+        # Calculation
+        calculation = Calculation.objects.filter(result_calculation_map=ResultCalculationMap.objects.get(target=target)).last()
+        self.assertIsNotNone(calculation)
+        self.assertEqual(calculation.status, Calculation.DONE)
+        self.assertEqual(calculation.type, Calculation.FIXED_FEATURE_SET_HICS)
+
+    def test_calculate_super_set_hics(self):
         dataset = _build_test_dataset()
         feature1 = Feature.objects.get(dataset=dataset, name='Col1')
         feature2 = Feature.objects.get(dataset=dataset, name='Col2')
         target = Feature.objects.get(dataset=dataset, name='Col3')
 
-        # Select first feature as target
-        calculate_rar(target_id=target.id)
+        feature_ids = [feature1.id]
+        calculate_hics(target_id=target.id, bivariate=False, feature_ids=feature_ids, calculate_supersets=True)
 
-        self.assertEqual(RarResult.objects.count(), 1)
+        # Relevancy
+        relevancy_supersets = Relevancy.objects.filter(features=feature1)
+        self.assertEqual(relevancy_supersets.count(), Relevancy.objects.count())
+        self.assertGreater(relevancy_supersets.count(), 0)
 
-        # Relevancies
-        self.assertEqual(Relevancy.objects.count(), 2,
-                         msg='Should only contain relevancy for the one feature')
-        for relevancy in Relevancy.objects.all():
+        iteration_sum = 0
+        for relevancy in relevancy_supersets.all():
+            iteration_sum += relevancy.iteration
+            self.assertEqual(relevancy.result_calculation_map.target, target)
             self.assertIsNotNone(relevancy.relevancy)
-            self.assertIsNotNone(relevancy.rank)
-            self.assertEqual(relevancy.rar_result.target, target)
-            assert relevancy.feature == feature1 or relevancy.feature == feature2
-            self.assertEqual(Slice.objects.filter(relevancy=relevancy).count(), 6)
+        self.assertEqual(iteration_sum, 10)
 
-        # Redundancies
-        self.assertEqual(Redundancy.objects.count(), 1,
-                         msg='Should only contain redundancy for one feature pair')
+        # Slices
+        slices_supersets = Slice.objects.filter(features=feature1)
+        self.assertEqual(slices_supersets.count(), Slice.objects.count())
+        self.assertGreater(slices_supersets.count(), 0)
 
-        redundancy = Redundancy.objects.first()
-        self.assertIsNotNone(redundancy.redundancy)
-        assert redundancy.first_feature == feature1 or redundancy.first_feature == feature2
-        assert redundancy.second_feature == feature1 or redundancy.second_feature == feature2
+        for fslices in slices_supersets.all():
+            self.assertEqual(fslices.result_calculation_map.target, target)
+            self.assertNotEqual(fslices.output_definition, [])
+            self.assertNotEqual(fslices.object_definition, [])
 
-    def test_calculate_rar_catch_if_already_calcalulated_for_target(self):
-        dataset = _build_test_dataset()
-        target = Feature.objects.get(dataset=dataset, name='Col2')
-
-        # Init a typical result configuration
-        rar_result = RarResultFactory(target=target)
-        self.assertEqual(RarResult.objects.count(), 1,
-                         msg='Should only contain result for the one feature')
-
-        # Signals are called manually
-        with patch('features.tasks.pre_save.send') as pre_save_signal_mock:
-            with patch('features.tasks.post_save.send') as post_save_signal_mock:
-                calculate_rar(target_id=target.id)
-
-                post_save_signal_mock.assert_called_once_with(RarResult, created=False,
-                                                              instance=rar_result)
-                pre_save_signal_mock.assert_called_once_with(RarResult, instance=rar_result)
-
-        self.assertEqual(RarResult.objects.count(), 1,
-                         msg='Should still only contain result for the one feature')
-
-    def test_calculate_rar_use_precalulated_data(self):
-        # TODO: Write test
-        pass
+        # Calculation
+        calculation = Calculation.objects.filter(result_calculation_map=ResultCalculationMap.objects.get(target=target)).last()
+        self.assertIsNotNone(calculation)
+        self.assertEqual(calculation.status, Calculation.DONE)
+        self.assertEqual(calculation.type, Calculation.FEATURE_SUPER_SET_HICS)
 
 
 class TestRemoveUnusedDatasets(TestCase):
@@ -211,15 +277,15 @@ class TestRemoveUnusedDatasets(TestCase):
         # Manually load the dataframe into memory
         _get_dataframe(dataset.id)
 
-        self.assertLess(dataframe_last_access[str(dataset.id)], time())
-        self.assertGreater(dataframe_last_access[str(dataset.id)], time() - 60)
-        self.assertEqual(list(dataframe_columns[str(dataset.id)]), [feature.name for feature in dataset.feature_set.all()])
+        self.assertLess(_dataframe_last_access[str(dataset.id)], time())
+        self.assertGreater(_dataframe_last_access[str(dataset.id)], time() - 60)
+        self.assertEqual(list(_dataframe_columns[str(dataset.id)]), [feature.name for feature in dataset.feature_set.all()])
         self.assertIn(str(dataset.id), [dataset.name.decode('ascii') for dataset in sa.list()])
 
         remove_unused_dataframes(max_delta=0)
 
-        self.assertNotIn(str(dataset.id), dataframe_last_access)
-        self.assertNotIn(str(dataset.id), dataframe_columns)
+        self.assertNotIn(str(dataset.id), _dataframe_last_access)
+        self.assertNotIn(str(dataset.id), _dataframe_columns)
         self.assertNotIn(str(dataset.id), [dataset.name.decode('ascii') for dataset in sa.list()])
 
  
@@ -237,7 +303,7 @@ class TestBuildSpectrogram(TestCase):
         self.assertEqual(spectrogram.feature, feature)
         self.assertEqual(spectrogram.width, width)
         self.assertEqual(spectrogram.height, height)
-        self.assertEqual(stat(spectrogram.image.name).st_size, 677)
+        self.assertEqual(stat(spectrogram.image.name).st_size, 610)
 
 
 class TestCalculateArbitarySlices(TestCase):

@@ -1,43 +1,43 @@
 from __future__ import absolute_import, unicode_literals
 from celery import shared_task
-import pandas as pd
-import numpy as np
 from sklearn.neighbors import KernelDensity
-from features.models import Feature, Bin, Slice, Sample, Dataset, RarResult, \
-    Redundancy, Relevancy, Spectrogram
-from subprocess import Popen, PIPE
-import json
-from django.db.models.signals import post_save, pre_save
+from features.models import Feature, Bin, Slice, Sample, Dataset, ResultCalculationMap, \
+    Redundancy, Relevancy, Spectrogram, Calculation
 from celery.task import chord
 from celery.utils.log import get_task_logger
 from multiprocessing import Manager
 import SharedArray as sa
+from pandas import DataFrame, read_csv
+import numpy as np
+from hics.incremental_correlation import IncrementalCorrelation
+from hics.result_storage import AbstractResultStorage
+from hics.scored_slices import ScoredSlices
+from features.bindings import CalculationBinding, DatasetBinding
 from time import time
 from celery.schedules import crontab
 from celery.decorators import periodic_task
-import ccwt
 from scipy.stats import zscore
 from django.conf import settings
 import os
 from math import log
-
+from ccwt import fft, frequency_band, render_png, EQUIPOTENTIAL
+from django.db.models import Count
 
 logger = get_task_logger(__name__)
 
 # Locking of shared memory
-manager = Manager()
-dataframe_columns = manager.dict()
-dataframe_lock = manager.Lock()
-dataframe_last_access = manager.dict()
+_manager = Manager()
+_dataframe_columns = _manager.dict()
+_dataframe_lock = _manager.Lock()
+_dataframe_last_access = _manager.dict()
 
 # Fix bindings in celery context
-from features.bindings import RarResultBinding, DatasetBinding
 DatasetBinding.register()
-RarResultBinding.register()
+CalculationBinding.register()
 
 
 # TODO: Write test
-def _get_dataframe(dataset_id: str) -> pd.DataFrame:
+def _get_dataframe(dataset_id: str) -> DataFrame:
     """
     Get a dataset from the system's shared memory (/dev/shm). If it can't be found, it blocks all access to load it.
     
@@ -48,17 +48,17 @@ def _get_dataframe(dataset_id: str) -> pd.DataFrame:
     :return: Pandas Dataframe containing the whole dataset
     """
 
-    dataframe_lock.acquire()
+    _dataframe_lock.acquire()
 
     dataset_id = str(dataset_id)
 
     # Update last_access time with UNIX timestamp
-    dataframe_last_access[dataset_id] = time()
+    _dataframe_last_access[dataset_id] = time()
 
     # Either fetch RAM or load the dataset from disk
     try:
         shared_array = sa.attach('shm://{0}'.format(dataset_id))
-        columns = dataframe_columns[dataset_id]
+        columns = _dataframe_columns[dataset_id]
 
         logger.info('Cache hit for dataset {0}'.format(dataset_id))
     except FileNotFoundError:
@@ -67,18 +67,18 @@ def _get_dataframe(dataset_id: str) -> pd.DataFrame:
         # Fetch dataset from disk and put it into RAM
         dataset = Dataset.objects.get(pk=dataset_id)
         filename = dataset.content.path
-        dataframe = pd.read_csv(filename)
+        dataframe = read_csv(filename)
         shared_array = sa.create('shm://{0}'.format(dataset_id), dataframe.shape)
         shared_array[:] = dataframe.values
         columns = dataframe.columns
-        dataframe_columns[dataset_id] = columns
+        _dataframe_columns[dataset_id] = columns
         del dataframe
 
         logger.info('Cache save for dataset {0}'.format(dataset_id))
 
-    dataframe = pd.DataFrame(shared_array, columns=columns)
+    dataframe = DataFrame(shared_array, columns=columns)
 
-    dataframe_lock.release()
+    _dataframe_lock.release()
     return dataframe
 
 
@@ -141,22 +141,24 @@ def build_spectrogram(feature_id, width=256, height=128, frequency_base=1.0):
     df = _get_dataframe(feature.dataset.id)
 
     feature_column = zscore(df[feature.name].values)
-    fourier_transformed_signal = ccwt.fft(feature_column)
+    fourier_transformed_signal = fft(feature_column)
 
-    minimum_frequency = 0.001*len(feature_column)
-    maximum_frequency = 0.5*len(feature_column)
+    minimum_frequency = 0.001 * len(feature_column)
+    maximum_frequency = 0.5 * len(feature_column)
     if frequency_base == 1.0:
-        frequency_band = ccwt.frequency_band(height, maximum_frequency-minimum_frequency, minimum_frequency) # Linear
+        # Linear
+        frequency_band_result = frequency_band(height, maximum_frequency-minimum_frequency, minimum_frequency)
     else:
         minimum_octave = log(minimum_frequency)/log(frequency_base)
         maximum_octave = log(maximum_frequency)/log(frequency_base)
-        frequency_band = ccwt.frequency_band(height, maximum_octave-minimum_octave, minimum_octave, frequency_base) # Exponential
+        # Exponential
+        frequency_band_result = frequency_band(height, maximum_octave-minimum_octave, minimum_octave, frequency_base)
 
     # Write into the spectrogram path
     filename = '{0}/spectrograms/{1}.png'.format(settings.MEDIA_ROOT, feature_id)
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, 'w') as output_file:
-        ccwt.render_png(output_file, ccwt.EQUIPOTENTIAL, 0.0, fourier_transformed_signal, frequency_band, width)
+        render_png(output_file, EQUIPOTENTIAL, 0.0, fourier_transformed_signal, frequency_band_result, width)
 
     Spectrogram.objects.create(
         feature=feature,
@@ -167,14 +169,14 @@ def build_spectrogram(feature_id, width=256, height=128, frequency_base=1.0):
 
 
 @shared_task
-def build_histogram(feature_id):
+def build_histogram(feature_id, bins=50):
     feature = Feature.objects.get(pk=feature_id)
 
     # Only read column with that name
     dataframe = _get_dataframe(feature.dataset.id)
 
     bin_set = []
-    bins, bin_edges = np.histogram(dataframe[feature.name], bins=50)
+    bins, bin_edges = np.histogram(dataframe[feature.name], bins=bins)
     for bin_index, bin_value in enumerate(bins):
         from_value = bin_edges[bin_index]
         to_value = bin_edges[bin_index + 1]
@@ -214,96 +216,159 @@ def downsample_feature(feature_id, sample_count=1000):
     del sample_set, sampling
 
 
-def _parse_and_save_rar_results(target: Feature, rar_result_dict: dict):
-    # The Results Model should separate RaR results from different runs
-    # TODO: Test and refactor status
-    rar_result = RarResult.objects.create(target=target, status=RarResult.EMPTY)
-
-    for redundancy_data in rar_result_dict['redundancies']:
-        first_feature = Feature.objects.get(dataset=target.dataset,
-                                            name=redundancy_data['feature1'])
-        second_feature = Feature.objects.get(dataset=target.dataset,
-                                             name=redundancy_data['feature2'])
-
-        Redundancy.objects.update_or_create(
-            rar_result=rar_result,
-            first_feature=(first_feature if first_feature.id < second_feature.id else second_feature),
-            second_feature=(first_feature if first_feature.id >= second_feature.id else second_feature),
-            defaults={'redundancy': redundancy_data['redundancy'], 'weight': redundancy_data['weight']}
-        )
-
-    # Parse and save results
-    for idx, relevancy_data in enumerate(rar_result_dict['relevancies']):
-        feature = Feature.objects.get(dataset=target.dataset, name=relevancy_data['name'])
-        relevancy = Relevancy.objects.create(
-            feature=feature,
-            rank=idx,
-            relevancy=relevancy_data['result']['score'],
-            rar_result=rar_result
-        )
-
-        for slice_data in relevancy_data['result']['scoredBlocks']:
-            Slice.objects.create(
-                relevancy=relevancy,
-                marginal_distribution=slice_data['normalizedMarginalDistribution'],
-                conditional_distribution=slice_data['normalizedConditionalDistribution'],
-                deviation=slice_data['deviation'],
-                frequency=slice_data['frequency'],
-                from_value=slice_data['featureRanges'][0]['start'],
-                to_value=slice_data['featureRanges'][0]['end']
-            )
-    # Test status
-    rar_result.status = RarResult.DONE
-    rar_result.save(update_fields=['status'])
-
-
 @shared_task
-def calculate_rar(target_id, precomputed_data=None):
-    target = Feature.objects.get(pk=target_id)
-    dataset = Dataset.objects.get(pk=target.dataset.id)
-    filename = dataset.content.path
-    # TODO: Add test
+def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_supersets=False, calculate_redundancies=False):
+    class DjangoHICSResultStorage(AbstractResultStorage):
+        def __init__(self, result_calculation_map, features):
+            self.features = features
+            self.feature_ids = [feature.id for feature in self.features]
+            self.target = result_calculation_map.target
+            self.result_calculation_map = result_calculation_map
 
-    # Only execute rar if don't insert data manually
-    if precomputed_data is not None:
-        # TODO: Add test
-        results = precomputed_data
-        _parse_and_save_rar_results(target=target, rar_result_dict=results)
-        return
+        def get_relevancies(self):
+            relevancies = Relevancy.objects.filter(result_calculation_map=self.result_calculation_map).all()
+            feature_set_list = []
+            relevancy_list = []
+            iteration_list = []
 
-    # Return if rar was already calculated for a specific target
-    if RarResult.objects.filter(target=target).exists():
-        # Manually trigger notifications
-        rar_result = RarResult.objects.filter(target=target).first()
-        pre_save.send(RarResult, instance=rar_result)
-        post_save.send(RarResult, instance=rar_result, created=False)
+            for relevancy in relevancies:
+                feature_set_list += [tuple([feature.name for feature in relevancy.features.all()])]
+                relevancy_list += [relevancy.relevancy]
+                iteration_list += [relevancy.iteration]
 
-        return
+            dataframe = DataFrame({'relevancy': relevancy_list, 'iteration': iteration_list},
+                                  index=feature_set_list)
 
-    # Execute Rar
-    JAR_FILE = '/assets/rar-mfs.jar'
-    process = Popen([
-        'java',
-        '-d64',
-        '-Xms8g',
-        '-Xmx32g',
-        '-jar', JAR_FILE,
-        'csv',
-        '--samples', '100',
-        '--subsetSize', '5',
-        '--nonorm', filename,
-        '--hics',
-        '--targetName', target.name],
-        stdout=PIPE)
-    raw_output, err = process.communicate()
-    results = json.loads(raw_output)
-    _parse_and_save_rar_results(target=target, rar_result_dict=results)
+            return dataframe
+
+        def update_relevancies(self, new_relevancies: DataFrame):
+            for feature_set, data in new_relevancies.iterrows():
+                features = Feature.objects.filter(name__in=list(feature_set), id__in=self.feature_ids).all()
+                Relevancy.objects.update_or_create(
+                    result_calculation_map=self.result_calculation_map,
+                    features=features,
+                    defaults={'iteration': data.iteration, 'relevancy': data.relevancy}
+                )
+
+        def get_redundancies(self):
+            feature_names = [feature.name for feature in self.features]
+            redundancies_dataframe = DataFrame(data=0, columns=feature_names, index=feature_names)
+            weights_dataframe = DataFrame(data=0, columns=feature_names, index=feature_names)
+
+            redundancies = Redundancy.objects.filter(first_feature__in=self.features,
+                                                     second_feature__in=self.features,
+                                                     result=self.result_calculation_map).all()
+            for redundancy in redundancies:
+                first_feature_name = redundancy.first_feature.name
+                second_feature_name = redundancy.second_feature.name
+                redundancies_dataframe[first_feature_name, second_feature_name] = redundancy.redundancy
+                redundancies_dataframe[second_feature_name, first_feature_name] = redundancy.redundancy
+                weights_dataframe[first_feature_name, second_feature_name] = redundancy.weight
+                weights_dataframe[second_feature_name, first_feature_name] = redundancy.weight
+
+            return redundancies_dataframe, weights_dataframe
+
+        def update_redundancies(self, new_redundancies: DataFrame, new_weights: DataFrame):
+            for first_feature in self.features:
+                for second_feature in self.features:
+                    if first_feature.id < second_feature.id:
+                        Redundancy.objects.update_or_create(
+                            result_calculation_map=self.result_calculation_map,
+                            first_feature=(first_feature if first_feature.id < second_feature.id else second_feature),
+                            second_feature=(first_feature if first_feature.id >= second_feature.id else second_feature),
+                            defaults={'redundancy': 0, 'weight': 0})
+
+        def get_slices(self):
+            slices = Slice.objects.filter(features__in=self.features,
+                                          result_calculation_map=self.result_calculation_map)
+            return {
+            tuple([feature.name for feature in slice.features.all()]): ScoredSlices.from_dict(slice.object_definition)
+            for
+            slice in slices}
+
+        def update_slices(self, new_slices: dict()):
+            name_mapping = lambda name: str(Feature.objects.get(name=name, dataset=self.target.dataset).id)
+            for feature_set, slices in new_slices.items():
+                features = Feature.objects.filter(name__in=feature_set, dataset=self.target.dataset).all()
+                
+                slice_query = Slice.objects.filter(result_calculation_map=self.result_calculation_map)
+                slice_query = slice_query.annotate(feature_count=Count('features')).filter(feature_count=len(features))
+                for feature in features:
+                    slice_query = slice_query.filter(features=feature)
+                
+                if slice_query.count() == 0:
+                    slice_object = Slice.objects.create(result_calculation_map=self.result_calculation_map)
+                    slice_object.features.set(list(features))
+                elif slice_query.count() == 1:
+                    slice_object = slice_query.first()
+                else:
+                    raise AssertionError('Should not reach this condition')
+                
+                slice_object.object_definition = slices.to_dict()
+                slice_object.output_definition = slices.to_output(name_mapping)
+                slice_object.save()
+                #Slice.objects.update_or_create(
+                #    result_calculation_map=self.result_calculation_map,
+                #    features=features,
+                #    defaults={'object_definition': slices.to_dict(),
+                #              'output_definition': slices.to_output(name_mapping)}
+                #)
+
+    assert not bivariate or (len(feature_ids) == 0)  # If bivarite true, then features_ids has to be empty
+    assert not bivariate or not calculate_supersets  # bivariate => not calculate_superset
+    assert not calculate_supersets or (len(feature_ids) > 0)  # superset => len > 0
+
+    target = Feature.objects.get(id=target_id)
+    dataframe = _get_dataframe(target.dataset.id)
+    features = Feature.objects.filter(dataset=target.dataset).exclude(id=target.id).all()
+
+    result_calculation_map, __ = ResultCalculationMap.objects.get_or_create(target=target)
+    result_storage = DjangoHICSResultStorage(result_calculation_map=result_calculation_map, features=features)
+    correlation = IncrementalCorrelation(data=dataframe, target=target.name, result_storage=result_storage,
+                                         iterations=10, alpha=0.1, drop_discrete=False)
+    
+    # determine calculation type
+    if bivariate:
+        current_type = Calculation.DEFAULT_HICS
+    elif not bivariate and len(feature_ids) == 0:
+        current_type = Calculation.RANDOM_FEATURE_SET_HICS
+    elif not bivariate and len(feature_ids) > 0:
+        if calculate_supersets:
+            current_type = Calculation.FEATURE_SUPER_SET_HICS
+        else:
+            current_type = Calculation.FIXED_FEATURE_SET_HICS
+    else:
+        raise AssertionError('Should not reach this condition')
+    calculation = Calculation.objects.create(type=current_type, 
+                                             status=Calculation.EMPTY,
+                                             result_calculation_map=result_calculation_map)
+
+    # Calculate relevancies
+    if bivariate:
+        correlation.update_bivariate_relevancies(runs=5)
+    elif not bivariate and len(feature_ids) == 0:
+        correlation.update_multivariate_relevancies(k=5, runs=50)
+    elif not bivariate and len(feature_ids) > 0:
+        feature_names = [feature.name for feature in Feature.objects.filter(id__in=feature_ids).all()]
+        if calculate_supersets:
+            correlation.update_multivariate_relevancies(feature_names, k=5, runs=10)
+        else:
+            correlation.update_multivariate_relevancies(feature_names, k=len(feature_names), runs=5)
+    else:
+        raise AssertionError('Should not reach this condition')
+
+    # Calculate redundancies
+    if bivariate and calculate_redundancies:
+        correlation.update_redundancies(k=5, runs=20)
+
+    calculation.status = Calculation.DONE
+    calculation.save(update_fields=['status'])
 
 
 @shared_task
 def initialize_from_dataset(dataset_id):
     dataset = Dataset.objects.get(id=dataset_id)
-    dataset.status = Dataset.PROCESSING #  TODO: Test
+    dataset.status = Dataset.PROCESSING  # TODO: Test
     dataset.save(update_fields=['status'])
 
     dataframe = _get_dataframe(dataset_id)
@@ -314,16 +379,17 @@ def initialize_from_dataset(dataset_id):
 
     # Chaining with Celery would be more beautiful...
     calculate_feature_statistics_subtasks = [
-        calculate_feature_statistics.subtask(kwargs={'feature_id': feature_id}) for feature_id in
+        calculate_feature_statistics.subtask(immutable=True, kwargs={'feature_id': feature_id}) for feature_id in
         feature_ids]
-    build_spectrogram_subtasks = [build_spectrogram.subtask(kwargs={'feature_id': feature_id}) for
+    build_spectrogram_subtasks = [build_spectrogram.subtask(immutable=True, kwargs={'feature_id': feature_id}) for
+                                  feature_id in feature_ids]
+    build_histogram_subtasks = [build_histogram.subtask(immutable=True, kwargs={'feature_id': feature_id}) for
                                 feature_id in feature_ids]
-    build_histogram_subtasks = [build_histogram.subtask(kwargs={'feature_id': feature_id}) for
-                                feature_id in feature_ids]
-    downsample_feature_subtasks = [downsample_feature.subtask(kwargs={'feature_id': feature_id}) for
+    downsample_feature_subtasks = [downsample_feature.subtask(immutable=True, kwargs={'feature_id': feature_id}) for
                                    feature_id in feature_ids]
 
-    subtasks = calculate_feature_statistics_subtasks + build_spectrogram_subtasks + build_histogram_subtasks + downsample_feature_subtasks
+    subtasks = calculate_feature_statistics_subtasks + build_spectrogram_subtasks + build_histogram_subtasks + \
+               downsample_feature_subtasks
 
     chord(subtasks)(initialize_from_dataset_processing_callback.subtask(kwargs={'dataset_id': dataset_id}))
 
@@ -383,13 +449,13 @@ def remove_unused_dataframes(max_delta=3600):
 
     :param max_delta: Maximum delta in seconds
     """
-    dataframe_lock.acquire()
+    _dataframe_lock.acquire()
 
     min_time = time() - max_delta
-    for dataset_id, timestamp in dataframe_last_access.items():
+    for dataset_id, timestamp in _dataframe_last_access.items():
         if timestamp < min_time:
-            del dataframe_last_access[dataset_id]
-            del dataframe_columns[dataset_id]
+            del _dataframe_last_access[dataset_id]
+            del _dataframe_columns[dataset_id]
             sa.delete(dataset_id)
 
-    dataframe_lock.release()
+    _dataframe_lock.release()

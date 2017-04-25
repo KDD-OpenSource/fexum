@@ -1,11 +1,11 @@
 from rest_framework.test import APITestCase
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
     SampleFactory, DatasetFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, \
-    RarResultFactory, SpectrogramFactory
+    ResultCalculationMapFactory, SpectrogramFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, \
     HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
-from features.serializers import FeatureSerializer, BinSerializer, SliceSerializer, \
+from features.serializers import FeatureSerializer, BinSerializer, \
     SampleSerializer, DatasetSerializer, ExperimentSerializer, ExperimentTargetSerializer, \
     RelevancySerializer, RedundancySerializer, SpectrogramSerializer
 from unittest.mock import patch
@@ -13,6 +13,7 @@ from features.models import Experiment, Dataset
 import os
 import zipfile
 from users.tests.factories import UserFactory
+from uuid import uuid4
 
 
 class TestExperimentListView(APITestCase):
@@ -66,13 +67,6 @@ class TestExperimentListView(APITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(response.json(), {'dataset': [
             'Invalid pk "079a60fc-c3b1-48ee-8bb6-ba19f061e9e0" - object does not exist.']})
-
-    def test_get_experiment_list_unauthenticated(self):
-        url = reverse('experiment-list')
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(), {})
 
     def test_get_experiment_list_unauthenticated(self):
         url = reverse('experiment-list')
@@ -164,7 +158,7 @@ class TestTargetDetailView(APITestCase):
         self.assertEqual(experiment.dataset, target.dataset)
 
         url = reverse('experiment-targets-detail', args=[experiment.id])
-        with patch('features.views.calculate_rar.delay') as calculate_rar:
+        with patch('features.views.calculate_hics.subtask') as calculate_hics:
             response = self.client.put(url, data={'target': target.id}, format='json')
 
             self.assertEqual(response.status_code, HTTP_200_OK)
@@ -173,7 +167,8 @@ class TestTargetDetailView(APITestCase):
             data = ExperimentTargetSerializer(instance=experiment).data
             self.assertEqual(experiment.target, target)
             self.assertEqual(response.json(), {'target': str(data['target'])})
-            calculate_rar.assert_called_once_with(target_id=target.id)
+            calculate_hics.assert_called_once_with(immutable=True, kwargs={'target_id': target.id})
+            # TODO: Test chain call
 
     def test_select_target_feature_not_found(self):
         user = UserFactory()
@@ -232,6 +227,7 @@ class TestDatasetListView(APITestCase):
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
+
 class TestDatasetUploadView(APITestCase):
     file_name = 'features/tests/assets/test_file.csv'
     url = reverse('dataset-upload')
@@ -289,6 +285,7 @@ class TestDatasetUploadView(APITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
+
     def tearDown(self):
         # Remove that shitty file
         if os.path.isfile(self.zip_file_name):
@@ -339,6 +336,7 @@ class TestFeatureListView(APITestCase):
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
 
+
 class TestFeatureSamplesView(APITestCase):
     def test_retrieve_samples(self):
         user = UserFactory()
@@ -366,6 +364,7 @@ class TestFeatureSamplesView(APITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
+
 
 class TestFeatureHistogramView(APITestCase):
     def test_retrieve_histogram(self):
@@ -412,38 +411,43 @@ class TestFeatureSlicesView(APITestCase):
         user = UserFactory()
         self.client.force_authenticate(user)
 
-        fslice = SliceFactory()
+        test_data = {'key': 'dummy_data'}
+        result_calculation_map = ResultCalculationMapFactory()
+        features = [FeatureFactory(dataset=result_calculation_map.target.dataset), FeatureFactory(dataset=result_calculation_map.target.dataset)]
+        fslice = SliceFactory(output_definition=test_data, features=features, result_calculation_map=result_calculation_map)
+        request_data = {'features': [str(feature.id) for feature in features]}
 
         url = reverse('target-feature-slices',
-                      args=[fslice.relevancy.rar_result.target.id,
-                            fslice.relevancy.feature.id])
-        response = self.client.get(url)
+                      args=[fslice.result_calculation_map.target.id])
+        response = self.client.post(url, data=request_data, format='json')
 
         self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), test_data)
 
-        data = SliceSerializer(instance=fslice).data
-        json_data = response.json()
-        self.assertEqual(len(json_data), 1)
-        first_obj = json_data.pop(0)
-        self.assertEqual(len(json_data), 0)
-        self.assertEqual(first_obj.pop('conditional_distribution'),
-                         data['conditional_distribution'])
-        self.assertEqual(first_obj.pop('marginal_distribution'), data['marginal_distribution'])
-        self.assertAlmostEqual(first_obj.pop('to_value'), data['to_value'])
-        self.assertAlmostEqual(first_obj.pop('from_value'), data['from_value'])
-        self.assertAlmostEqual(first_obj.pop('deviation'), data['deviation'])
-        self.assertAlmostEqual(first_obj.pop('frequency'), data['frequency'])
-        self.assertEqual(len(first_obj), 0)
+    def test_retrieve_slices_empty_body(self):
+        user = UserFactory()
+        self.client.force_authenticate(user)
+        
+        target = FeatureFactory()
+        features = [FeatureFactory(dataset=target.dataset), FeatureFactory(dataset=target.dataset)]
+        request_data = {'features': [str(feature.id) for feature in features]}
+
+        url = reverse('target-feature-slices',
+                      args=[target.id])
+        response = self.client.post(url, data=request_data, format='json')
+        
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), [])
 
     def test_retrieve_slices_feature_not_found(self):
         user = UserFactory()
         self.client.force_authenticate(user)
 
         target = FeatureFactory()
+        request_data = {'features': [str(uuid4())]}
 
-        url = reverse('target-feature-slices',
-                      args=[target.id, '7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.get(url)
+        url = reverse('target-feature-slices', args=[target.id])
+        response = self.client.post(url, data=request_data, format='json')
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
@@ -452,17 +456,15 @@ class TestFeatureSlicesView(APITestCase):
         user = UserFactory()
         self.client.force_authenticate(user)
 
-        url = reverse('target-feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e',
-                                                      '8a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.get(url)
+        url = reverse('target-feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+        response = self.client.post(url)
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
     def test_retrieve_slices_target_not_authenticated(self):
-        url = reverse('target-feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e',
-                                                     '8a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.get(url)
+        url = reverse('target-feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+        response = self.client.post(url)
 
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
@@ -474,10 +476,12 @@ class TestFeatureRelevancyResultsView(APITestCase):
         user = UserFactory()
         self.client.force_authenticate(user)
 
+        feature = FeatureFactory()
         relevancy = RelevancyFactory()
+        relevancy.features.set([feature])
 
         url = reverse('target-feature-relevancy_results',
-                      args=[relevancy.rar_result.target.id])
+                      args=[relevancy.result_calculation_map.target.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -487,9 +491,9 @@ class TestFeatureRelevancyResultsView(APITestCase):
         first_obj = json_data.pop(0)
         self.assertEqual(len(json_data), 0)
         self.assertEqual(first_obj.pop('id'), str(data['id']))
-        self.assertEqual(first_obj.pop('feature'), str(data['feature']))
+        self.assertEqual(str(first_obj.pop('features')), str([str(ft) for ft in data['features']]))
         self.assertAlmostEqual(first_obj.pop('relevancy'), data['relevancy'])
-        self.assertEqual(first_obj.pop('rank'), data['rank'])
+        self.assertAlmostEqual(first_obj.pop('iteration'), data['iteration'])
         self.assertEqual(len(first_obj), 0)
 
     def test_retrieve_relevancy_results_target_not_found(self):
@@ -519,15 +523,15 @@ class TestFeatureRedundancyResults(APITestCase):
         self.client.force_authenticate(user)
 
         first_feature = FeatureFactory()
-        rar_result = RarResultFactory(target=first_feature)
+        result_calculation_map = ResultCalculationMapFactory(target=first_feature)
         second_feature = FeatureFactory(dataset=first_feature.dataset)
         redundancy = RedundancyFactory(first_feature=first_feature,
                                        second_feature=second_feature,
-                                       rar_result=rar_result)
+                                       result_calculation_map=result_calculation_map)
         serializer = RedundancySerializer(instance=redundancy)
 
         url = reverse('feature-redundancy_results',
-                      args=[rar_result.target.id])
+                      args=[result_calculation_map.target.id])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -553,44 +557,6 @@ class TestFeatureRedundancyResults(APITestCase):
 
     def test_retrieve_redundancy_results_dataset_not_authenticated(self):
         url = reverse('feature-redundancy_results', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
-
-
-class TestFilteredSlicesView(APITestCase):
-    def test_retrieve_filtered_slices(self):
-        user = UserFactory()
-        self.client.force_authenticate(user)
-
-        slice1 = SliceFactory()
-        SliceFactory()
-
-        url = '{0}?feature__in={1}'.format(
-            reverse('target-filtered-slices', args=[slice1.relevancy.rar_result.target.id]),
-            slice1.relevancy.feature.id)
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        response_data = response.json()
-        self.assertEqual(len(response_data), 1)
-        self.assertEqual(response_data[0]['features'][0]['feature'],
-                         str(slice1.relevancy.feature.id))
-
-    def test_retrieve_filtered_slices_target_not_found(self):
-        user = UserFactory()
-        self.client.force_authenticate(user)
-
-        url = reverse('target-filtered-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
-        self.assertEqual(response.json(), {'detail': 'Not found.'})
-
-    def test_retrieve_filtered_slices_target_not_authenticated(self):
-        url = reverse('target-filtered-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
@@ -635,7 +601,7 @@ class TestCondiditonalDistributionsView(APITestCase):
         }]
 
         with patch('features.views.calculate_conditional_distributions.apply_async',) as task_mock:
-            task_mock.get.return_value = [] # TODO: Proper data
+            task_mock.get.return_value = []  # TODO: Proper data
             response = self.client.post(url, data=data_range, format='json')
             task_mock.assert_called_once_with(args=[target.id,data_range])
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -668,7 +634,6 @@ class TestFeatureSpectrogramView(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(), serializer.data)
 
-
     def test_retrieve_spectrogram_not_found(self):
         user = UserFactory()
         self.client.force_authenticate(user)
@@ -682,6 +647,63 @@ class TestFeatureSpectrogramView(APITestCase):
     def test_retrieve_spectrogram_authenticated(self):
         url = reverse('feature-spectrogram', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
         response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+        self.assertEqual(response.json(),
+                         {'detail': 'Authentication credentials were not provided.'})
+
+
+class FixedFeatureSetHicsView(APITestCase):
+    def test_fixed_feature_set_hics(self):
+        user = UserFactory()
+        self.client.force_authenticate(user)
+
+        target = FeatureFactory()
+        feature1 = FeatureFactory(dataset=target.dataset)
+        feature2 = FeatureFactory(dataset=target.dataset)
+
+        with patch('features.views.calculate_hics.apply_async') as task_mock:
+            url = reverse('fixed-feature-set-hics', args=[str(target.id)])
+            response = self.client.post(url, data={'features': [feature1.id, feature2.id]}, format='json')
+
+            task_mock.assert_called_once_with(kwargs={
+                'target_id': target.id,
+                'feature_ids': [feature1.id, feature2.id],
+                'bivariate': False,
+                'calculate_supersets': False,
+                'calculate_redundancies': False})
+
+            self.assertEqual(response.content, b'')
+            self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
+
+    def test_fixed_feature_set_hics_feature_not_found(self):
+        user = UserFactory()
+        self.client.force_authenticate(user)
+
+        target = FeatureFactory()
+
+        with patch('features.views.calculate_hics.apply_async') as task_mock:
+            url = reverse('fixed-feature-set-hics', args=[str(target.id)])
+            response = self.client.post(url, data={'features': ['9b1fe7e4-9bb7-4388-a1e4-40a35465d310']}, format='json')
+
+            task_mock.assert_not_called()
+
+            self.assertEqual(response.json(), {'detail': 'Not found.'})
+            self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+
+    def test_fixed_feature_set_hics_target_not_found(self):
+        user = UserFactory()
+        self.client.force_authenticate(user)
+
+        url = reverse('fixed-feature-set-hics', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})
+
+    def test_fixed_feature_set_hics_not_authenticated(self):
+        url = reverse('fixed-feature-set-hics', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
+        response = self.client.post(url)
 
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),

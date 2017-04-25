@@ -1,5 +1,5 @@
 from channels.binding.websockets import WebsocketBinding
-from features.models import Dataset, RarResult, Experiment
+from features.models import Dataset, Calculation, Experiment
 
 
 class DatasetBinding(WebsocketBinding):
@@ -19,14 +19,14 @@ class DatasetBinding(WebsocketBinding):
         return False
 
 
-class RarResultBinding(WebsocketBinding):
-    model = RarResult
-    stream = 'rar_result'
-    fields = ['id', 'status']
+class CalculationBinding(WebsocketBinding):
+    model = Calculation
+    stream = 'calculation'
+    fields = ['id', 'status', 'type']
 
     @classmethod
     def group_names(cls, instance):
-        experiments = Experiment.objects.filter(target=instance.target)
+        experiments = Experiment.objects.filter(target=instance.result_calculation_map.target)
         return ['user-{0}-updates'.format(experiment.user_id) for experiment in experiments]
 
     def has_permission(self, user, action, pk):

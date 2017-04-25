@@ -1,16 +1,15 @@
 from rest_framework.views import APIView
-
-from features.models import Feature, Bin, Sample, Dataset, Experiment, RarResult, Slice, Relevancy, Redundancy, \
-    Spectrogram
+from features.models import Feature, Bin, Sample, Dataset, Experiment, Slice, Relevancy, Redundancy, Spectrogram, \
+    ResultCalculationMap
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
-    SampleSerializer, SliceSerializer, DatasetSerializer, RedundancySerializer, \
+    SampleSerializer, DatasetSerializer, RedundancySerializer, \
     ExperimentTargetSerializer, RelevancySerializer, FeatureSliceSerializer, \
     ConditionalDistributionRequestSerializer, ConditionalDistributionResultSerializer, DensitySerializer, \
     SpectrogramSerializer
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from rest_framework.status import HTTP_204_NO_CONTENT
-from features.tasks import calculate_rar, calculate_conditional_distributions, initialize_from_dataset,\
+from rest_framework.status import HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
+from features.tasks import calculate_hics, calculate_conditional_distributions, initialize_from_dataset,\
     calculate_densities
 from rest_framework.parsers import MultiPartParser, FormParser
 import logging
@@ -18,7 +17,8 @@ import zipfile
 from features.exceptions import NoCSVInArchiveFoundError, NotZIPFileError
 from django.core.files import File
 from django.utils.datastructures import MultiValueDictKeyError
-
+from celery import chain
+from django.db.models import Count
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +49,11 @@ class TargetDetailView(APIView):
         serializer = ExperimentTargetSerializer(instance=experiment, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        
-        calculate_rar.delay(target_id=serializer.instance.target.id)
+
+        number_of_iterations = 10
+        tasks = [calculate_hics.subtask(immutable=True,
+                                        kwargs={'target_id': serializer.instance.target.id})] * number_of_iterations
+        chain(tasks).apply_async()
 
         return Response(serializer.data)
 
@@ -58,6 +61,28 @@ class TargetDetailView(APIView):
         experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
         experiment.target = None
         experiment.save()
+        return Response(status=HTTP_204_NO_CONTENT)
+
+
+class FixedFeatureSetHicsView(APIView):
+    def post(self, request, target_id):
+        target = get_object_or_404(Feature, id=target_id)
+        feature_ids = request.data.get('features') or []
+        features_queryset = Feature.objects.filter(id__in=feature_ids, dataset=target.dataset)
+
+        # Make sure that we filtered for all feature ids
+        if features_queryset.count() != len(feature_ids) and len(feature_ids) > 0:
+            return Response(status=HTTP_404_NOT_FOUND, data={'detail': 'Not found.'})
+
+        features = features_queryset.all()
+
+        calculate_hics.apply_async(kwargs={
+            'target_id': target.id,
+            'feature_ids': [feature.id for feature in features],
+            'bivariate': False,
+            'calculate_supersets': False,
+            'calculate_redundancies': False})
+
         return Response(status=HTTP_204_NO_CONTENT)
 
 
@@ -141,22 +166,33 @@ class FeatureSpectrogramView(APIView):
 
 
 class FeatureSlicesView(APIView):
-    def get(self, _, target_id, feature_id):
+    def post(self, request, target_id):
         target = get_object_or_404(Feature, pk=target_id)
-        feature = get_object_or_404(Feature, pk=feature_id)
-        rar_result = RarResult.objects.get(target=target)
-        slices = Slice.objects.filter(relevancy__rar_result=rar_result,
-                                      relevancy__feature=feature)
-        serializer = SliceSerializer(instance=slices, many=True)
-        return Response(serializer.data)
+        feature_ids = request.data.get('features') or []
+        features_queryset = Feature.objects.filter(id__in=feature_ids, dataset=target.dataset)
+
+        # Make sure that we filtered for all feature ids
+        if features_queryset.count() != len(feature_ids) and len(feature_ids) > 0:
+            return Response(status=HTTP_404_NOT_FOUND, data={'detail' : 'Not found.'})
+
+        result = ResultCalculationMap.objects.filter(target=target).last()
+        slices_queryset = Slice.objects.filter(result_calculation_map=result).annotate(feature_count=Count('features')).filter(feature_count=len(feature_ids))
+        for feature in features_queryset.all():
+            slices_queryset = slices_queryset.filter(features=feature)
+
+        if slices_queryset.count() == 1:
+            output_definition = slices_queryset.last().output_definition
+        else:
+            return Response([])
+        return Response(output_definition)
 
 
 class FeatureRelevancyResultsView(APIView):
     def get(self, _, target_id):
         target = get_object_or_404(Feature, pk=target_id)
         # TODO: Filter for same result set
-        rar_result = RarResult.objects.filter(target=target).last()
-        relevancies = Relevancy.objects.filter(rar_result=rar_result)
+        result = ResultCalculationMap.objects.filter(target=target).last()
+        relevancies = Relevancy.objects.annotate(feature_count=Count('features')).filter(result_calculation_map=result, feature_count=1)    # annotate to return only bivariate correlation 
         serializer = RelevancySerializer(instance=relevancies, many=True)
         return Response(serializer.data)
 
@@ -164,20 +200,9 @@ class FeatureRelevancyResultsView(APIView):
 class TargetRedundancyResults(APIView):
     def get(self, _, target_id):
         target = get_object_or_404(Feature, pk=target_id)
-        rar_result = RarResult.objects.filter(target=target).last()
-        redundancies = Redundancy.objects.filter(rar_result=rar_result)
+        result = ResultCalculationMap.objects.filter(target=target).last()
+        redundancies = Redundancy.objects.filter(result_calculation_map=result)
         serializer = RedundancySerializer(instance=redundancies, many=True)
-        return Response(serializer.data)
-
-
-class FilteredSlicesView(APIView):
-    def get(self, request, target_id):
-        target = get_object_or_404(Feature, pk=target_id)
-        feature_ids = request.query_params.get('feature__in', '').split(',')
-        rar_result = RarResult.objects.get(target=target)
-        slices = Slice.objects.filter(relevancy__rar_result=rar_result,
-                                      relevancy__feature_id__in=feature_ids)
-        serializer = FeatureSliceSerializer(instance=slices, many=True)
         return Response(serializer.data)
 
 
@@ -197,3 +222,4 @@ class CondiditonalDistributionsView(APIView):
         response_serializer = ConditionalDistributionResultSerializer(data=results, many=True)
         response_serializer.is_valid(raise_exception=True)
         return Response(response_serializer.validated_data)
+

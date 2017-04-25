@@ -2,7 +2,7 @@ from django.conf.urls import url
 from features.views import FeatureListView, FeatureSamplesView, DatasetListView, \
     FeatureHistogramView, FeatureSlicesView, TargetDetailView, DatasetViewUploadView, \
     ExperimentListView, FeatureRelevancyResultsView, ExperimentDetailView, TargetRedundancyResults, \
-    FilteredSlicesView, CondiditonalDistributionsView, FeatureDensityView, FeatureSpectrogramView
+    CondiditonalDistributionsView, FeatureDensityView, FeatureSpectrogramView, FixedFeatureSetHicsView
 
 urlpatterns = [
     # Experiments
@@ -29,16 +29,17 @@ urlpatterns = [
         FeatureDensityView.as_view(), name='feature-density'),
 
     # Results
-    url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/features/(?P<feature_id>[a-zA-Z0-9-]+)/slices$',
+    url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/slices$',
         FeatureSlicesView.as_view(), name='target-feature-slices'),
-    url('targets/(?P<target_id>[a-zA-Z0-9-]+)/slices$', FilteredSlicesView.as_view(),
-        name='target-filtered-slices'),
     url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/relevancy_results$',
         FeatureRelevancyResultsView.as_view(),
         name='target-feature-relevancy_results'),
     url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/redundancy_results$',
         TargetRedundancyResults.as_view(),
         name='feature-redundancy_results'),
+    url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/hics',
+        FixedFeatureSetHicsView.as_view(),
+        name='fixed-feature-set-hics'),
 
     # Distributions
     url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/distributions$', CondiditonalDistributionsView.as_view(),

@@ -23,16 +23,6 @@ class SampleSerializer(ModelSerializer):
         fields = ('value', 'order')
 
 
-class SliceSerializer(ModelSerializer):
-    marginal_distribution = JSONField()
-    conditional_distribution = JSONField()
-
-    class Meta:
-        model = Slice
-        fields = ('from_value', 'deviation', 'frequency', 'to_value',
-                  'marginal_distribution', 'conditional_distribution')
-
-
 class FeatureSliceSerializer(ModelSerializer):
     features = SerializerMethodField()
 
@@ -82,11 +72,11 @@ class ExperimentTargetSerializer(ModelSerializer):
 
 
 class RelevancySerializer(ModelSerializer):
-    feature = PrimaryKeyRelatedField(many=False, read_only=True)
+    features = PrimaryKeyRelatedField(many=True, read_only=True)
 
     class Meta:
         model = Relevancy
-        fields = ('id', 'feature', 'relevancy', 'rank')
+        fields = ('id', 'features', 'relevancy', 'iteration')
 
 
 class RedundancySerializer(ModelSerializer):
