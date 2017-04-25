@@ -412,8 +412,9 @@ class TestFeatureSlicesView(APITestCase):
         self.client.force_authenticate(user)
 
         test_data = {'key': 'dummy_data'}
-        features = [FeatureFactory(), FeatureFactory()]
-        fslice = SliceFactory(output_definition=test_data, features=features)
+        result_calculation_map = ResultCalculationMapFactory()
+        features = [FeatureFactory(dataset=result_calculation_map.target.dataset), FeatureFactory(dataset=result_calculation_map.target.dataset)]
+        fslice = SliceFactory(output_definition=test_data, features=features, result_calculation_map=result_calculation_map)
         request_data = {'features': [str(feature.id) for feature in features]}
 
         url = reverse('target-feature-slices',
@@ -428,7 +429,7 @@ class TestFeatureSlicesView(APITestCase):
         self.client.force_authenticate(user)
         
         target = FeatureFactory()
-        features = [FeatureFactory(), FeatureFactory()]
+        features = [FeatureFactory(dataset=target.dataset), FeatureFactory(dataset=target.dataset)]
         request_data = {'features': [str(feature.id) for feature in features]}
 
         url = reverse('target-feature-slices',
