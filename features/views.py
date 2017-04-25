@@ -52,7 +52,7 @@ class TargetDetailView(APIView):
 
         number_of_iterations = 10
         tasks = [calculate_hics.subtask(immutable=True,
-                                        kwargs={'target_id': serializer.instance.target.id})] * number_of_iterations
+                                        kwargs={'target_id': serializer.instance.target.id, 'calculate_redundancies': True})] * number_of_iterations
         chain(tasks).apply_async()
 
         return Response(serializer.data)
