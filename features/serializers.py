@@ -10,6 +10,8 @@ class FeatureSerializer(ModelSerializer):
         model = Feature
         fields = ('id', 'name', 'mean', 'variance', 'min', 'max', 'is_categorical', 'categories')
 
+    categories = JSONField()
+
 
 class BinSerializer(ModelSerializer):
     class Meta:

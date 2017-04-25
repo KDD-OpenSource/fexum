@@ -167,7 +167,7 @@ class TestTargetDetailView(APITestCase):
             data = ExperimentTargetSerializer(instance=experiment).data
             self.assertEqual(experiment.target, target)
             self.assertEqual(response.json(), {'target': str(data['target'])})
-            calculate_hics.assert_called_once_with(immutable=True, kwargs={'target_id': target.id})
+            calculate_hics.assert_called_once_with(immutable=True, kwargs={'target_id': target.id, 'calculate_redundancies': True})
             # TODO: Test chain call
 
     def test_select_target_feature_not_found(self):

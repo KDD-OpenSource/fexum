@@ -22,6 +22,7 @@ import os
 from math import log
 from ccwt import fft, frequency_band, render_png, EQUIPOTENTIAL
 from django.db.models import Count
+from features.serializers import FeatureSerializer
 
 logger = get_task_logger(__name__)
 
@@ -94,7 +95,7 @@ def calculate_feature_statistics(feature_id):
     feature.mean = np.mean(feature_col).item()
     feature.variance = np.nanvar(feature_col).item()
     unique_values = np.unique(feature_col)
-    feature.is_categorical = (unique_values.size < 10)
+    feature.is_categorical = (unique_values.size < 15)
     if feature.is_categorical:
         feature.categories = list(unique_values)
     feature.save(update_fields=['min', 'max', 'variance', 'mean', 'is_categorical', 'categories'])
@@ -172,6 +173,9 @@ def build_spectrogram(feature_id, width=256, height=128, frequency_base=1.0):
 def build_histogram(feature_id, bins=50):
     feature = Feature.objects.get(pk=feature_id)
 
+    if feature.is_categorical:
+        bins = len(feature.categories)
+
     # Only read column with that name
     dataframe = _get_dataframe(feature.dataset.id)
 
@@ -244,11 +248,23 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
         def update_relevancies(self, new_relevancies: DataFrame):
             for feature_set, data in new_relevancies.iterrows():
                 features = Feature.objects.filter(name__in=list(feature_set), id__in=self.feature_ids).all()
-                Relevancy.objects.update_or_create(
-                    result_calculation_map=self.result_calculation_map,
-                    features=features,
-                    defaults={'iteration': data.iteration, 'relevancy': data.relevancy}
-                )
+                
+                relevancy_query = Relevancy.objects.filter(result_calculation_map=self.result_calculation_map)
+                relevancy_query = relevancy_query.annotate(feature_count=Count('features')).filter(feature_count=len(features))
+                for feature in features:
+                    relevancy_query = relevancy_query.filter(features=feature)
+                    
+                if relevancy_query.count() == 0:
+                    relevancy_object = Relevancy.objects.create(result_calculation_map=self.result_calculation_map, relevancy=data['relevancy'], iteration=data['iteration'])
+                    relevancy_object.features.set(list(features))
+                elif relevancy_query.count() == 1:
+                    relevancy_object = relevancy_query.first()
+                    relevancy_object.relevancy = data['relevancy']
+                    relevancy_object.iteration = data['iteration']
+                else:
+                    raise AssertionError('Should not reach this condition')
+                
+                relevancy_object.save()
 
         def get_redundancies(self):
             feature_names = [feature.name for feature in self.features]
@@ -257,14 +273,15 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
 
             redundancies = Redundancy.objects.filter(first_feature__in=self.features,
                                                      second_feature__in=self.features,
-                                                     result=self.result_calculation_map).all()
+                                                     result_calculation_map=self.result_calculation_map).all()
+
             for redundancy in redundancies:
                 first_feature_name = redundancy.first_feature.name
                 second_feature_name = redundancy.second_feature.name
-                redundancies_dataframe[first_feature_name, second_feature_name] = redundancy.redundancy
-                redundancies_dataframe[second_feature_name, first_feature_name] = redundancy.redundancy
-                weights_dataframe[first_feature_name, second_feature_name] = redundancy.weight
-                weights_dataframe[second_feature_name, first_feature_name] = redundancy.weight
+                redundancies_dataframe.loc[first_feature_name, second_feature_name] = redundancy.redundancy
+                redundancies_dataframe.loc[second_feature_name, first_feature_name] = redundancy.redundancy
+                weights_dataframe.loc[first_feature_name, second_feature_name] = redundancy.weight
+                weights_dataframe.loc[second_feature_name, first_feature_name] = redundancy.weight
 
             return redundancies_dataframe, weights_dataframe
 
@@ -274,9 +291,9 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
                     if first_feature.id < second_feature.id:
                         Redundancy.objects.update_or_create(
                             result_calculation_map=self.result_calculation_map,
-                            first_feature=(first_feature if first_feature.id < second_feature.id else second_feature),
-                            second_feature=(first_feature if first_feature.id >= second_feature.id else second_feature),
-                            defaults={'redundancy': 0, 'weight': 0})
+                            first_feature= first_feature,
+                            second_feature= second_feature,
+                            defaults={'redundancy': new_redundancies.loc[first_feature.name, second_feature.name], 'weight': new_weights.loc[first_feature.name, second_feature.name]})
 
         def get_slices(self):
             slices = Slice.objects.filter(features__in=self.features,
@@ -307,12 +324,6 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
                 slice_object.object_definition = slices.to_dict()
                 slice_object.output_definition = slices.to_output(name_mapping)
                 slice_object.save()
-                #Slice.objects.update_or_create(
-                #    result_calculation_map=self.result_calculation_map,
-                #    features=features,
-                #    defaults={'object_definition': slices.to_dict(),
-                #              'output_definition': slices.to_output(name_mapping)}
-                #)
 
     assert not bivariate or (len(feature_ids) == 0)  # If bivarite true, then features_ids has to be empty
     assert not bivariate or not calculate_supersets  # bivariate => not calculate_superset

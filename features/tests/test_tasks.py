@@ -61,9 +61,9 @@ class TestInitializeFromDatasetTask(TestCase):
 class TestBuildHistogramTask(TestCase):
     def test_build_histogram(self):
         dataset = _build_test_dataset()
-        feature = Feature.objects.get(dataset=dataset, name='Col1')
+        feature = Feature.objects.get(dataset=dataset, name='Col2')
 
-        bin_values = [3, 1, 4, 0, 2]
+        bin_values = [6, 1, 4, 0, 2]
         bin_count = len(bin_values)
 
         build_histogram(feature_id=feature.id, bins=bin_count)
@@ -78,7 +78,7 @@ class TestBuildHistogramTask(TestCase):
 class TestCalculateDensities(TestCase):
     def test_calculate_densities(self):
         dataset = _build_test_dataset()
-        feature = Feature.objects.get(dataset=dataset, name='Col1')
+        feature = Feature.objects.get(dataset=dataset, name='Col2')
         target_feature = Feature.objects.get(dataset=dataset, name='Col3')
 
         target_feature.categories = [0, 1, 2]
@@ -104,7 +104,7 @@ class TestCalculateDensities(TestCase):
 class TestDownsampleTask(TestCase):
     def test_downsample_feature(self):
         dataset = _build_test_dataset()
-        feature = Feature.objects.get(dataset=dataset, name='Col1')
+        feature = Feature.objects.get(dataset=dataset, name='Col2')
 
         sample_count = 5
         downsample_feature(feature_id=feature.id, sample_count=sample_count)
@@ -114,22 +114,22 @@ class TestDownsampleTask(TestCase):
         # Test that samples get created from 10 datapoints
         self.assertEqual(samples.count(), sample_count)
         self.assertEqual([sample.value for sample in samples],
-                         [0.042891865, 0.213652795, 0.45530289, 1.333576395, -0.18543196])
+                         [-0.426213735, -0.37090778, 0.097019415, -0.48668665, -0.178641])
 
 
 class TestCalculateFeatureStatistics(TestCase):
     def test_calculate_feature_statistics(self):
         dataset = _build_test_dataset()
-        feature = Feature.objects.get(dataset=dataset, name='Col1')
+        feature = Feature.objects.get(dataset=dataset, name='Col2')
 
         calculate_feature_statistics(feature_id=feature.id)
 
         feature = Feature.objects.get(id=feature.id)
 
-        self.assertEqual(feature.mean, 0.371998397)
-        self.assertEqual(feature.variance, 1.2756908271439)
-        self.assertEqual(feature.min, -1.24479339)
-        self.assertEqual(feature.max, 2.24539624)
+        self.assertEqual(feature.mean, -0.2838365385)
+        self.assertEqual(feature.variance, 0.406014248150876)
+        self.assertEqual(feature.min, -1.3975821)
+        self.assertEqual(feature.max, 0.74163977)
         self.assertEqual(feature.is_categorical, False)
         self.assertEqual(feature.categories, None)
 
@@ -162,6 +162,7 @@ class TestCalculateHics(TestCase):
 
         # Select first feature as target
         calculate_hics(target_id=target.id, bivariate=True, calculate_redundancies=True)
+        calculate_hics(target_id=target.id, bivariate=True, calculate_redundancies=True)
 
         # Result
         self.assertEqual(ResultCalculationMap.objects.count(), 1)
@@ -170,7 +171,7 @@ class TestCalculateHics(TestCase):
         for relevancy in Relevancy.objects.all():
             self.assertIsNotNone(relevancy.relevancy)
             self.assertEqual(relevancy.result_calculation_map.target, target)
-            self.assertEqual(relevancy.iteration, 5)
+            self.assertEqual(relevancy.iteration, 10) 
             self.assertIn(relevancy.features.first(), [feature1, feature2])
         self.assertEqual(Relevancy.objects.filter(features=feature1).count(), 1)
         self.assertEqual(Relevancy.objects.filter(features=feature2).count(), 1)
