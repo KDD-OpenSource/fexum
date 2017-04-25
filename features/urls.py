@@ -2,7 +2,7 @@ from django.conf.urls import url
 from features.views import FeatureListView, FeatureSamplesView, DatasetListView, \
     FeatureHistogramView, FeatureSlicesView, TargetDetailView, DatasetViewUploadView, \
     ExperimentListView, FeatureRelevancyResultsView, ExperimentDetailView, TargetRedundancyResults, \
-    CondiditonalDistributionsView, FeatureDensityView, FeatureSpectrogramView
+    CondiditonalDistributionsView, FeatureDensityView, FeatureSpectrogramView, FixedFeatureSetHicsView
 
 urlpatterns = [
     # Experiments
@@ -37,6 +37,9 @@ urlpatterns = [
     url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/redundancy_results$',
         TargetRedundancyResults.as_view(),
         name='feature-redundancy_results'),
+    url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/hics',
+        FixedFeatureSetHicsView.as_view(),
+        name='fixed-feature-set-hics'),
 
     # Distributions
     url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/distributions$', CondiditonalDistributionsView.as_view(),

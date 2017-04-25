@@ -74,3 +74,9 @@ class TestFeatureSpectrogramUrl(TestCase):
     def test_feature_spectrogram_url(self):
         url = reverse('feature-spectrogram', args=['391ec5ac-f741-45c9-855a-7615c89ce128'])
         self.assertEqual(url,'/api/features/391ec5ac-f741-45c9-855a-7615c89ce128/spectrogram')
+
+
+class TestFixedFeatureSetHicsUrl(TestCase):
+    def test_fixed_feature_set_hics(self):
+        url = reverse('fixed-feature-set-hics', args=['391ec5ac-f741-45c9-855a-7615c89ce128'])
+        self.assertEqual(url,'/api/targets/391ec5ac-f741-45c9-855a-7615c89ce128/hics')

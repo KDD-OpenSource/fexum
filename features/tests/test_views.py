@@ -168,6 +168,7 @@ class TestTargetDetailView(APITestCase):
             self.assertEqual(experiment.target, target)
             self.assertEqual(response.json(), {'target': str(data['target'])})
             calculate_hics.assert_called_once_with(immutable=True, kwargs={'target_id': target.id})
+            # TODO: Test chain call
 
     def test_select_target_feature_not_found(self):
         user = UserFactory()
@@ -418,7 +419,6 @@ class TestFeatureSlicesView(APITestCase):
         url = reverse('target-feature-slices',
                       args=[fslice.result_calculation_map.target.id])
         response = self.client.post(url, data=request_data, format='json')
-        print(response.json())
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(), test_data)
@@ -646,6 +646,63 @@ class TestFeatureSpectrogramView(APITestCase):
     def test_retrieve_spectrogram_authenticated(self):
         url = reverse('feature-spectrogram', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
         response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+        self.assertEqual(response.json(),
+                         {'detail': 'Authentication credentials were not provided.'})
+
+
+class FixedFeatureSetHicsView(APITestCase):
+    def test_fixed_feature_set_hics(self):
+        user = UserFactory()
+        self.client.force_authenticate(user)
+
+        target = FeatureFactory()
+        feature1 = FeatureFactory(dataset=target.dataset)
+        feature2 = FeatureFactory(dataset=target.dataset)
+
+        with patch('features.views.calculate_hics.apply_async') as task_mock:
+            url = reverse('fixed-feature-set-hics', args=[str(target.id)])
+            response = self.client.post(url, data={'features': [feature1.id, feature2.id]}, format='json')
+
+            task_mock.assert_called_once_with(kwargs={
+                'target_id': target.id,
+                'feature_ids': [feature1.id, feature2.id],
+                'bivariate': False,
+                'calculate_supersets': False,
+                'calculate_redundancies': False})
+
+            self.assertEqual(response.content, b'')
+            self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
+
+    def test_fixed_feature_set_hics_feature_not_found(self):
+        user = UserFactory()
+        self.client.force_authenticate(user)
+
+        target = FeatureFactory()
+
+        with patch('features.views.calculate_hics.apply_async') as task_mock:
+            url = reverse('fixed-feature-set-hics', args=[str(target.id)])
+            response = self.client.post(url, data={'features': ['9b1fe7e4-9bb7-4388-a1e4-40a35465d310']}, format='json')
+
+            task_mock.assert_not_called()
+
+            self.assertEqual(response.json(), {'detail': 'Not found.'})
+            self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+
+    def test_fixed_feature_set_hics_target_not_found(self):
+        user = UserFactory()
+        self.client.force_authenticate(user)
+
+        url = reverse('fixed-feature-set-hics', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})
+
+    def test_fixed_feature_set_hics_not_authenticated(self):
+        url = reverse('fixed-feature-set-hics', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
+        response = self.client.post(url)
 
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),

@@ -64,13 +64,19 @@ class TargetDetailView(APIView):
         return Response(status=HTTP_204_NO_CONTENT)
 
 
-class ExplictHicsView(APIView):
+class FixedFeatureSetHicsView(APIView):
     def post(self, request, target_id):
         target = get_object_or_404(Feature, id=target_id)
         feature_ids = request.data.get('features') or []
-        features = Feature.objects.filter(id__in=feature_ids).all()
+        features_queryset = Feature.objects.filter(id__in=feature_ids, dataset=target.dataset)
 
-        calculate_hics.subtask(immutable=True, kwargs={
+        # Make sure that we filtered for all feature ids
+        if features_queryset.count() != len(feature_ids) and len(feature_ids) > 0:
+            return Response(status=HTTP_404_NOT_FOUND, data={'detail': 'Not found.'})
+
+        features = features_queryset.all()
+
+        calculate_hics.apply_async(kwargs={
             'target_id': target.id,
             'feature_ids': [feature.id for feature in features],
             'bivariate': False,
@@ -161,14 +167,14 @@ class FeatureSpectrogramView(APIView):
 
 class FeatureSlicesView(APIView):
     def post(self, request, target_id):
+        target = get_object_or_404(Feature, pk=target_id)
         feature_ids = request.data.get('features') or []
-        features_queryset = Feature.objects.filter(id__in=feature_ids)
+        features_queryset = Feature.objects.filter(id__in=feature_ids, dataset=target.dataset)
 
         # Make sure that we filtered for all feature ids
         if features_queryset.count() != len(feature_ids) and len(feature_ids) > 0:
             return Response(status=HTTP_404_NOT_FOUND, data={'detail' : 'Not found.'})
 
-        target = get_object_or_404(Feature, pk=target_id)
         result = ResultCalculationMap.objects.filter(target=target).last()
         slices_queryset = Slice.objects.filter(result_calculation_map=result).annotate(feature_count=Count('features')).filter(feature_count=len(feature_ids))
         for feature in features_queryset.all():
