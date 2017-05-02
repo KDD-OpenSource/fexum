@@ -205,7 +205,11 @@ def downsample_feature(feature_id, sample_count=1000):
 
     sample_set = []
 
-    sampling = feature_row.groupby(np.arange(len(feature_row)) // (len(feature_row)//sample_count)).median()
+    if sample_count < len(feature_row):
+        sampling = feature_row.groupby(np.arange(len(feature_row)) // (len(feature_row)//sample_count)).median()
+    else:
+        sampling = feature_row
+
     for idx, value in enumerate(sampling):
         # TODO: Test, order
         sample = Sample(
