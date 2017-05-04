@@ -305,7 +305,7 @@ class TestBuildSpectrogram(TestCase):
         self.assertEqual(spectrogram.feature, feature)
         self.assertEqual(spectrogram.width, width)
         self.assertEqual(spectrogram.height, height)
-        self.assertEqual(stat(spectrogram.image.name).st_size, 610)
+        self.assertEqual(stat(spectrogram.image.name).st_size, 699)
 
 
 class TestCalculateArbitarySlices(TestCase):
