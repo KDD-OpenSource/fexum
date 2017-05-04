@@ -189,6 +189,7 @@ class TestCalculateHics(TestCase):
         self.assertEqual(Redundancy.objects.count(), 1)
         self.assertTrue((Redundancy.objects.first().first_feature == feature1 and Redundancy.objects.first().second_feature == feature2)
             or (Redundancy.objects.first().second_feature == feature1 and Redundancy.objects.first().first_feature == feature2))
+        # self.assertEqual(Redundancy.objects.first().redundancy, 1)
 
         # Calculation
         calculation = Calculation.objects.filter(result_calculation_map=ResultCalculationMap.objects.get(target=target)).last()

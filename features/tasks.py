@@ -287,16 +287,22 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
                 weights_dataframe.loc[first_feature_name, second_feature_name] = redundancy.weight
                 weights_dataframe.loc[second_feature_name, first_feature_name] = redundancy.weight
 
+            if np.isinf(redundancies_dataframe).any().any():
+                raise AssertionError('redundancy must not be inf (get)')
+
             return redundancies_dataframe, weights_dataframe
 
         def update_redundancies(self, new_redundancies: DataFrame, new_weights: DataFrame):
+            if np.isinf(new_redundancies).any().any():
+                raise AssertionError('redundancy must not be inf (update)')
+
             for first_feature in self.features:
                 for second_feature in self.features:
                     if first_feature.id < second_feature.id:
                         Redundancy.objects.update_or_create(
                             result_calculation_map=self.result_calculation_map,
-                            first_feature= first_feature,
-                            second_feature= second_feature,
+                            first_feature=first_feature,
+                            second_feature=second_feature,
                             defaults={'redundancy': new_redundancies.loc[first_feature.name, second_feature.name], 'weight': new_weights.loc[first_feature.name, second_feature.name]})
 
         def get_slices(self):
