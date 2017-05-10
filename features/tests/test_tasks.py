@@ -4,7 +4,7 @@ from features.tasks import initialize_from_dataset, build_histogram, downsample_
     build_spectrogram
 from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
     Spectrogram
-from features.tests.factories import FeatureFactory, DatasetFactory, ResultCalculationMapFactory
+from features.tests.factories import FeatureFactory, DatasetFactory, ResultCalculationMapFactory, CalculationFactory
 from unittest.mock import patch, call
 from time import time
 import SharedArray as sa
@@ -158,11 +158,13 @@ class TestCalculateHics(TestCase):
         feature1 = Feature.objects.get(dataset=dataset, name='Col1')
         feature2 = Feature.objects.get(dataset=dataset, name='Col2')
         target = Feature.objects.get(dataset=dataset, name='Col3')
+        result_calculation_map = ResultCalculationMapFactory(target=target)
+        calculation = CalculationFactory(result_calculation_map=result_calculation_map, max_iteration=2, type=Calculation.DEFAULT_HICS)
         features = [feature1, feature2]
 
         # Select first feature as target
-        calculate_hics(target_id=target.id, bivariate=True, calculate_redundancies=True)
-        calculate_hics(target_id=target.id, bivariate=True, calculate_redundancies=True)
+        calculate_hics(calculation=calculation, bivariate=True, calculate_redundancies=True)
+        calculate_hics(calculation=calculation, bivariate=True, calculate_redundancies=True)
 
         # Result
         self.assertEqual(ResultCalculationMap.objects.count(), 1)
@@ -194,7 +196,7 @@ class TestCalculateHics(TestCase):
         # Calculation
         calculation = Calculation.objects.filter(result_calculation_map=ResultCalculationMap.objects.get(target=target)).last()
         self.assertIsNotNone(calculation)
-        self.assertEqual(calculation.status, Calculation.DONE)
+        self.assertEqual(calculation.current_iteration, calculation.max_iteration)
         self.assertEqual(calculation.type, Calculation.DEFAULT_HICS)
 
     def test_calculate_feature_set_hics(self):
@@ -202,10 +204,12 @@ class TestCalculateHics(TestCase):
         feature1 = Feature.objects.get(dataset=dataset, name='Col1')
         feature2 = Feature.objects.get(dataset=dataset, name='Col2')
         target = Feature.objects.get(dataset=dataset, name='Col3')
+        result_calculation_map = ResultCalculationMapFactory(target=target)
+        calculation = CalculationFactory(result_calculation_map=result_calculation_map, max_iteration=1, type=Calculation.FIXED_FEATURE_SET_HICS)
         features = [feature1, feature2]
         
         feature_ids = [feature1.id, feature2.id]
-        calculate_hics(target_id=target.id, bivariate=False, feature_ids=feature_ids)
+        calculate_hics(calculation=calculation, bivariate=False, feature_ids=feature_ids)
 
         # Relevancy
         relevancy_features = Relevancy.objects.filter(features=feature1)
@@ -231,7 +235,7 @@ class TestCalculateHics(TestCase):
         # Calculation
         calculation = Calculation.objects.filter(result_calculation_map=ResultCalculationMap.objects.get(target=target)).last()
         self.assertIsNotNone(calculation)
-        self.assertEqual(calculation.status, Calculation.DONE)
+        self.assertEqual(calculation.current_iteration, calculation.max_iteration)
         self.assertEqual(calculation.type, Calculation.FIXED_FEATURE_SET_HICS)
 
     def test_calculate_super_set_hics(self):
@@ -239,9 +243,11 @@ class TestCalculateHics(TestCase):
         feature1 = Feature.objects.get(dataset=dataset, name='Col1')
         feature2 = Feature.objects.get(dataset=dataset, name='Col2')
         target = Feature.objects.get(dataset=dataset, name='Col3')
+        result_calculation_map = ResultCalculationMapFactory(target=target)
+        calculation = CalculationFactory(result_calculation_map=result_calculation_map, max_iteration=1, type=Calculation.FEATURE_SUPER_SET_HICS)
 
         feature_ids = [feature1.id]
-        calculate_hics(target_id=target.id, bivariate=False, feature_ids=feature_ids, calculate_supersets=True)
+        calculate_hics(calculation=calculation, bivariate=False, feature_ids=feature_ids, calculate_supersets=True)
 
         # Relevancy
         relevancy_supersets = Relevancy.objects.filter(features=feature1)
@@ -268,7 +274,7 @@ class TestCalculateHics(TestCase):
         # Calculation
         calculation = Calculation.objects.filter(result_calculation_map=ResultCalculationMap.objects.get(target=target)).last()
         self.assertIsNotNone(calculation)
-        self.assertEqual(calculation.status, Calculation.DONE)
+        self.assertEqual(calculation.current_iteration, calculation.max_iteration)
         self.assertEqual(calculation.type, Calculation.FEATURE_SUPER_SET_HICS)
 
 

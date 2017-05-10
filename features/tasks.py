@@ -21,7 +21,7 @@ from django.conf import settings
 import os
 from math import log
 from ccwt import fft, frequency_band, render_png, EQUIPOTENTIAL
-from django.db.models import Count
+from django.db.models import Count, F
 from features.serializers import FeatureSerializer
 
 logger = get_task_logger(__name__)
@@ -225,7 +225,7 @@ def downsample_feature(feature_id, sample_count=1000):
 
 
 @shared_task
-def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_supersets=False, calculate_redundancies=False):
+def calculate_hics(calculation, feature_ids=[], bivariate=True, calculate_supersets=False, calculate_redundancies=False):
     class DjangoHICSResultStorage(AbstractResultStorage):
         def __init__(self, result_calculation_map, features):
             self.features = features
@@ -339,30 +339,14 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
     assert not bivariate or not calculate_supersets  # bivariate => not calculate_superset
     assert not calculate_supersets or (len(feature_ids) > 0)  # superset => len > 0
 
-    target = Feature.objects.get(id=target_id)
+    result_calculation_map = calculation.result_calculation_map
+    target = result_calculation_map.target
     dataframe = _get_dataframe(target.dataset.id)
     features = Feature.objects.filter(dataset=target.dataset).exclude(id=target.id).all()
 
-    result_calculation_map, __ = ResultCalculationMap.objects.get_or_create(target=target)
     result_storage = DjangoHICSResultStorage(result_calculation_map=result_calculation_map, features=features)
     correlation = IncrementalCorrelation(data=dataframe, target=target.name, result_storage=result_storage,
                                          iterations=10, alpha=0.1, drop_discrete=False)
-    
-    # determine calculation type
-    if bivariate:
-        current_type = Calculation.DEFAULT_HICS
-    elif not bivariate and len(feature_ids) == 0:
-        current_type = Calculation.RANDOM_FEATURE_SET_HICS
-    elif not bivariate and len(feature_ids) > 0:
-        if calculate_supersets:
-            current_type = Calculation.FEATURE_SUPER_SET_HICS
-        else:
-            current_type = Calculation.FIXED_FEATURE_SET_HICS
-    else:
-        raise AssertionError('Should not reach this condition')
-    calculation = Calculation.objects.create(type=current_type, 
-                                             status=Calculation.EMPTY,
-                                             result_calculation_map=result_calculation_map)
 
     # Calculate relevancies
     if bivariate:
@@ -382,8 +366,7 @@ def calculate_hics(target_id, feature_ids=[], bivariate=True, calculate_superset
     if bivariate and calculate_redundancies:
         correlation.update_redundancies(k=5, runs=20)
 
-    calculation.status = Calculation.DONE
-    calculation.save(update_fields=['status'])
+    Calculation.objects.filter(id=calculation.id).update(current_iteration=F('current_iteration')+1)
 
 
 @shared_task

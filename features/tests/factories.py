@@ -123,4 +123,3 @@ class CalculationFactory(DjangoModelFactory):
         model = Calculation
 
     result_calculation_map = SubFactory(ResultCalculationMapFactory)
-

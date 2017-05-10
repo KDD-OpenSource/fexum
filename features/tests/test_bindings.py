@@ -52,8 +52,9 @@ class TestCalculationBinding(ChannelTestCase):
         received = client.receive()
         self.assertIsNotNone(received)
 
-        self.assertEqual(received['payload']['data'].pop('status'), calculation.status)
-        self.assertEqual(received['payload']['data'].pop('type'), calculation.status)
+        self.assertEqual(received['payload']['data'].pop('current_iteration'), calculation.current_iteration)
+        self.assertEqual(received['payload']['data'].pop('max_iteration'), calculation.max_iteration)
+        self.assertEqual(received['payload']['data'].pop('type'), calculation.type)
         self.assertEqual(received['payload'].pop('data'), {})
 
         self.assertEqual(received['payload'].pop('action'), 'create')

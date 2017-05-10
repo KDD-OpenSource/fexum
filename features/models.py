@@ -40,14 +40,6 @@ class ResultCalculationMap(models.Model):
 
 
 class Calculation(models.Model):
-    EMPTY = 'empty'
-    DONE = 'done'
-
-    STATUS_CHOICES = (
-        (EMPTY, 'Empty'),
-        (DONE, 'Done')
-    )
-
     NONE = 'none'
     DEFAULT_HICS = 'default_hics'
     RANDOM_FEATURE_SET_HICS = 'random_feature_set_hics'
@@ -63,8 +55,9 @@ class Calculation(models.Model):
     )
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     result_calculation_map = models.ForeignKey(ResultCalculationMap, on_delete=models.CASCADE)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=EMPTY)
-    type = models.CharField(max_length=30, choices=RESULT_TYPE, default=EMPTY)
+    max_iteration = models.IntegerField(default=0)
+    current_iteration = models.IntegerField(default=0)
+    type = models.CharField(max_length=30, choices=RESULT_TYPE, default=NONE)
 
 
 class Relevancy(models.Model):
