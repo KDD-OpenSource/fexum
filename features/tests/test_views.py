@@ -666,7 +666,6 @@ class FixedFeatureSetHicsView(APITestCase):
         target = FeatureFactory()
         feature1 = FeatureFactory(dataset=target.dataset)
         feature2 = FeatureFactory(dataset=target.dataset)
-        result_calculation_map = ResultCalculationMapFactory(target=target)
         calculation = CalculationFactory(result_calculation_map=result_calculation_map)
 
         with patch('features.views.calculate_hics.apply_async') as task_mock, patch('features.views.Calculation.objects.create') as create_calculation:
@@ -695,6 +694,7 @@ class FixedFeatureSetHicsView(APITestCase):
 
         with patch('features.views.calculate_hics.apply_async') as task_mock, patch('features.views.Calculation.objects.create') as create_calculation:
             create_calculation.return_value = calculation
+
             url = reverse('fixed-feature-set-hics', args=[str(target.id)])
             response = self.client.post(url, data={'features': ['9b1fe7e4-9bb7-4388-a1e4-40a35465d310']}, format='json')
 

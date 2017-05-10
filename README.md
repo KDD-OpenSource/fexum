@@ -1,40 +1,50 @@
 # PreDOTS
 
+This repository contains the backend of our big data framework for exploring and understanding:
+- Feature selection
+- Feature extraction
+- Multivariate correlations
+- Time series
 
-## Get started
-## Development
-1. Install Docker, Docker Compose and NFS using the [setup script](deployment/ubuntu-setup.sh). **Do not install docker.io using apt-get!**
-2. Run `$ docker-compose build` to build all containers (do that when you are changing dependencies
+The [frontend](https://github.com/KDD-OpenSource/predots-frontend) and
+[correlation algorithm](https://github.com/KDD-OpenSource/python-hics)
+are located in different repositories.
+
+
+## Getting Started
+1. Run the [setup script](deployment/ubuntu-setup.sh). **Do not install docker.io using apt-get!**
+2. Run `$ docker-compose build` to build all containers (do that when you are changing dependencies)
 3. Run `$ docker-compose up` to start all containers. Put `-d` for headless mode
 4. Run `$ docker-compose run web_wsgi python3 manage.py migrate` to apply migrations
 5. Access the docker ip (mostly localhost) at port 80.
 
-## Testing
-For testing simply run:
-
-```
-$ docker-compose run web_wsgi py.test
-```
-## Useful things
-## Create migrations
-Create migrations after changing or creating models
-```
-$ docker-compose run web_wsgi python3 manage.py makemigrations
-```
-### Work on Python shell
+### Python Shell
 ```
 $ docker-compose run web_wsgi python3 manage.py shell
 ```
-This is useful when you want to test and create database objects
-
-### Task execution
+This is useful when you want to test and create database objects, e.g.:
 ```
-$ docker-compose run web_wsgi python3 manage.py shell
 >> from features.tasks import *
 >> from features.models import *
 >> for feature in Feature.objects.all() 
    ... a_test_name.delay(feature.name)
 ```
 
-### Task monitoring
+### Task Monitoring
 Open the docker host at port 5555
+
+
+
+## Development & Contributing
+
+### Testing
+For testing simply run:
+```
+$ docker-compose run web_wsgi py.test
+```
+
+### Data Migrations
+Create migrations after changing or creating models
+```
+$ docker-compose run web_wsgi python3 manage.py makemigrations
+```

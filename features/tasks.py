@@ -41,10 +41,10 @@ CalculationBinding.register()
 def _get_dataframe(dataset_id: str) -> DataFrame:
     """
     Get a dataset from the system's shared memory (/dev/shm). If it can't be found, it blocks all access to load it.
-    
-    IMPORTANT NOTE: Datasets get removed after 1 hour if they are not used. This means that if you use a really long running 
+
+    IMPORTANT NOTE: Datasets get removed after 1 hour if they are not used. This means that if you use a really long running
     task, you have to update dataframe_last_access manually!
-    
+
     :param dataset_id: The uuid of a dataset
     :return: Pandas Dataframe containing the whole dataset
     """
@@ -95,7 +95,7 @@ def calculate_feature_statistics(feature_id):
     feature.mean = np.mean(feature_col).item()
     feature.variance = np.nanvar(feature_col).item()
     unique_values = np.unique(feature_col)
-    feature.is_categorical = (unique_values.size < 15)
+    feature.is_categorical = (unique_values.dtype.kind == 'i' or unique_values.dtype.kind == 'u') and (unique_values.size < 10)
     if feature.is_categorical:
         feature.categories = list(unique_values)
     feature.save(update_fields=['min', 'max', 'variance', 'mean', 'is_categorical', 'categories'])
@@ -252,12 +252,12 @@ def calculate_hics(calculation, feature_ids=[], bivariate=True, calculate_supers
         def update_relevancies(self, new_relevancies: DataFrame):
             for feature_set, data in new_relevancies.iterrows():
                 features = Feature.objects.filter(name__in=list(feature_set), id__in=self.feature_ids).all()
-                
+
                 relevancy_query = Relevancy.objects.filter(result_calculation_map=self.result_calculation_map)
                 relevancy_query = relevancy_query.annotate(feature_count=Count('features')).filter(feature_count=len(features))
                 for feature in features:
                     relevancy_query = relevancy_query.filter(features=feature)
-                    
+
                 if relevancy_query.count() == 0:
                     relevancy_object = Relevancy.objects.create(result_calculation_map=self.result_calculation_map, relevancy=data['relevancy'], iteration=data['iteration'])
                     relevancy_object.features.set(list(features))
@@ -267,7 +267,7 @@ def calculate_hics(calculation, feature_ids=[], bivariate=True, calculate_supers
                     relevancy_object.iteration = data['iteration']
                 else:
                     raise AssertionError('Should not reach this condition')
-                
+
                 relevancy_object.save()
 
         def get_redundancies(self):
@@ -317,12 +317,12 @@ def calculate_hics(calculation, feature_ids=[], bivariate=True, calculate_supers
             name_mapping = lambda name: str(Feature.objects.get(name=name, dataset=self.target.dataset).id)
             for feature_set, slices in new_slices.items():
                 features = Feature.objects.filter(name__in=feature_set, dataset=self.target.dataset).all()
-                
+
                 slice_query = Slice.objects.filter(result_calculation_map=self.result_calculation_map)
                 slice_query = slice_query.annotate(feature_count=Count('features')).filter(feature_count=len(features))
                 for feature in features:
                     slice_query = slice_query.filter(features=feature)
-                
+
                 if slice_query.count() == 0:
                     slice_object = Slice.objects.create(result_calculation_map=self.result_calculation_map)
                     slice_object.features.set(list(features))
@@ -330,7 +330,7 @@ def calculate_hics(calculation, feature_ids=[], bivariate=True, calculate_supers
                     slice_object = slice_query.first()
                 else:
                     raise AssertionError('Should not reach this condition')
-                
+
                 slice_object.object_definition = slices.to_dict()
                 slice_object.output_definition = slices.to_output(name_mapping)
                 slice_object.save()
@@ -343,7 +343,6 @@ def calculate_hics(calculation, feature_ids=[], bivariate=True, calculate_supers
     target = result_calculation_map.target
     dataframe = _get_dataframe(target.dataset.id)
     features = Feature.objects.filter(dataset=target.dataset).exclude(id=target.id).all()
-
     result_storage = DjangoHICSResultStorage(result_calculation_map=result_calculation_map, features=features)
     correlation = IncrementalCorrelation(data=dataframe, target=target.name, result_storage=result_storage,
                                          iterations=10, alpha=0.1, drop_discrete=False)

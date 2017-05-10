@@ -62,6 +62,7 @@ class TargetDetailView(APIView):
 
         tasks = [calculate_hics.subtask(immutable=True,
                                         kwargs={'calculation': calculation, 'calculate_redundancies': True})] * number_of_iterations
+
         chain(tasks).apply_async()
 
         return Response(serializer.data)
