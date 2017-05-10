@@ -53,12 +53,12 @@ class TargetDetailView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        target = Feature.objects.get(id=serializer.instance.target.id)
-        result_calculation_map, __ = ResultCalculationMap.objects.get_or_create(target=target)
+        target = Feature.objects.get(id=experiment.target.id)
+        result_calculation_map, _ = ResultCalculationMap.objects.get_or_create(target=target)
         calculation = Calculation.objects.create(type=Calculation.DEFAULT_HICS,
-                                             result_calculation_map=result_calculation_map,
-                                             max_iteration=number_of_iterations,
-                                             current_iteration=0)
+                                                 result_calculation_map=result_calculation_map,
+                                                 max_iteration=number_of_iterations,
+                                                 current_iteration=0)
 
         tasks = [calculate_hics.subtask(immutable=True,
                                         kwargs={'calculation': calculation, 'calculate_redundancies': True})] * number_of_iterations
@@ -88,9 +88,9 @@ class FixedFeatureSetHicsView(APIView):
         features = features_queryset.all()
 
         calculation = Calculation.objects.create(type=Calculation.FIXED_FEATURE_SET_HICS,
-                                             result_calculation_map=result_calculation_map,
-                                             max_iteration=1,
-                                             current_iteration=0)
+                                                 result_calculation_map=result_calculation_map,
+                                                 max_iteration=1,
+                                                 current_iteration=0)
         calculate_hics.apply_async(kwargs={
             'calculation': calculation,
             'feature_ids': [feature.id for feature in features],
