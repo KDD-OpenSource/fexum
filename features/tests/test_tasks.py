@@ -140,13 +140,12 @@ class TestCalculateFeatureStatistics(TestCase):
         calculate_feature_statistics(feature_id=feature.id)
 
         feature = Feature.objects.get(id=feature.id)
-
         self.assertEqual(feature.mean, 0.9)
         self.assertEqual(feature.variance, 0.69)
         self.assertEqual(feature.min, 0)
         self.assertEqual(feature.max, 2.0)
-        self.assertEqual(feature.is_categorical, True)
         self.assertEqual(feature.categories, [0, 1, 2])
+        self.assertEqual(feature.is_categorical, True)
 
 
 class TestCalculateHics(TestCase):

@@ -95,7 +95,8 @@ def calculate_feature_statistics(feature_id):
     feature.mean = np.mean(feature_col).item()
     feature.variance = np.nanvar(feature_col).item()
     unique_values = np.unique(feature_col)
-    feature.is_categorical = (unique_values.dtype.kind == 'i' or unique_values.dtype.kind == 'u') and (unique_values.size < 10)
+    integer_check = (np.mod(unique_values, 1) == 0).all()
+    feature.is_categorical = integer_check and (unique_values.size < 10)
     if feature.is_categorical:
         feature.categories = list(unique_values)
     feature.save(update_fields=['min', 'max', 'variance', 'mean', 'is_categorical', 'categories'])
