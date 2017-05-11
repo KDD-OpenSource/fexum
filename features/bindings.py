@@ -22,7 +22,7 @@ class DatasetBinding(WebsocketBinding):
 class CalculationBinding(WebsocketBinding):
     model = Calculation
     stream = 'calculation'
-    fields = ['id', 'status', 'type']
+    fields = ['id', 'max_iteration', 'current_iteration', 'type']
 
     @classmethod
     def group_names(cls, instance):

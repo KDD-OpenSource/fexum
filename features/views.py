@@ -12,8 +12,9 @@ from rest_framework.status import HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from features.exceptions import NoCSVInArchiveFoundError, NotZIPFileError
+from features.models import Calculation
 from features.models import Feature, Bin, Sample, Dataset, Experiment, Slice, Relevancy, Redundancy, Spectrogram, \
-    ResultCalculationMap, Calculation
+    ResultCalculationMap
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
     SampleSerializer, DatasetSerializer, RedundancySerializer, \
     ExperimentTargetSerializer, RelevancySerializer, ConditionalDistributionRequestSerializer, \
@@ -47,14 +48,24 @@ class ExperimentDetailView(APIView):
 
 class TargetDetailView(APIView):
     def put(self, request, experiment_id):
+        number_of_iterations = 10
+
         experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
         serializer = ExperimentTargetSerializer(instance=experiment, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        number_of_iterations = 10
+        target = Feature.objects.get(id=experiment.target.id)
+        result_calculation_map, _ = ResultCalculationMap.objects.get_or_create(target=target)
+        calculation = Calculation.objects.create(type=Calculation.DEFAULT_HICS,
+                                                 result_calculation_map=result_calculation_map,
+                                                 max_iteration=number_of_iterations,
+                                                 current_iteration=0)
+
         tasks = [calculate_hics.subtask(immutable=True,
-                                        kwargs={'target_id': serializer.instance.target.id, 'calculate_redundancies': True})] * number_of_iterations
+                                        kwargs={'calculation': calculation.id,
+                                                'calculate_redundancies': True})] * number_of_iterations
+
         chain(tasks).apply_async()
 
         return Response(serializer.data)
@@ -69,6 +80,7 @@ class TargetDetailView(APIView):
 class FixedFeatureSetHicsView(APIView):
     def post(self, request, target_id):
         target = get_object_or_404(Feature, id=target_id)
+        result_calculation_map = ResultCalculationMap.objects.get(target=target)
         feature_ids = request.data.get('features') or []
         features_queryset = Feature.objects.filter(id__in=feature_ids, dataset=target.dataset)
 
@@ -78,8 +90,12 @@ class FixedFeatureSetHicsView(APIView):
 
         features = features_queryset.all()
 
+        calculation = Calculation.objects.create(type=Calculation.FIXED_FEATURE_SET_HICS,
+                                                 result_calculation_map=result_calculation_map,
+                                                 max_iteration=1,
+                                                 current_iteration=0)
         calculate_hics.apply_async(kwargs={
-            'target_id': target.id,
+            'calculation': calculation.id,
             'feature_ids': [feature.id for feature in features],
             'bivariate': False,
             'calculate_supersets': False,
@@ -175,10 +191,11 @@ class FeatureSlicesView(APIView):
 
         # Make sure that we filtered for all feature ids
         if features_queryset.count() != len(feature_ids) and len(feature_ids) > 0:
-            return Response(status=HTTP_404_NOT_FOUND, data={'detail' : 'Not found.'})
+            return Response(status=HTTP_404_NOT_FOUND, data={'detail': 'Not found.'})
 
         result = ResultCalculationMap.objects.filter(target=target).last()
-        slices_queryset = Slice.objects.filter(result_calculation_map=result).annotate(feature_count=Count('features')).filter(feature_count=len(feature_ids))
+        slices_queryset = Slice.objects.filter(result_calculation_map=result).annotate(
+            feature_count=Count('features')).filter(feature_count=len(feature_ids))
         for feature in features_queryset.all():
             slices_queryset = slices_queryset.filter(features=feature)
 
@@ -194,7 +211,8 @@ class FeatureRelevancyResultsView(APIView):
         target = get_object_or_404(Feature, pk=target_id)
         # TODO: Filter for same result set
         result = ResultCalculationMap.objects.filter(target=target).last()
-        relevancies = Relevancy.objects.annotate(feature_count=Count('features')).filter(result_calculation_map=result, feature_count=1)    # annotate to return only bivariate correlation 
+        relevancies = Relevancy.objects.annotate(feature_count=Count('features')).filter(result_calculation_map=result,
+                                                                                         feature_count=1)  # annotate to return only bivariate correlation
         serializer = RelevancySerializer(instance=relevancies, many=True)
         return Response(serializer.data)
 
