@@ -755,7 +755,6 @@ class TestCalculationListView(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(), [])
 
-
     def test_retrieve_calculations_unauthenticated(self):
         url = reverse('calculation-list')
         response = self.client.get(url)
