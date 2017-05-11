@@ -7,7 +7,7 @@ This repository contains the backend of our big data framework for exploring and
 - Multivariate correlations
 - Time series
 
-The [frontend](https://github.com/KDD-OpenSource/predots-frontend) and
+The [frontend](https://github.com/KDD-OpenSource/fexum-frontend) and
 [correlation algorithm](https://github.com/KDD-OpenSource/python-hics)
 are located in different repositories.
 
@@ -41,8 +41,6 @@ This is useful when you want to test and create database objects, e.g.:
 
 ### Task Monitoring
 Open the docker host at port 5555
-
-
 
 ## Development & Contributing
 
