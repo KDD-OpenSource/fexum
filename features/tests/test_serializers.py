@@ -163,7 +163,7 @@ class TestCalculationSerializer(TestCase):
         serializer = CalculationSerializer(instance=calculation)
         data = serializer.data
 
-        self.assertEqual(data.pop('id'), calculation.id)
+        self.assertEqual(data.pop('id'), str(calculation.id))
         self.assertEqual(data.pop('max_iteration'), calculation.max_iteration)
         self.assertEqual(data.pop('current_iteration'), calculation.current_iteration)
         self.assertEqual(len(data), 0)
