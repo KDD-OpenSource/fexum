@@ -10,6 +10,14 @@ The [frontend](https://github.com/KDD-OpenSource/predots-frontend) and
 [correlation algorithm](https://github.com/KDD-OpenSource/python-hics)
 are located in different repositories.
 
+## Contributors
+* [Louis Kirsch](https://github.com/timediv)
+* [Niklas Riekenbrauck](https://github.com/nikriek)
+* [Daniel Thevessen](https://github.com/danthe96)
+* [Marcus Pappik](https://github.com/marcuspappik)
+* [Axel Stebner](https://github.com/xasetl)
+* [Julius Kunze](https://github.com/JuliusKunze)
+* [Alexander Meißner](https://github.com/Lichtso)
 
 ## Getting Started
 1. Run the [setup script](deployment/ubuntu-setup.sh). **Do not install docker.io using apt-get!**
