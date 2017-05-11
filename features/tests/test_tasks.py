@@ -98,7 +98,7 @@ class TestCalculateDensities(TestCase):
         self.assertEqual(len(validation_category_density_values), 100)
         for y in validation_category_density_values:
             self.assertGreater(y, 0.2)
-            self.assertLess(y, 0.3)
+            self.assertLess(y, 0.6)
 
 
 class TestDownsampleTask(TestCase):
@@ -162,8 +162,8 @@ class TestCalculateHics(TestCase):
         features = [feature1, feature2]
 
         # Select first feature as target
-        calculate_hics(calculation=calculation, bivariate=True, calculate_redundancies=True)
-        calculate_hics(calculation=calculation, bivariate=True, calculate_redundancies=True)
+        calculate_hics(calculation_id=calculation.id, bivariate=True, calculate_redundancies=True)
+        calculate_hics(calculation_id=calculation.id, bivariate=True, calculate_redundancies=True)
 
         # Result
         self.assertEqual(ResultCalculationMap.objects.count(), 1)
@@ -208,7 +208,7 @@ class TestCalculateHics(TestCase):
         features = [feature1, feature2]
         
         feature_ids = [feature1.id, feature2.id]
-        calculate_hics(calculation=calculation, bivariate=False, feature_ids=feature_ids)
+        calculate_hics(calculation_id=calculation.id, bivariate=False, feature_ids=feature_ids)
 
         # Relevancy
         relevancy_features = Relevancy.objects.filter(features=feature1)
@@ -246,7 +246,7 @@ class TestCalculateHics(TestCase):
         calculation = CalculationFactory(result_calculation_map=result_calculation_map, max_iteration=1, type=Calculation.FEATURE_SUPER_SET_HICS)
 
         feature_ids = [feature1.id]
-        calculate_hics(calculation=calculation, bivariate=False, feature_ids=feature_ids, calculate_supersets=True)
+        calculate_hics(calculation_id=calculation.id, bivariate=False, feature_ids=feature_ids, calculate_supersets=True)
 
         # Relevancy
         relevancy_supersets = Relevancy.objects.filter(features=feature1)

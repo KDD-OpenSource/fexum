@@ -226,7 +226,7 @@ def downsample_feature(feature_id, sample_count=1000):
 
 
 @shared_task
-def calculate_hics(calculation, feature_ids=[], bivariate=True, calculate_supersets=False, calculate_redundancies=False):
+def calculate_hics(calculation_id, feature_ids=[], bivariate=True, calculate_supersets=False, calculate_redundancies=False):
     class DjangoHICSResultStorage(AbstractResultStorage):
         def __init__(self, result_calculation_map, features):
             self.features = features
@@ -340,6 +340,7 @@ def calculate_hics(calculation, feature_ids=[], bivariate=True, calculate_supers
     assert not bivariate or not calculate_supersets  # bivariate => not calculate_superset
     assert not calculate_supersets or (len(feature_ids) > 0)  # superset => len > 0
 
+    calculation = Calculation.objects.get(id=calculation_id)
     result_calculation_map = calculation.result_calculation_map
     target = result_calculation_map.target
     dataframe = _get_dataframe(target.dataset.id)
@@ -368,7 +369,9 @@ def calculate_hics(calculation, feature_ids=[], bivariate=True, calculate_supers
     if bivariate and calculate_redundancies:
         correlation.update_redundancies(k=5, runs=20)
 
-    Calculation.objects.filter(id=calculation.id).update(current_iteration=F('current_iteration')+1)
+    calculation.current_iteration += 1
+    calculation.save()
+    #Calculation.objects.filter(id=calculation.id).update(current_iteration=F('current_iteration')+1)
 
 
 @shared_task

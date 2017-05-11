@@ -172,7 +172,7 @@ class TestTargetDetailView(APITestCase):
             data = ExperimentTargetSerializer(instance=experiment).data
             self.assertEqual(experiment.target, target)
             self.assertEqual(response.json(), {'target': str(data['target'])})
-            calculate_hics.assert_called_once_with(immutable=True, kwargs={'calculation': calculation, 'calculate_redundancies': True})
+            calculate_hics.assert_called_once_with(immutable=True, kwargs={'calculation': calculation.id, 'calculate_redundancies': True})
             # TODO: Test chain call
 
     def test_select_target_feature_not_found(self):
@@ -676,7 +676,7 @@ class FixedFeatureSetHicsView(APITestCase):
             response = self.client.post(url, data={'features': [feature1.id, feature2.id]}, format='json')
 
             task_mock.assert_called_once_with(kwargs={
-                'calculation': calculation,
+                'calculation': calculation.id,
                 'feature_ids': [feature1.id, feature2.id],
                 'bivariate': False,
                 'calculate_supersets': False,
