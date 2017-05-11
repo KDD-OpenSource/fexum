@@ -1,25 +1,27 @@
+import logging
+import zipfile
+
+from celery import chain
+from django.core.files import File
+from django.db.models import Count, F
+from django.shortcuts import get_object_or_404
+from django.utils.datastructures import MultiValueDictKeyError
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.response import Response
+from rest_framework.status import HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
+
+from features.exceptions import NoCSVInArchiveFoundError, NotZIPFileError
+from features.models import Calculation
 from features.models import Feature, Bin, Sample, Dataset, Experiment, Slice, Relevancy, Redundancy, Spectrogram, \
     ResultCalculationMap
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
     SampleSerializer, DatasetSerializer, RedundancySerializer, \
-    ExperimentTargetSerializer, RelevancySerializer, FeatureSliceSerializer, \
-    ConditionalDistributionRequestSerializer, ConditionalDistributionResultSerializer, DensitySerializer, \
-    SpectrogramSerializer
-from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from rest_framework.status import HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
-from features.tasks import calculate_hics, calculate_conditional_distributions, initialize_from_dataset,\
+    ExperimentTargetSerializer, RelevancySerializer, ConditionalDistributionRequestSerializer, \
+    ConditionalDistributionResultSerializer, DensitySerializer, \
+    SpectrogramSerializer, CalculationSerializer
+from features.tasks import calculate_hics, calculate_conditional_distributions, initialize_from_dataset, \
     calculate_densities
-from rest_framework.parsers import MultiPartParser, FormParser
-import logging
-import zipfile
-from features.exceptions import NoCSVInArchiveFoundError, NotZIPFileError
-from django.core.files import File
-from django.utils.datastructures import MultiValueDictKeyError
-from celery import chain
-from django.db.models import Count
-from features.models import Calculation
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +63,8 @@ class TargetDetailView(APIView):
                                                  current_iteration=0)
 
         tasks = [calculate_hics.subtask(immutable=True,
-                                        kwargs={'calculation': calculation.id, 'calculate_redundancies': True})] * number_of_iterations
+                                        kwargs={'calculation': calculation.id,
+                                                'calculate_redundancies': True})] * number_of_iterations
 
         chain(tasks).apply_async()
 
@@ -188,10 +191,11 @@ class FeatureSlicesView(APIView):
 
         # Make sure that we filtered for all feature ids
         if features_queryset.count() != len(feature_ids) and len(feature_ids) > 0:
-            return Response(status=HTTP_404_NOT_FOUND, data={'detail' : 'Not found.'})
+            return Response(status=HTTP_404_NOT_FOUND, data={'detail': 'Not found.'})
 
         result = ResultCalculationMap.objects.filter(target=target).last()
-        slices_queryset = Slice.objects.filter(result_calculation_map=result).annotate(feature_count=Count('features')).filter(feature_count=len(feature_ids))
+        slices_queryset = Slice.objects.filter(result_calculation_map=result).annotate(
+            feature_count=Count('features')).filter(feature_count=len(feature_ids))
         for feature in features_queryset.all():
             slices_queryset = slices_queryset.filter(features=feature)
 
@@ -207,7 +211,8 @@ class FeatureRelevancyResultsView(APIView):
         target = get_object_or_404(Feature, pk=target_id)
         # TODO: Filter for same result set
         result = ResultCalculationMap.objects.filter(target=target).last()
-        relevancies = Relevancy.objects.annotate(feature_count=Count('features')).filter(result_calculation_map=result, feature_count=1)    # annotate to return only bivariate correlation 
+        relevancies = Relevancy.objects.annotate(feature_count=Count('features')).filter(result_calculation_map=result,
+                                                                                         feature_count=1)  # annotate to return only bivariate correlation
         serializer = RelevancySerializer(instance=relevancies, many=True)
         return Response(serializer.data)
 
@@ -238,3 +243,9 @@ class CondiditonalDistributionsView(APIView):
         response_serializer.is_valid(raise_exception=True)
         return Response(response_serializer.validated_data)
 
+
+class CalculationListView(APIView):
+    def get(self, _):
+        calculations = Calculation.objects.filter(current_iteration__lt=F('max_iteration')).all()
+        serializer = CalculationSerializer(instance=calculations, many=True)
+        return Response(serializer.data)
