@@ -25,7 +25,9 @@ services:
     build: .
     depends_on:
       queue:
+        condition: service_started
       redis:
+        condition: service_started
       postgres:
         condition: service_healthy
     networks:
@@ -45,7 +47,9 @@ services:
     build: .
     depends_on:
       queue:
+        condition: service_started
       redis:
+        condition: service_started
       postgres:
         condition: service_healthy
     networks:
@@ -63,7 +67,9 @@ services:
     build: ./
     depends_on:
       queue:
+        condition: service_started
       redis:
+        condition: service_started
       postgres:
         condition: service_healthy
     networks:
@@ -83,7 +89,9 @@ services:
     build: ./
     depends_on:
       queue:
+        condition: service_started
       redis:
+        condition: service_started
       postgres:
         condition: service_healthy
     networks:
