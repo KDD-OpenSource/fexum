@@ -1,7 +1,7 @@
 from rest_framework.test import APITestCase
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
     SampleFactory, DatasetFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, \
-    ResultCalculationMapFactory, SpectrogramFactory
+    ResultCalculationMapFactory, SpectrogramFactory, CalculationFactory
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, \
     HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
@@ -153,12 +153,17 @@ class TestTargetDetailView(APITestCase):
         self.client.force_authenticate(experiment.user)
 
         target = FeatureFactory(dataset=experiment.dataset)
+        result_calculation_map = ResultCalculationMapFactory(target=target)
+        calculation = CalculationFactory(result_calculation_map=result_calculation_map)
+
 
         self.assertIsNone(experiment.target)
         self.assertEqual(experiment.dataset, target.dataset)
 
         url = reverse('experiment-targets-detail', args=[experiment.id])
-        with patch('features.views.calculate_hics.subtask') as calculate_hics:
+        with patch('features.views.calculate_hics.subtask') as calculate_hics, patch('features.views.Calculation.objects.create') as create_calculation:
+            create_calculation.return_value = calculation
+
             response = self.client.put(url, data={'target': target.id}, format='json')
 
             self.assertEqual(response.status_code, HTTP_200_OK)
@@ -167,7 +172,7 @@ class TestTargetDetailView(APITestCase):
             data = ExperimentTargetSerializer(instance=experiment).data
             self.assertEqual(experiment.target, target)
             self.assertEqual(response.json(), {'target': str(data['target'])})
-            calculate_hics.assert_called_once_with(immutable=True, kwargs={'target_id': target.id, 'calculate_redundancies': True})
+            calculate_hics.assert_called_once_with(immutable=True, kwargs={'calculation': calculation.id, 'calculate_redundancies': True})
             # TODO: Test chain call
 
     def test_select_target_feature_not_found(self):
@@ -661,13 +666,17 @@ class FixedFeatureSetHicsView(APITestCase):
         target = FeatureFactory()
         feature1 = FeatureFactory(dataset=target.dataset)
         feature2 = FeatureFactory(dataset=target.dataset)
+        result_calculation_map = ResultCalculationMapFactory(target=target)
+        calculation = CalculationFactory(result_calculation_map=result_calculation_map)
 
-        with patch('features.views.calculate_hics.apply_async') as task_mock:
+        with patch('features.views.calculate_hics.apply_async') as task_mock, patch('features.views.Calculation.objects.create') as create_calculation:
+            create_calculation.return_value = calculation
+
             url = reverse('fixed-feature-set-hics', args=[str(target.id)])
             response = self.client.post(url, data={'features': [feature1.id, feature2.id]}, format='json')
 
             task_mock.assert_called_once_with(kwargs={
-                'target_id': target.id,
+                'calculation': calculation.id,
                 'feature_ids': [feature1.id, feature2.id],
                 'bivariate': False,
                 'calculate_supersets': False,
@@ -681,8 +690,12 @@ class FixedFeatureSetHicsView(APITestCase):
         self.client.force_authenticate(user)
 
         target = FeatureFactory()
+        result_calculation_map = ResultCalculationMapFactory(target=target)
+        calculation = CalculationFactory(result_calculation_map=result_calculation_map)
 
-        with patch('features.views.calculate_hics.apply_async') as task_mock:
+        with patch('features.views.calculate_hics.apply_async') as task_mock, patch('features.views.Calculation.objects.create') as create_calculation:
+            create_calculation.return_value = calculation
+
             url = reverse('fixed-feature-set-hics', args=[str(target.id)])
             response = self.client.post(url, data={'features': ['9b1fe7e4-9bb7-4388-a1e4-40a35465d310']}, format='json')
 

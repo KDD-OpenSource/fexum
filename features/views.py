@@ -19,6 +19,7 @@ from django.core.files import File
 from django.utils.datastructures import MultiValueDictKeyError
 from celery import chain
 from django.db.models import Count
+from features.models import Calculation
 
 logger = logging.getLogger(__name__)
 
@@ -45,14 +46,23 @@ class ExperimentDetailView(APIView):
 
 class TargetDetailView(APIView):
     def put(self, request, experiment_id):
+        number_of_iterations = 10
+
         experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
         serializer = ExperimentTargetSerializer(instance=experiment, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        number_of_iterations = 10
+        target = Feature.objects.get(id=experiment.target.id)
+        result_calculation_map, _ = ResultCalculationMap.objects.get_or_create(target=target)
+        calculation = Calculation.objects.create(type=Calculation.DEFAULT_HICS,
+                                                 result_calculation_map=result_calculation_map,
+                                                 max_iteration=number_of_iterations,
+                                                 current_iteration=0)
+
         tasks = [calculate_hics.subtask(immutable=True,
-                                        kwargs={'target_id': serializer.instance.target.id, 'calculate_redundancies': True})] * number_of_iterations
+                                        kwargs={'calculation': calculation.id, 'calculate_redundancies': True})] * number_of_iterations
+
         chain(tasks).apply_async()
 
         return Response(serializer.data)
@@ -67,6 +77,7 @@ class TargetDetailView(APIView):
 class FixedFeatureSetHicsView(APIView):
     def post(self, request, target_id):
         target = get_object_or_404(Feature, id=target_id)
+        result_calculation_map = ResultCalculationMap.objects.get(target=target)
         feature_ids = request.data.get('features') or []
         features_queryset = Feature.objects.filter(id__in=feature_ids, dataset=target.dataset)
 
@@ -76,8 +87,12 @@ class FixedFeatureSetHicsView(APIView):
 
         features = features_queryset.all()
 
+        calculation = Calculation.objects.create(type=Calculation.FIXED_FEATURE_SET_HICS,
+                                                 result_calculation_map=result_calculation_map,
+                                                 max_iteration=1,
+                                                 current_iteration=0)
         calculate_hics.apply_async(kwargs={
-            'target_id': target.id,
+            'calculation': calculation.id,
             'feature_ids': [feature.id for feature in features],
             'bivariate': False,
             'calculate_supersets': False,
