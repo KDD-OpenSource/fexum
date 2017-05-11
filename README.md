@@ -28,11 +28,11 @@ are located in different repositories.
 5. Access the docker ip (mostly localhost) at port 80.
 
 ### Python Shell
-```
+```shell
 $ docker-compose run web_wsgi python3 manage.py shell
 ```
 This is useful when you want to test and create database objects, e.g.:
-```
+```python
 >> from features.tasks import *
 >> from features.models import *
 >> for feature in Feature.objects.all() 
@@ -46,12 +46,12 @@ Open the docker host at port 5555
 
 ### Testing
 For testing simply run:
-```
+```shell
 $ docker-compose run web_wsgi py.test
 ```
 
 ### Data Migrations
 Create migrations after changing or creating models
-```
+```shell
 $ docker-compose run web_wsgi python3 manage.py makemigrations
 ```
