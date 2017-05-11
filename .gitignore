@@ -92,8 +92,8 @@ ENV/
 
 db.sqlite3
 
-/predots.sublime-project
-/predots.sublime-workspace
+/fexum.sublime-project
+/fexum.sublime-workspace
 
 # Django related stuff
 postgres-data/*

@@ -18,7 +18,7 @@ JOIN_TOKEN=""
 
 NFS_MOUNT_DIR="/var/nfs/general"
 
-GIT_URL="git@github.com:xasetl/predots.git" 
+GIT_URL="git@github.com:KDD-OpenSource/fexum.git"
 
 function setup_master_node() {
   echo "Setting up master at $MASTER_NODE...";
@@ -77,7 +77,7 @@ function deploy_services() {
     git clone $GIT_URL
     cd $name
     git pull
-    docker deploy --compose-file docker-compose.yml predots
+    docker deploy --compose-file docker-compose.yml fexum
 EOSSH
 }
 

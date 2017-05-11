@@ -4,19 +4,19 @@ services:
   redis:
     image: redis:alpine
     networks:
-      - predots
+      - fexum
 
   postgres:
     image: postgres:9.4
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
     networks:
-      - predots
+      - fexum
 
   queue:
     image: rabbitmq:latest
     networks:
-      - predots
+      - fexum
 
   web_wsgi:
     build: .
@@ -25,14 +25,14 @@ services:
       - redis
       - postgres
     networks:
-      - predots
+      - fexum
     volumes:
       - .:/code
     ports:
       - "8001:8001"
-    command: gunicorn predots.wsgi:application --bind 0.0.0.0:8001 --log-level=DEBUG --timeout 200
+    command: gunicorn fexum.wsgi:application --bind 0.0.0.0:8001 --log-level=DEBUG --timeout 200
     environment:
-      DJANGO_SETTINGS_MODULE: predots.settings
+      DJANGO_SETTINGS_MODULE: fexum.settings
       HOST: "*"
       DEBUG: "True"
       SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
@@ -44,12 +44,12 @@ services:
       - redis
       - postgres
     networks:
-      - predots
+      - fexum
     volumes:
       - .:/code
     command: python manage.py runworker -v 2
     environment:
-      DJANGO_SETTINGS_MODULE: predots.settings
+      DJANGO_SETTINGS_MODULE: fexum.settings
       HOST: "*"
       DEBUG: "True"
       SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
@@ -61,14 +61,14 @@ services:
       - redis
       - queue
     networks:
-      - predots
+      - fexum
     volumes:
       - .:/code
     ports:
       - "8000:8000"
     command: python manage.py runserver 0.0.0.0:8000
     environment:
-      DJANGO_SETTINGS_MODULE: predots.settings
+      DJANGO_SETTINGS_MODULE: fexum.settings
       HOST: "*"
       DEBUG: "True"
       SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
@@ -80,13 +80,13 @@ services:
       - postgres
       - redis
     networks:
-      - predots
+      - fexum
     volumes:
       - .:/code
-    command: "celery -A predots worker --beat --loglevel=info"
+    command: "celery -A fexum worker --beat --loglevel=info"
     shm_size: 8g
     environment:
-      DJANGO_SETTINGS_MODULE: predots.settings
+      DJANGO_SETTINGS_MODULE: fexum.settings
       HOST: "*"
       DEBUG: "True"
       SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
@@ -98,14 +98,14 @@ services:
       - web_worker
       - web_asgi
     networks:
-      - predots
+      - fexum
     volumes:
       - .:/code
     ports:
       - "5555:5555"
-    command: "celery flower -A predots --address=0.0.0.0"
+    command: "celery flower -A fexum --address=0.0.0.0"
     environment:
-      DJANGO_SETTINGS_MODULE: predots.settings
+      DJANGO_SETTINGS_MODULE: fexum.settings
       HOST: "*"
       DEBUG: "False"
       SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
@@ -113,7 +113,7 @@ services:
   nginx:
     build: ./deployment
     networks:
-      - predots
+      - fexum
     depends_on:
       - web_wsgi
       - web_asgi
@@ -127,7 +127,7 @@ services:
     command: /bin/bash -c "envsubst '$$NGINX_HOST' < /setup/nginx.conf > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
 
 networks:
-  predots:
+  fexum:
     ipam:
       driver: default
       config:

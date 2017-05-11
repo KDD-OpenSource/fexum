@@ -16,13 +16,13 @@ RUN chmod 600 /root/.ssh/id_rsa
 RUN echo "Host github.com\n\tStrictHostKeyChecking no\n" >> /root/.ssh/config
 
 # Configure frontend
-RUN git clone git@github.com:KDD-OpenSource/predots-frontend.git
-WORKDIR /setup/predots-frontend
+RUN git clone git@github.com:KDD-OpenSource/fexum-frontend.git
+WORKDIR /setup/fexum-frontend
 RUN npm install -g grunt-cli bower
 RUN npm install
 RUN echo '{ "allow_root": true }' > /root/.bowerrc
 RUN bower install --quiet --silent
-RUN grunt buildProd --out=/var/www/predots/public > /dev/null
+RUN grunt buildProd --out=/var/www/fexum/public > /dev/null
 
 # Configure NGINX
 WORKDIR /setup
