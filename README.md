@@ -8,7 +8,7 @@ This repository contains the backend of our big data framework for exploring and
 - Time series
 
 The [frontend](https://github.com/KDD-OpenSource/fexum-frontend) and
-[correlation algorithm](https://github.com/KDD-OpenSource/python-hics)
+[correlation algorithm](https://github.com/KDD-OpenSource/fexum-hics)
 are located in different repositories.
 
 ## Contributors
