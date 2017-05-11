@@ -1,13 +1,15 @@
+from decimal import Decimal
+
 from django.test import TestCase
+from rest_framework.exceptions import ValidationError
+
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentTargetSerializer, SampleSerializer, \
     DatasetSerializer, ExperimentSerializer, RedundancySerializer, RelevancySerializer, \
     ConditionalDistributionRequestSerializer, ConditionalDistributionResultSerializer, \
-    FeatureSliceSerializer, SpectrogramSerializer
-from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
-    DatasetFactory, SampleFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, SpectrogramFactory
-from decimal import Decimal
-from rest_framework.exceptions import ValidationError
-from features.models import Feature
+    SpectrogramSerializer, CalculationSerializer
+from features.tests.factories import FeatureFactory, BinFactory, DatasetFactory, SampleFactory, ExperimentFactory, \
+    RelevancyFactory, RedundancyFactory, SpectrogramFactory, \
+    CalculationFactory
 
 
 class TestFeatureSerializer(TestCase):
@@ -152,4 +154,16 @@ class TestSpectrogramSerializer(TestCase):
         self.assertEqual(data.pop('width'), spectrogram.width)
         self.assertEqual(data.pop('height'), spectrogram.height)
         self.assertEqual(data.pop('image_url'), '/media/spectrograms/{0}.png'.format(spectrogram.feature.id))
+        self.assertEqual(len(data), 0)
+
+
+class TestCalculationSerializer(TestCase):
+    def test_serialize_one(self):
+        calculation = CalculationFactory()
+        serializer = CalculationSerializer(instance=calculation)
+        data = serializer.data
+
+        self.assertEqual(data.pop('id'), str(calculation.id))
+        self.assertEqual(data.pop('max_iteration'), calculation.max_iteration)
+        self.assertEqual(data.pop('current_iteration'), calculation.current_iteration)
         self.assertEqual(len(data), 0)

@@ -8,8 +8,6 @@ services:
 
   postgres:
     image: postgres:9.4
-    volumes:
-      - ./postgres-data:/var/lib/postgresql/data
     networks:
       - fexum
 
@@ -128,8 +126,3 @@ services:
 
 networks:
   fexum:
-    ipam:
-      driver: default
-      config:
-      - subnet: 10.151.100.0/24
-        gateway: 10.151.100.1

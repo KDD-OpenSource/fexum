@@ -1,5 +1,5 @@
-from django.urls import reverse
 from django.test import TestCase
+from django.urls import reverse
 
 
 class TestExperimentListUrl(TestCase):
@@ -53,7 +53,7 @@ class TestFeatureHistogramUrl(TestCase):
 class TestFeatureSlicesUrl(TestCase):
     def test_feature_slices_url(self):
         url = reverse('target-feature-slices', args=['391ec5ac-f741-45c9-855a-7615c89ce129'])
-        self.assertEqual(url,'/api/targets/391ec5ac-f741-45c9-855a-7615c89ce129/slices')
+        self.assertEqual(url, '/api/targets/391ec5ac-f741-45c9-855a-7615c89ce129/slices')
 
 
 class TestTargetFeatureRelevancyResultsUrl(TestCase):
@@ -73,10 +73,16 @@ class TestDatasetRedundancyResultsUrl(TestCase):
 class TestFeatureSpectrogramUrl(TestCase):
     def test_feature_spectrogram_url(self):
         url = reverse('feature-spectrogram', args=['391ec5ac-f741-45c9-855a-7615c89ce128'])
-        self.assertEqual(url,'/api/features/391ec5ac-f741-45c9-855a-7615c89ce128/spectrogram')
+        self.assertEqual(url, '/api/features/391ec5ac-f741-45c9-855a-7615c89ce128/spectrogram')
 
 
 class TestFixedFeatureSetHicsUrl(TestCase):
     def test_fixed_feature_set_hics(self):
         url = reverse('fixed-feature-set-hics', args=['391ec5ac-f741-45c9-855a-7615c89ce128'])
-        self.assertEqual(url,'/api/targets/391ec5ac-f741-45c9-855a-7615c89ce128/hics')
+        self.assertEqual(url, '/api/targets/391ec5ac-f741-45c9-855a-7615c89ce128/hics')
+
+
+class TestRetrieveCalculations(TestCase):
+    def test_retrieve_calculations(self):
+        url = reverse('calculation-list')
+        self.assertEqual(url, '/api/calculations')
