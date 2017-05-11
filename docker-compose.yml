@@ -1,4 +1,4 @@
-version: "2"
+version: "2.1"
       
 services:
   redis:
@@ -10,6 +10,11 @@ services:
     image: postgres:9.4
     networks:
       - fexum
+    healthcheck:
+      test: ["CMD-SHELL", "psql -h 'localhost' -U 'postgres' -c '\\l'"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
 
   queue:
     image: rabbitmq:latest
@@ -19,9 +24,12 @@ services:
   web_wsgi:
     build: .
     depends_on:
-      - queue
-      - redis
-      - postgres
+      queue:
+        condition: service_started
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     networks:
       - fexum
     volumes:
@@ -38,9 +46,12 @@ services:
   web_worker:
     build: .
     depends_on:
-      - queue
-      - redis
-      - postgres
+      queue:
+        condition: service_started
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     networks:
       - fexum
     volumes:
@@ -55,9 +66,12 @@ services:
   web_asgi:
     build: ./
     depends_on:
-      - postgres
-      - redis
-      - queue
+      queue:
+        condition: service_started
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     networks:
       - fexum
     volumes:
@@ -74,9 +88,12 @@ services:
   worker:
     build: ./
     depends_on:
-      - queue
-      - postgres
-      - redis
+      queue:
+        condition: service_started
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     networks:
       - fexum
     volumes:
