@@ -10,8 +10,6 @@ ALLOWED_HOSTS = [
     os.environ['HOST']
 ]
 
-# Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
