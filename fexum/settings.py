@@ -24,7 +24,6 @@ INSTALLED_APPS = [
     'features',
     'channels',
     'users',
-    'tasks',
 ]
 
 MIDDLEWARE = [
