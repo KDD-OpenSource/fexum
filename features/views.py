@@ -3,7 +3,7 @@ import zipfile
 
 from celery import chain
 from django.core.files import File
-from django.db.models import Count
+from django.db.models import Count, F
 from django.shortcuts import get_object_or_404
 from django.utils.datastructures import MultiValueDictKeyError
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -246,6 +246,6 @@ class CondiditonalDistributionsView(APIView):
 
 class CalculationListView(APIView):
     def get(self, _):
-        calculations = Calculation.objects.all()
+        calculations = Calculation.objects.filter(current_iteration__lt=F('max_iteration')).all()
         serializer = CalculationSerializer(instance=calculations, many=True)
         return Response(serializer.data)

@@ -734,7 +734,7 @@ class TestCalculationListView(APITestCase):
     def test_retrieve_calculations(self):
         user = UserFactory()
 
-        calculation = CalculationFactory()
+        calculation = CalculationFactory(max_iteration=2)
 
         url = reverse('calculation-list')
         self.client.force_authenticate(user)
@@ -742,6 +742,19 @@ class TestCalculationListView(APITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(), [CalculationSerializer(instance=calculation).data])
+
+    def test_do_not_retrieve_done_calculations(self):
+        user = UserFactory()
+
+        CalculationFactory(max_iteration=5, current_iteration=5)
+
+        url = reverse('calculation-list')
+        self.client.force_authenticate(user)
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), [])
+
 
     def test_retrieve_calculations_unauthenticated(self):
         url = reverse('calculation-list')
