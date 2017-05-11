@@ -1,8 +1,10 @@
 from django.conf.urls import url
+
 from features.views import FeatureListView, FeatureSamplesView, DatasetListView, \
     FeatureHistogramView, FeatureSlicesView, TargetDetailView, DatasetViewUploadView, \
     ExperimentListView, FeatureRelevancyResultsView, ExperimentDetailView, TargetRedundancyResults, \
-    CondiditonalDistributionsView, FeatureDensityView, FeatureSpectrogramView, FixedFeatureSetHicsView
+    CondiditonalDistributionsView, FeatureDensityView, FeatureSpectrogramView, FixedFeatureSetHicsView, \
+    CalculationListView
 
 urlpatterns = [
     # Experiments
@@ -43,5 +45,8 @@ urlpatterns = [
 
     # Distributions
     url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/distributions$', CondiditonalDistributionsView.as_view(),
-        name='target-condidtional-distributions')
+        name='target-condidtional-distributions'),
+
+    # Calculations
+    url(r'calculations$', CalculationListView.as_view(), name='calculation-list'),
 ]

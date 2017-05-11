@@ -1,24 +1,26 @@
-from rest_framework.views import APIView
-from features.models import Feature, Bin, Sample, Dataset, Experiment, Slice, Relevancy, Redundancy, Spectrogram, \
-    ResultCalculationMap
-from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
-    SampleSerializer, DatasetSerializer, RedundancySerializer, \
-    ExperimentTargetSerializer, RelevancySerializer, FeatureSliceSerializer, \
-    ConditionalDistributionRequestSerializer, ConditionalDistributionResultSerializer, DensitySerializer, \
-    SpectrogramSerializer
-from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from rest_framework.status import HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
-from features.tasks import calculate_hics, calculate_conditional_distributions, initialize_from_dataset,\
-    calculate_densities
-from rest_framework.parsers import MultiPartParser, FormParser
 import logging
 import zipfile
-from features.exceptions import NoCSVInArchiveFoundError, NotZIPFileError
-from django.core.files import File
-from django.utils.datastructures import MultiValueDictKeyError
+
 from celery import chain
+from django.core.files import File
 from django.db.models import Count
+from django.shortcuts import get_object_or_404
+from django.utils.datastructures import MultiValueDictKeyError
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.response import Response
+from rest_framework.status import HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND
+from rest_framework.views import APIView
+
+from features.exceptions import NoCSVInArchiveFoundError, NotZIPFileError
+from features.models import Feature, Bin, Sample, Dataset, Experiment, Slice, Relevancy, Redundancy, Spectrogram, \
+    ResultCalculationMap, Calculation
+from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
+    SampleSerializer, DatasetSerializer, RedundancySerializer, \
+    ExperimentTargetSerializer, RelevancySerializer, ConditionalDistributionRequestSerializer, \
+    ConditionalDistributionResultSerializer, DensitySerializer, \
+    SpectrogramSerializer, CalculationSerializer
+from features.tasks import calculate_hics, calculate_conditional_distributions, initialize_from_dataset, \
+    calculate_densities
 
 logger = logging.getLogger(__name__)
 
@@ -223,3 +225,9 @@ class CondiditonalDistributionsView(APIView):
         response_serializer.is_valid(raise_exception=True)
         return Response(response_serializer.validated_data)
 
+
+class CalculationListView(APIView):
+    def get(self, _):
+        calculations = Calculation.objects.all()
+        serializer = CalculationSerializer(instance=calculations, many=True)
+        return Response(serializer.data)

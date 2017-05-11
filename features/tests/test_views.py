@@ -1,19 +1,21 @@
-from rest_framework.test import APITestCase
-from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
-    SampleFactory, DatasetFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, \
-    ResultCalculationMapFactory, SpectrogramFactory
+import os
+import zipfile
+from unittest.mock import patch
+from uuid import uuid4
+
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, \
     HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
+from rest_framework.test import APITestCase
+
+from features.models import Experiment, Dataset
 from features.serializers import FeatureSerializer, BinSerializer, \
     SampleSerializer, DatasetSerializer, ExperimentSerializer, ExperimentTargetSerializer, \
-    RelevancySerializer, RedundancySerializer, SpectrogramSerializer
-from unittest.mock import patch
-from features.models import Experiment, Dataset
-import os
-import zipfile
+    RelevancySerializer, RedundancySerializer, SpectrogramSerializer, CalculationSerializer
+from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
+    SampleFactory, DatasetFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, \
+    ResultCalculationMapFactory, SpectrogramFactory, CalculationFactory
 from users.tests.factories import UserFactory
-from uuid import uuid4
 
 
 class TestExperimentListView(APITestCase):
@@ -653,7 +655,7 @@ class TestFeatureSpectrogramView(APITestCase):
                          {'detail': 'Authentication credentials were not provided.'})
 
 
-class FixedFeatureSetHicsView(APITestCase):
+class TestFixedFeatureSetHicsView(APITestCase):
     def test_fixed_feature_set_hics(self):
         user = UserFactory()
         self.client.force_authenticate(user)
@@ -704,6 +706,28 @@ class FixedFeatureSetHicsView(APITestCase):
     def test_fixed_feature_set_hics_not_authenticated(self):
         url = reverse('fixed-feature-set-hics', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
         response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+        self.assertEqual(response.json(),
+                         {'detail': 'Authentication credentials were not provided.'})
+
+
+class TestCalculationListView(APITestCase):
+    def test_retrieve_calculations(self):
+        user = UserFactory()
+
+        calculation = CalculationFactory()
+
+        url = reverse('calculation-list')
+        self.client.force_authenticate(user)
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), [CalculationSerializer(instance=calculation).data])
+
+    def test_retrieve_calculations_unauthenticated(self):
+        url = reverse('calculation-list')
+        response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),

@@ -1,8 +1,9 @@
 from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRelatedField, \
-    SerializerMethodField, Serializer, ListField, FloatField, IntegerField
-from features.models import Sample, Feature, Bin, Slice, Experiment, Dataset, Redundancy, \
-    Relevancy, Spectrogram
+    SerializerMethodField, Serializer, ListField, FloatField
 from rest_framework.validators import ValidationError
+
+from features.models import Sample, Feature, Bin, Slice, Experiment, Dataset, Redundancy, \
+    Relevancy, Spectrogram, Calculation
 
 
 class FeatureSerializer(ModelSerializer):
@@ -131,3 +132,9 @@ class SpectrogramSerializer(ModelSerializer):
     def get_image_url(self, obj):
         # FIXME: Use obj.image.url instead of hardcoded path
         return '/media/spectrograms/{0}.png'.format(obj.feature.id)
+
+
+class CalculationSerializer(ModelSerializer):
+    class Meta:
+        model = Calculation
+        fields = ('id', 'max_iteration', 'current_iteration')
