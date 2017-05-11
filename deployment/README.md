@@ -1,7 +1,7 @@
 # 0. Clone this repo
 ```
-$ git clone git@github.com:xasetl/predots.git
-$ cd predots/
+$ git clone git@github.com:KDD-OpenSource/fexum.git
+$ cd fexum/
 ```
 
 # 1. Install Docker on Ubuntu 16.04

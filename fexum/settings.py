@@ -37,7 +37,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'predots.urls'
+ROOT_URLCONF = 'fexum.urls'
 
 TEMPLATES = [
     {
@@ -55,7 +55,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'predots.wsgi.application'
+WSGI_APPLICATION = 'fexum.wsgi.application'
 
 
 # Database
@@ -137,7 +137,7 @@ CHANNEL_LAYERS = {
         'CONFIG': {
             'hosts': [('redis', 6379)],
         },
-        'ROUTING': 'predots.routing.channel_routing',
+        'ROUTING': 'fexum.routing.channel_routing',
     },
 }
 
