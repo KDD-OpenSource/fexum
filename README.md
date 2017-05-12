@@ -1,5 +1,5 @@
 # FEXUM
-_Framework for Exploring and Understanding Multivariate Correlations Edit_
+_Framework for Exploring and Understanding Multivariate Correlations_
 
 This repository contains the backend of our big data framework for exploring and understanding:
 - Feature selection
