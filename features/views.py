@@ -21,7 +21,7 @@ from features.serializers import FeatureSerializer, BinSerializer, ExperimentSer
     ConditionalDistributionResultSerializer, DensitySerializer, \
     SpectrogramSerializer, CalculationSerializer
 from features.tasks import calculate_hics, calculate_conditional_distributions, initialize_from_dataset, \
-    calculate_densities
+    calculate_densities, get_samples
 
 logger = logging.getLogger(__name__)
 
@@ -150,10 +150,11 @@ class FeatureListView(APIView):
 
 
 class FeatureSamplesView(APIView):
-    def get(self, _, feature_id):
-        samples = Sample.objects.filter(feature_id=feature_id).all()
-        serializer = SampleSerializer(instance=samples, many=True)
-        return Response(serializer.data)
+    def get(self, request, feature_id):
+        max_samples = SampleSerializer(data=request.data)
+        get_samples_task = get_samples.apply_async(args=[feature_id, max_samples])
+        samples = samples.get()
+        return Response(samples)
 
 
 class FeatureDensityView(APIView):
@@ -234,12 +235,12 @@ class CondiditonalDistributionsView(APIView):
 
         # Execute calculation on worker and get a synchronous result back to the client
         asnyc_result = calculate_conditional_distributions.apply_async(
-            args=[target.id, [dict(data) for data in serializer.data]],
+            args=[target.id, [dict(data) for data in serializer.data], serializer.max_samples],
         )
 
         # Serialize and validate output
-        results = asnyc_result.get()
-        response_serializer = ConditionalDistributionResultSerializer(data=results, many=True)
+        result, samples = asnyc_result.get()
+        response_serializer = ConditionalDistributionResultSerializer(data=result, many=True)
         response_serializer.is_valid(raise_exception=True)
         return Response(response_serializer.validated_data)
 

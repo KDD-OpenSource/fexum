@@ -26,7 +26,7 @@ class Dataset(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=255)
     content = models.FileField()
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PROCESSING) # TODO: Use status appriatly
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PROCESSING)  # TODO: Use status appriatly
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, blank=True, null=True)
 
     def __str__(self):
@@ -119,7 +119,7 @@ class Bin(models.Model):
 
 class Slice(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    object_definition = JSONField(default=[])   # json of hics internal slice representation for easy reconstruction 
+    object_definition = JSONField(default=[])   # json of hics internal slice representation for easy reconstruction
     output_definition = JSONField(default=[])   # json representation of slices for frontend
     features = models.ManyToManyField('Feature')  # TODO: Consider ManyToMany trough for relation uniquess
     result_calculation_map = models.ForeignKey(ResultCalculationMap, on_delete=models.CASCADE)

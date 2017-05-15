@@ -198,18 +198,19 @@ def build_histogram(feature_id, bins=50):
 
 
 @shared_task
-def downsample_feature(feature_id, sample_count=1000):
+def downsample_feature(feature_id, max_samples=1000):
+    # obsolete
     feature = Feature.objects.get(pk=feature_id)
 
     dataframe = _get_dataframe(feature.dataset.id)
-    feature_row = dataframe[feature.name]
+    column = dataframe[feature.name]
 
     sample_set = []
 
-    if sample_count < len(feature_row):
-        sampling = feature_row.groupby(np.arange(len(feature_row)) // (len(feature_row)//sample_count)).median()
+    if max_samples < len(column):
+        sampling = column.groupby(np.arange(len(column)) // (len(column)//max_samples)).median()
     else:
-        sampling = feature_row
+        sampling = column
 
     for idx, value in enumerate(sampling):
         # TODO: Test, order
@@ -223,6 +224,13 @@ def downsample_feature(feature_id, sample_count=1000):
     Sample.objects.bulk_create(sample_set)
 
     del sample_set, sampling
+
+
+@shared_task
+def get_samples(feature_id, max_samples=10000):
+    feature = Feature.objects.get(pk=feature_id)
+    df = _get_dataframe(feature.dataframe.id)
+    return df.loc[:, feature.name][::np.int(np.ceil(len(df)/max_samples))].to_json()
 
 
 @shared_task
@@ -310,9 +318,8 @@ def calculate_hics(calculation_id, feature_ids=[], bivariate=True, calculate_sup
             slices = Slice.objects.filter(features__in=self.features,
                                           result_calculation_map=self.result_calculation_map)
             return {
-            tuple([feature.name for feature in slice.features.all()]): ScoredSlices.from_dict(slice.object_definition)
-            for
-            slice in slices}
+                tuple([feature.name for feature in slice.features.all()]): ScoredSlices.from_dict(slice.object_definition)
+                for slice in slices}
 
         def update_slices(self, new_slices: dict()):
             name_mapping = lambda name: str(Feature.objects.get(name=name, dataset=self.target.dataset).id)
@@ -371,7 +378,7 @@ def calculate_hics(calculation_id, feature_ids=[], bivariate=True, calculate_sup
 
     calculation.current_iteration += 1
     calculation.save()
-    #Calculation.objects.filter(id=calculation.id).update(current_iteration=F('current_iteration')+1)
+    # Calculation.objects.filter(id=calculation.id).update(current_iteration=F('current_iteration')+1)
 
 
 @shared_task
@@ -398,7 +405,7 @@ def initialize_from_dataset(dataset_id):
                                    feature_id in feature_ids]
 
     subtasks = calculate_feature_statistics_subtasks + build_spectrogram_subtasks + build_histogram_subtasks + \
-               downsample_feature_subtasks
+        downsample_feature_subtasks
 
     chord(subtasks)(initialize_from_dataset_processing_callback.subtask(kwargs={'dataset_id': dataset_id}))
 
@@ -412,7 +419,7 @@ def initialize_from_dataset_processing_callback(*args, **kwargs):
 
 
 @shared_task
-def calculate_conditional_distributions(target_id, feature_constraints) -> list:
+def calculate_conditional_distributions(target_id, feature_constraints, max_samples) -> list:
     # TODO: Test
     target = Feature.objects.get(pk=target_id)
 
@@ -440,15 +447,20 @@ def calculate_conditional_distributions(target_id, feature_constraints) -> list:
             filter_list = np.logical_and(dataframe[ftr['feature']].isin(ftr['categories']), filter_list)
 
     # Calculate conditional probabilites based on filtering
-    values, counts = np.unique(dataframe.loc[filter_list, target.name], return_counts=True)
+    sliced_dataframe = dataframe.loc[filter_list, :]
+    values, counts = np.unique(sliced_dataframe.loc[:, target.name], return_counts=True)
     probabilities = counts / filter_list.sum()
+
+    # Subsample dataframe
+    feature_names = [str(ftr['feature']) for ftr in feature_constraints]
+    samples = sliced_dataframe.loc[:, feature_names][::np.int(np.ceil(len(sliced_dataframe)/max_samples))].to_json()
 
     # Convert to result dict
     result = [{'value': float(probs[0]), 'probability': probs[1]} for probs in zip(values, probabilities)]
 
     logger.info('Result: {0}'.format(result))
 
-    return result
+    return (result, samples)
 
 
 @periodic_task(run_every=(crontab(minute=15)), ignore_result=True)

@@ -1,5 +1,5 @@
 from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRelatedField, \
-    SerializerMethodField, Serializer, ListField, FloatField
+    SerializerMethodField, Serializer, ListField, FloatField, IntegerField
 from rest_framework.validators import ValidationError
 
 from features.models import Sample, Feature, Bin, Slice, Experiment, Dataset, Redundancy, \
@@ -18,12 +18,6 @@ class BinSerializer(ModelSerializer):
     class Meta:
         model = Bin
         fields = ('from_value', 'to_value', 'count')
-
-
-class SampleSerializer(ModelSerializer):
-    class Meta:
-        model = Sample
-        fields = ('value', 'order')
 
 
 class FeatureSliceSerializer(ModelSerializer):
@@ -91,6 +85,10 @@ class RedundancySerializer(ModelSerializer):
         fields = ('id', 'first_feature', 'second_feature', 'redundancy', 'weight')
 
 
+class SampleSerializer(Serializer):
+    max_samples = IntegerField(required=False, min_value=1, default=10000)
+
+
 class RangeSerializer(Serializer):
     from_value = FloatField(required=True)
     to_value = FloatField(required=True)
@@ -105,6 +103,7 @@ class ConditionalDistributionRequestSerializer(Serializer):
     feature = PrimaryKeyRelatedField(queryset=Feature.objects.all())
     range = RangeSerializer(required=False)
     categories = ListField(required=False)
+    max_samples = IntegerField(required=False, min_value=0, default=10000)
 
     def validate(self, attrs):
         if (attrs.get('categories') is None) == (attrs.get('range') is None):
