@@ -33,6 +33,11 @@ class Dataset(models.Model):
         return self.name
 
 
+class CurrentExperiment(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, unique=True)
+    experiment = models.ForeignKey('Experiment', on_delete=models.CASCADE, null=True, blank=True)
+
+
 class ResultCalculationMap(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     created_at = models.DateTimeField(editable=False, default=now)  # TODO: Test

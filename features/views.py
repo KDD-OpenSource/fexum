@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 from features.exceptions import NoCSVInArchiveFoundError, NotZIPFileError
 from features.models import Calculation
 from features.models import Feature, Bin, Sample, Dataset, Experiment, Slice, Relevancy, Redundancy, Spectrogram, \
-    ResultCalculationMap
+    ResultCalculationMap, CurrentExperiment
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
     SampleSerializer, DatasetSerializer, RedundancySerializer, \
     ExperimentTargetSerializer, RelevancySerializer, ConditionalDistributionRequestSerializer, \
@@ -36,6 +36,24 @@ class ExperimentListView(APIView):
         serializer = ExperimentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(user=request.user)
+        return Response(serializer.data)
+
+
+class CurrentExperimentView(APIView):
+    def get(self, request):
+        current_experiment, _ = CurrentExperiment.objects.get_or_create(user=request.user)
+        experiment = get_object_or_404(Experiment, pk=current_experiment.experiment_id)
+        serializer = ExperimentSerializer(instance=experiment)
+        return Response(serializer.data)
+
+
+class SetCurrentExperimentView(APIView):
+    def put(self, request, experiment_id):
+        current_experiment, _ = CurrentExperiment.objects.get_or_create(user=request.user)
+        experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
+        current_experiment.experiment = experiment
+        current_experiment.save()
+        serializer = ExperimentSerializer(instance=experiment)
         return Response(serializer.data)
 
 
