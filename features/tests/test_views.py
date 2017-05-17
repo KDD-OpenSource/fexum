@@ -615,13 +615,8 @@ class TestFeatureSpectrogramView(FexumAPITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
-    def test_retrieve_spectrogram_authenticated(self):
-        url = reverse('feature-spectrogram', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_retrieve_spectrogram_unauthenticated(self):
+        self.validate_error_on_unauthenticated('feature-spectrogram', lambda url: self.client.get(url), ['9b1fe7e4-9bb7-at-a1e4-40a35465d310'])
 
 
 class TestFixedFeatureSetHicsView(FexumAPITestCase):
