@@ -2,12 +2,13 @@ from channels.tests import ChannelTestCase, HttpClient
 
 from features.models import Dataset, Calculation
 from features.tests.factories import ExperimentFactory, CalculationFactory, DatasetFactory, FeatureFactory, \
-    RelevancyFactory
+    RelevancyFactory, CurrentExperimentFactory
 
 
 class TestDatasetBinding(ChannelTestCase):
     def test_outbound_create(self):
         experiment = ExperimentFactory()
+        CurrentExperimentFactory(experiment=experiment)
 
         client = HttpClient()
         client.force_login(experiment.user)
@@ -16,6 +17,9 @@ class TestDatasetBinding(ChannelTestCase):
         dataset = experiment.dataset
         dataset.status = Dataset.PROCESSING
         dataset.save()
+
+        # It should not receive this one as it's not a current experiment
+        ExperimentFactory(user=experiment.user)
 
         # It should not receive this one as it's on a different channel
         DatasetFactory()
@@ -41,6 +45,7 @@ class TestDatasetBinding(ChannelTestCase):
 class TestCalculationBinding(ChannelTestCase):
     def test_outbound_create(self):
         experiment = ExperimentFactory()
+        CurrentExperimentFactory(experiment=experiment)
 
         client = HttpClient()
         client.force_login(experiment.user)
@@ -48,6 +53,9 @@ class TestCalculationBinding(ChannelTestCase):
 
         calculation = CalculationFactory(result_calculation_map__target=experiment.target,
                                          type=Calculation.RANDOM_FEATURE_SET_HICS)
+
+        # It should not receive this one as it's not a current experiment
+        ExperimentFactory(user=experiment.user)
 
         # It should not receive this one as it's on a different channel
         CalculationFactory()
@@ -75,6 +83,7 @@ class TestCalculationBinding(ChannelTestCase):
 
     def test_outbound_create_fixed_feature_set(self):
         experiment = ExperimentFactory()
+        CurrentExperimentFactory(experiment=experiment)
 
         client = HttpClient()
         client.force_login(experiment.user)
