@@ -357,13 +357,8 @@ class TestFeatureSamplesView(FexumAPITestCase):
     def test_retrieve_samples_not_found(self):
         pass
 
-    def test_retrieve_samples_not_authenticated(self):
-        url = reverse('feature-samples', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_retrieve_samples_unauthenticated(self):
+        self.validate_error_on_unauthenticated('feature-samples', lambda url: self.client.get(url), ['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
 
 
 class TestFeatureHistogramView(FexumAPITestCase):
@@ -397,13 +392,9 @@ class TestFeatureHistogramView(FexumAPITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
-    def test_retrieve_histogram_not_authenticated(self):
-        url = reverse('feature-histogram', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_retrieve_histogram_unauthenticated(self):
+        self.validate_error_on_unauthenticated('feature-histogram', lambda url: self.client.get(url),
+                                               ['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
 
 
 class TestFeatureSlicesView(FexumAPITestCase):
@@ -464,13 +455,8 @@ class TestFeatureSlicesView(FexumAPITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
-    def test_retrieve_slices_target_not_authenticated(self):
-        url = reverse('target-feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.post(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_retrieve_slices_target_unauthenticated(self):
+        self.validate_error_on_unauthenticated('target-feature-slices', lambda url:  self.client.post(url), ['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
 
 
 class TestFeatureRelevancyResultsView(FexumAPITestCase):
@@ -509,14 +495,8 @@ class TestFeatureRelevancyResultsView(FexumAPITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
-    def test_retrieve_relevancy_results_target_not_authenticated(self):
-        url = reverse('target-feature-relevancy_results',
-                      args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_retrieve_relevancy_results_target_unauthenticated(self):
+        self.validate_error_on_unauthenticated('target-feature-relevancy_results', lambda url: self.client.get(url), ['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
 
 
 class TestFeatureRedundancyResults(FexumAPITestCase):
@@ -557,13 +537,8 @@ class TestFeatureRedundancyResults(FexumAPITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
-    def test_retrieve_redundancy_results_dataset_not_authenticated(self):
-        url = reverse('feature-redundancy_results', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_retrieve_redundancy_results_dataset_unauthenticated(self):
+        self.validate_error_on_unauthenticated('feature-redundancy_results', lambda url: self.client.get(url), ['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
 
 
 class TestCondiditonalDistributionsView(FexumAPITestCase):
@@ -576,14 +551,8 @@ class TestCondiditonalDistributionsView(FexumAPITestCase):
     def test_conditional_distributions_missing_data(self):
         pass
 
-    def test_conditional_distributions_not_authenticated(self):
-        url = reverse('target-condidtional-distributions',
-                      args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.post(url, data={}, format='json')
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_conditional_distributions_unauthenticated(self):
+        self.validate_error_on_unauthenticated('target-condidtional-distributions', lambda url: self.client.post(url, data={}, format='json'), ['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
 
     def test_conditional_distributions(self):
         user = UserFactory()
@@ -714,13 +683,8 @@ class TestFixedFeatureSetHicsView(FexumAPITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
-    def test_fixed_feature_set_hics_not_authenticated(self):
-        url = reverse('fixed-feature-set-hics', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
-        response = self.client.post(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_fixed_feature_set_hics_unauthenticated(self):
+        self.validate_error_on_unauthenticated('fixed-feature-set-hics', lambda url: self.client.post(url), ['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
 
 
 class TestCalculationListView(FexumAPITestCase):
