@@ -1,6 +1,8 @@
 from channels.tests import ChannelTestCase, HttpClient
-from features.tests.factories import ExperimentFactory, CalculationFactory, DatasetFactory
-from features.models import Dataset
+
+from features.models import Dataset, Calculation
+from features.tests.factories import ExperimentFactory, CalculationFactory, DatasetFactory, FeatureFactory, \
+    RelevancyFactory
 
 
 class TestDatasetBinding(ChannelTestCase):
@@ -44,7 +46,8 @@ class TestCalculationBinding(ChannelTestCase):
         client.force_login(experiment.user)
         client.join_group('user-{}-updates'.format(experiment.user_id))
 
-        calculation = CalculationFactory(result_calculation_map__target=experiment.target)
+        calculation = CalculationFactory(result_calculation_map__target=experiment.target,
+                                         type=Calculation.RANDOM_FEATURE_SET_HICS)
 
         # It should not receive this one as it's on a different channel
         CalculationFactory()
@@ -52,9 +55,12 @@ class TestCalculationBinding(ChannelTestCase):
         received = client.receive()
         self.assertIsNotNone(received)
 
+        self.assertEqual(received['payload']['data'].pop('id'), str(calculation.id))
         self.assertEqual(received['payload']['data'].pop('current_iteration'), calculation.current_iteration)
         self.assertEqual(received['payload']['data'].pop('max_iteration'), calculation.max_iteration)
         self.assertEqual(received['payload']['data'].pop('type'), calculation.type)
+        self.assertEqual(received['payload']['data'].pop('target'), str(calculation.result_calculation_map.target.id))
+        self.assertEqual(received['payload']['data'].pop('features'), None)
         self.assertEqual(received['payload'].pop('data'), {})
 
         self.assertEqual(received['payload'].pop('action'), 'create')
@@ -65,4 +71,26 @@ class TestCalculationBinding(ChannelTestCase):
         self.assertEqual(received.pop('stream'), 'calculation')
 
         self.assertEqual(received, {})
+        self.assertIsNone(client.receive())
+
+    def test_outbound_create_fixed_feature_set(self):
+        experiment = ExperimentFactory()
+
+        client = HttpClient()
+        client.force_login(experiment.user)
+        client.join_group('user-{}-updates'.format(experiment.user_id))
+
+        feature = FeatureFactory()
+        relevancy = RelevancyFactory(features=[feature], result_calculation_map__target=experiment.target)
+        calculation = CalculationFactory(result_calculation_map=relevancy.result_calculation_map,
+                                         type=Calculation.FIXED_FEATURE_SET_HICS)
+
+        # It should not receive this one as it's on a different channel
+        CalculationFactory()
+
+        received = client.receive()
+        self.assertIsNotNone(received)
+
+        self.assertEqual(received['payload']['data'].pop('features'), [str(feature.id)])
+
         self.assertIsNone(client.receive())

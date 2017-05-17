@@ -1,7 +1,8 @@
 import os
 import zipfile
+from typing import Dict, Any
 from unittest.mock import patch
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, \
@@ -16,6 +17,17 @@ from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
     SampleFactory, DatasetFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, \
     ResultCalculationMapFactory, SpectrogramFactory, CalculationFactory
 from users.tests.factories import UserFactory
+
+
+def _replace_uuid_by_string(value: Any) -> Any:
+    if isinstance(value, UUID):
+        return str(value)
+
+    return value
+
+
+def _replace_uuids_by_strings(values_by_name: Dict) -> Dict:
+    return dict([(name, _replace_uuid_by_string(value=value)) for name, value in values_by_name.items()])
 
 
 class TestExperimentListView(APITestCase):
@@ -741,7 +753,7 @@ class TestCalculationListView(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), [CalculationSerializer(instance=calculation).data])
+        self.assertEqual(response.json(), [_replace_uuids_by_strings(CalculationSerializer(instance=calculation).data)])
 
     def test_do_not_retrieve_done_calculations(self):
         user = UserFactory()
