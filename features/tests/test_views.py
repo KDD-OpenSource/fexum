@@ -14,7 +14,7 @@ from features.serializers import FeatureSerializer, BinSerializer, \
     RelevancySerializer, RedundancySerializer, SpectrogramSerializer, CalculationSerializer
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
     SampleFactory, DatasetFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, \
-    ResultCalculationMapFactory, SpectrogramFactory, CalculationFactory
+    ResultCalculationMapFactory, SpectrogramFactory, CalculationFactory, CurrentExperimentFactory
 from users.tests.factories import UserFactory
 
 
@@ -762,3 +762,71 @@ class TestCalculationListView(APITestCase):
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(),
                          {'detail': 'Authentication credentials were not provided.'})
+
+
+class TestCurrentExperimentView(APITestCase):
+    def test_retrieve_current_experiment_unauthenticated(self):
+        url = reverse('current-experiment-detail')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+        self.assertEqual(response.json(),
+                         {'detail': 'Authentication credentials were not provided.'})
+
+    def test_retrieve_current_experiment(self):
+        user = UserFactory()
+        current_experiment = CurrentExperimentFactory(user=user, experiment__user=user)
+
+        url = reverse('current-experiment-detail')
+
+        self.client.force_authenticate(user)
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), ExperimentSerializer(instance=current_experiment.experiment).data)
+
+    def test_retrieve_current_experiment_not_found(self):
+        user = UserFactory()
+
+        url = reverse('current-experiment-detail')
+
+        self.client.force_authenticate(user)
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})
+
+
+class TestSetCurrentExperimentView(APITestCase):
+    def test_retrieve_current_experiment_unauthenticated(self):
+        url = reverse('set-current-experiment', args=['391ec5ac-f741-45c9-855a-7615c89ce128'])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+        self.assertEqual(response.json(),
+                         {'detail': 'Authentication credentials were not provided.'})
+
+    def test_set_current_experiment(self):
+        user = UserFactory()
+        experiment = ExperimentFactory(user=user)
+
+        url = reverse('set-current-experiment', args=[str(experiment.id)])
+
+        self.client.force_authenticate(user)
+        response = self.client.put(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(), ExperimentSerializer(instance=experiment).data)
+
+    def test_set_current_experiment_not_found(self):
+        user = UserFactory()
+        # Belongs to someone else
+        experiment = ExperimentFactory()
+
+        url = reverse('set-current-experiment', args=[str(experiment.id)])
+
+        self.client.force_authenticate(user)
+        response = self.client.put(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})

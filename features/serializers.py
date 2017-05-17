@@ -3,7 +3,7 @@ from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRel
 from rest_framework.validators import ValidationError
 
 from features.models import Sample, Feature, Bin, Slice, Experiment, Dataset, Redundancy, \
-    Relevancy, Spectrogram, Calculation
+    Relevancy, Spectrogram, Calculation, CurrentExperiment
 
 
 class FeatureSerializer(ModelSerializer):

@@ -1,6 +1,6 @@
 from factory import DjangoModelFactory, Sequence, SubFactory
 from features.models import Sample, Feature, Bin, Slice, Dataset, Experiment, ResultCalculationMap, Redundancy, \
-    Relevancy, Spectrogram, Calculation
+    Relevancy, Spectrogram, Calculation, CurrentExperiment
 from factory.fuzzy import FuzzyFloat, FuzzyInteger, FuzzyText
 from factory.django import FileField, ImageField
 from users.tests.factories import UserFactory
@@ -123,3 +123,11 @@ class CalculationFactory(DjangoModelFactory):
         model = Calculation
 
     result_calculation_map = SubFactory(ResultCalculationMapFactory)
+
+
+class CurrentExperimentFactory(DjangoModelFactory):
+    class Meta:
+        model = CurrentExperiment
+
+    user = SubFactory(UserFactory)
+    experiment = SubFactory(ExperimentFactory)
