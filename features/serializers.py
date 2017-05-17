@@ -135,6 +135,19 @@ class SpectrogramSerializer(ModelSerializer):
 
 
 class CalculationSerializer(ModelSerializer):
+    target = SerializerMethodField()
+    features = SerializerMethodField()
+
     class Meta:
         model = Calculation
-        fields = ('id', 'max_iteration', 'current_iteration')
+        fields = ('id', 'max_iteration', 'current_iteration', 'type', 'target', 'features')
+
+    def get_target(self, obj: Calculation):
+        return obj.result_calculation_map.target.id
+
+    def get_features(self, obj: Calculation):
+        if obj.type != Calculation.FIXED_FEATURE_SET_HICS:
+            return None
+
+        return [feature.id for feature in
+                Relevancy.objects.get(result_calculation_map=obj.result_calculation_map).features.all()]

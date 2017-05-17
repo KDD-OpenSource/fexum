@@ -1,16 +1,18 @@
+from os import stat
+from time import time
+from unittest.mock import patch, call
+
+import SharedArray as sa
 from django.test import TestCase
+
+from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
+    Spectrogram
+from features.models import ResultCalculationMap, Calculation
+from features.tasks import _dataframe_columns, _dataframe_last_access, _get_dataframe
 from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
     calculate_feature_statistics, calculate_hics, calculate_densities, remove_unused_dataframes, \
     build_spectrogram
-from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
-    Spectrogram
 from features.tests.factories import FeatureFactory, DatasetFactory, ResultCalculationMapFactory, CalculationFactory
-from unittest.mock import patch, call
-from time import time
-import SharedArray as sa
-from features.tasks import _dataframe_columns, _dataframe_last_access, _get_dataframe
-from os import stat
-from features.models import ResultCalculationMap, Calculation
 
 
 # TODO: test for results
@@ -97,7 +99,7 @@ class TestCalculateDensities(TestCase):
         # Kernel density is not deterministic, therefore we only check result length and valid range
         self.assertEqual(len(validation_category_density_values), 100)
         for y in validation_category_density_values:
-            self.assertGreater(y, 0.2)
+            self.assertGreater(y, 0.19)
             self.assertLess(y, 0.6)
 
 
