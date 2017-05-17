@@ -795,7 +795,8 @@ class TestCurrentExperimentView(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), ExperimentSerializer(instance=current_experiment.experiment).data)
+        self.assertEqual(response.json(),
+                         _replace_uuids_by_strings(ExperimentSerializer(instance=current_experiment.experiment).data))
 
     def test_retrieve_current_experiment_not_found(self):
         user = UserFactory()
@@ -828,7 +829,7 @@ class TestSetCurrentExperimentView(APITestCase):
         response = self.client.put(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), ExperimentSerializer(instance=experiment).data)
+        self.assertEqual(response.json(), _replace_uuids_by_strings(ExperimentSerializer(instance=experiment).data))
 
     def test_set_current_experiment_not_found(self):
         user = UserFactory()
