@@ -81,7 +81,7 @@ class TargetDetailView(APIView):
                                                  current_iteration=0)
 
         tasks = [calculate_hics.subtask(immutable=True,
-                                        kwargs={'calculation': calculation.id,
+                                        kwargs={'calculation_id': calculation.id,
                                                 'calculate_redundancies': True})] * number_of_iterations
 
         chain(tasks).apply_async()

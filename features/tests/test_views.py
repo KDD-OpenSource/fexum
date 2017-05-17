@@ -183,7 +183,7 @@ class TestTargetDetailView(FexumAPITestCase):
             data = ExperimentTargetSerializer(instance=experiment).data
             self.assertEqual(experiment.target, target)
             self.assertEqual(response.json(), {'target': str(data['target'])})
-            calculate_hics.assert_called_once_with(immutable=True, kwargs={'calculation': calculation.id,
+            calculate_hics.assert_called_once_with(immutable=True, kwargs={'calculation_id': calculation.id,
                                                                            'calculate_redundancies': True})
             # TODO: Test chain call
 
