@@ -1,5 +1,7 @@
 from channels.binding.websockets import WebsocketBinding
+
 from features.models import Dataset, Calculation, Experiment
+from features.serializers import CalculationSerializer
 
 
 class DatasetBinding(WebsocketBinding):
@@ -22,7 +24,7 @@ class DatasetBinding(WebsocketBinding):
 class CalculationBinding(WebsocketBinding):
     model = Calculation
     stream = 'calculation'
-    fields = ['id', 'max_iteration', 'current_iteration', 'type']
+    fields = CalculationSerializer.fields
 
     @classmethod
     def group_names(cls, instance):
@@ -32,3 +34,6 @@ class CalculationBinding(WebsocketBinding):
     def has_permission(self, user, action, pk):
         # Permission is always false to block inbound messages that change the model
         return False
+
+    def serialize_data(self, instance):
+        return CalculationSerializer(instance=instance).data
