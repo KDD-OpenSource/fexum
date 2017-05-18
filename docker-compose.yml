@@ -5,11 +5,10 @@ services:
     image: redis:alpine
     networks:
       - fexum
-
   postgres:
     image: healthcheck/postgres
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data
+      - /var/lib/postgresql/data
     networks:
       - fexum
 
@@ -116,6 +115,7 @@ services:
       dockerfile: Dockerfile.frontend
     networks:
       - fexum
+      - hpi
     depends_on:
       - web_wsgi
       - web_asgi
@@ -130,3 +130,8 @@ services:
 
 networks:
   fexum:
+  hpi:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.151.100.0/24
