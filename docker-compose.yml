@@ -7,16 +7,11 @@ services:
       - fexum
 
   postgres:
-    image: postgres:9.4
+    image: healthcheck/postgres
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
     networks:
       - fexum
-    healthcheck:
-      test: ["CMD-SHELL", "psql -h 'localhost' -U 'postgres' -c '\\l'"]
-      interval: 30s
-      timeout: 30s
-      retries: 3
 
   queue:
     image: rabbitmq:latest
