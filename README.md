@@ -1,4 +1,4 @@
-# FEXUM
+# FEXUM [![Build Status](https://travis-ci.org/KDD-OpenSource/fexum.svg?branch=master)](https://travis-ci.org/KDD-OpenSource/fexum)
 _Framework for Exploring and Understanding Multivariate Correlations_
 
 This repository contains the backend of our big data framework for exploring and understanding:
