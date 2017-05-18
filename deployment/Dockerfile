@@ -9,9 +9,8 @@ RUN apt-get install -y curl gnupg
 RUN curl -sL https://deb.nodesource.com/setup_6.x | bash -
 RUN apt-get install -y nodejs
 
-# Copy key
+# Install git
 RUN apt-get install -y git-core
-RUN echo "Host github.com\n\tStrictHostKeyChecking no\n" >> /root/.ssh/config
 
 # Configure frontend
 RUN git clone git@github.com:KDD-OpenSource/fexum-frontend.git
