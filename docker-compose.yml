@@ -123,7 +123,8 @@ services:
       SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
 
   nginx:
-    build: ./Dockerfile.frontend
+    context: .
+    dockerfile: Dockerfile.frontend
     networks:
       - fexum
     depends_on:
