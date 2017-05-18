@@ -99,7 +99,7 @@ class TestCalculateDensities(TestCase):
         # Kernel density is not deterministic, therefore we only check result length and valid range
         self.assertEqual(len(validation_category_density_values), 100)
         for y in validation_category_density_values:
-            self.assertGreater(y, 0.19)
+            self.assertGreater(y, 0.15)
             self.assertLess(y, 0.6)
 
 
