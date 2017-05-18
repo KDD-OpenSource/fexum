@@ -8,6 +8,8 @@ services:
 
   postgres:
     image: postgres:9.4
+    volumes:
+      - ./postgres-data:/var/lib/postgresql
     networks:
       - fexum
     healthcheck:
