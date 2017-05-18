@@ -1,4 +1,4 @@
-version: "3"
+version: '3'
       
 services:
   redis:
@@ -21,12 +21,9 @@ services:
   web_wsgi:
     build: .
     depends_on:
-      queue:
-        condition: service_started
-      redis:
-        condition: service_started
-      postgres:
-        condition: service_healthy
+      - queue
+      - redis
+      - postgres
     networks:
       - fexum
     volumes:
@@ -43,12 +40,9 @@ services:
   web_worker:
     build: .
     depends_on:
-      queue:
-        condition: service_started
-      redis:
-        condition: service_started
-      postgres:
-        condition: service_healthy
+      - queue
+      - redis
+      - postgres
     networks:
       - fexum
     volumes:
@@ -63,12 +57,9 @@ services:
   web_asgi:
     build: ./
     depends_on:
-      queue:
-        condition: service_started
-      redis:
-        condition: service_started
-      postgres:
-        condition: service_healthy
+      - queue
+      - redis
+      - postgres
     networks:
       - fexum
     volumes:
@@ -85,12 +76,9 @@ services:
   worker:
     build: ./
     depends_on:
-      queue:
-        condition: service_started
-      redis:
-        condition: service_started
-      postgres:
-        condition: service_healthy
+      - queue
+      - redis
+      - postgres
     networks:
       - fexum
     volumes:
@@ -123,8 +111,9 @@ services:
       SECRET_KEY: "WKjWB3905LW3i1TAFUYE4Ve2JGiI5Ebt"
 
   nginx:
-    context: .
-    dockerfile: Dockerfile.frontend
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
     networks:
       - fexum
     depends_on:
