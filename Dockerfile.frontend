@@ -10,12 +10,10 @@ RUN curl -sL https://deb.nodesource.com/setup_6.x | bash -
 RUN apt-get install -y nodejs
 
 # Install git
-RUN mkdir /root/.ssh
-RUN echo "Host github.com\n\tStrictHostKeyChecking no\n" >> /root/.ssh/config
 RUN apt-get install -y git-core
 
 # Configure frontend
-RUN git clone git@github.com:KDD-OpenSource/fexum-frontend.git
+RUN git clone https://github.com/KDD-OpenSource/fexum-frontend.git
 WORKDIR /setup/fexum-frontend
 RUN npm install -g grunt-cli bower
 RUN npm install
