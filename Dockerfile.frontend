@@ -10,6 +10,8 @@ RUN curl -sL https://deb.nodesource.com/setup_6.x | bash -
 RUN apt-get install -y nodejs
 
 # Install git
+RUN mkdir /root/.ssh
+RUN echo "Host github.com\n\tStrictHostKeyChecking no\n" >> /root/.ssh/config
 RUN apt-get install -y git-core
 
 # Configure frontend
