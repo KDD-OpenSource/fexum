@@ -11,8 +11,6 @@ RUN apt-get install -y nodejs
 
 # Copy key
 RUN apt-get install -y git-core
-COPY id_rsa.frontend /root/.ssh/id_rsa
-RUN chmod 600 /root/.ssh/id_rsa
 RUN echo "Host github.com\n\tStrictHostKeyChecking no\n" >> /root/.ssh/config
 
 # Configure frontend
