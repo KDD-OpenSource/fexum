@@ -115,7 +115,6 @@ services:
       dockerfile: Dockerfile.frontend
     networks:
       - fexum
-      - hpi
     depends_on:
       - web_wsgi
       - web_asgi
@@ -130,7 +129,6 @@ services:
 
 networks:
   fexum:
-  hpi:
     ipam:
       driver: default
       config:
