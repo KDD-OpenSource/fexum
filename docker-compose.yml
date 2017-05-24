@@ -130,6 +130,10 @@ services:
 
 networks:
   fexum:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.151.101.0/24
   hpi:
     ipam:
       driver: default
