@@ -54,10 +54,26 @@ class DatasetSerializer(ModelSerializer):
 class ExperimentSerializer(ModelSerializer):
     target = PrimaryKeyRelatedField(many=False, read_only=True)
     dataset = PrimaryKeyRelatedField(many=False, read_only=False, queryset=Dataset.objects.all())
+    analysis_selection = PrimaryKeyRelatedField(many=True, read_only=False, queryset=Feature.objects.all())
+    visibility_blacklist = PrimaryKeyRelatedField(many=True, read_only=False, queryset=Feature.objects.all())
 
     class Meta:
         model = Experiment
-        fields = ('id', 'dataset', 'target')
+        fields = ('id', 'dataset', 'target', 'visibility_text_filter', 'visibility_rank_filter', 'analysis_selection',
+                  'visibility_blacklist')
+
+    def validate(self, data):
+        "If instance cannot change dataset"
+        if data['target'].dataset != data['dataset']:
+            raise ValidationError('Target has to be part of experiment\'s dataset')
+
+        for feature in data['analysis_selection']:
+            if feature.dataset != data['dataset']:
+                raise ValidationError('All selected features have to be part of the experiment\'s dataset')
+
+        for feature in data['visibility_blacklist']:
+            if feature.dataset != data['dataset']:
+                raise ValidationError('All blacklisted features have to be part of the experiment\'s dataset')
 
 
 class ExperimentTargetSerializer(ModelSerializer):

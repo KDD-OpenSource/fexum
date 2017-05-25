@@ -104,10 +104,9 @@ class TestExperimentDetailView(FexumAPITestCase):
         url = reverse('experiment-detail', args=[experiment.id])
         response = self.client.get(url)
 
-        data = ExperimentSerializer(instance=experiment).data
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), {'id': str(data['id']), 'target': str(data['target']),
-                                           'dataset': str(data['dataset'])})
+        self.assertEqual(response.json(),
+                         self._replace_uuids_by_strings(ExperimentSerializer(instance=experiment).data))
 
     def test_retrieve_experiment_detail_not_found(self):
         user = UserFactory()
@@ -124,6 +123,16 @@ class TestExperimentDetailView(FexumAPITestCase):
 
     def test_get_experiment_unauthenticated(self):
         self.validate_error_on_unauthenticated('experiment-detail', lambda url: self.client.get(url),
+                                               ['079a60fc-c3b1-48ee-8bb6-ba19f061e9e0'])
+
+    def test_patch_experiment_detail(self):
+        assert False
+
+    def test_patch_experiment_detail_not_found(self):
+        assert False
+
+    def test_patch_experiment_unauthenticated(self):
+        self.validate_error_on_unauthenticated('experiment-detail', lambda url: self.client.patch(url),
                                                ['079a60fc-c3b1-48ee-8bb6-ba19f061e9e0'])
 
 

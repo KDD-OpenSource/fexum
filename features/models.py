@@ -10,6 +10,10 @@ class Experiment(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     target = models.ForeignKey('Feature', on_delete=models.CASCADE, blank=True, null=True)
     dataset = models.ForeignKey('Dataset', on_delete=models.CASCADE)
+    analysis_selection = models.ManyToManyField('Feature', related_name='analysis_selection')  # Not unique?
+    visibility_text_filter = models.CharField(max_length=150, default='')
+    visibility_rank_filter = models.IntegerField(blank=True, null=True)
+    visibility_blacklist = models.ManyToManyField('Feature', related_name='visibility_blacklist')
 
 
 class Dataset(models.Model):
