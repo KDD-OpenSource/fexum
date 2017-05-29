@@ -66,7 +66,7 @@ class ExperimentDetailView(APIView):
 
 class TargetDetailView(APIView):
     def put(self, request, experiment_id):
-        number_of_iterations = 10
+        number_of_iterations = 30
 
         experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
         serializer = ExperimentTargetSerializer(instance=experiment, data=request.data)
