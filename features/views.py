@@ -75,6 +75,12 @@ class TargetDetailView(APIView):
 
         target = Feature.objects.get(id=experiment.target.id)
         result_calculation_map, _ = ResultCalculationMap.objects.get_or_create(target=target)
+
+        # early return to avoid duplicated calculation
+        if Calculation.objects.filter(type=Calculation.DEFAULT_HICS,
+                                      result_calculation_map=result_calculation_map).exists():
+            return Response(serializer.data)
+
         calculation = Calculation.objects.create(type=Calculation.DEFAULT_HICS,
                                                  result_calculation_map=result_calculation_map,
                                                  max_iteration=number_of_iterations,
