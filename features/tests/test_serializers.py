@@ -11,6 +11,7 @@ from features.serializers import FeatureSerializer, BinSerializer, ExperimentTar
 from features.tests.factories import FeatureFactory, BinFactory, DatasetFactory, SampleFactory, ExperimentFactory, \
     RelevancyFactory, RedundancyFactory, SpectrogramFactory, \
     CalculationFactory
+from users.tests.factories import UserFactory
 
 
 class TestFeatureSerializer(TestCase):
@@ -89,10 +90,10 @@ class TestExperimentSerializer(TestCase):
         target = FeatureFactory(dataset=dataset)
         feature1 = FeatureFactory(dataset=dataset)
         feature2 = FeatureFactory(dataset=dataset)
+        user = UserFactory()
 
         data = {
             'dataset': str(dataset.id),
-            'target': str(target.id),
             'analysis_selection': [str(feature1.id)],
             'visibility_text_filter': 'this is some random text',
             'visibility_rank_filter': 1,
@@ -101,11 +102,11 @@ class TestExperimentSerializer(TestCase):
 
         serializer = ExperimentSerializer(data=data)
         self.assertTrue(serializer.is_valid())
-        serializer.save()
+        serializer.save(user=user, target=target)
 
         experiment = Experiment.objects.first()
-        self.assertEqual(data.pop('dataset'), experiment.dataset.id)
-        self.assertEqual(data.pop('target'), experiment.target.id)
+        self.assertEqual(data.pop('dataset'), str(experiment.dataset.id))
+        #self.assertEqual(data.pop('target'), str(experiment.target.id))
         self.assertEqual(data.pop('visibility_text_filter'), experiment.visibility_text_filter)
         self.assertEqual(data.pop('visibility_rank_filter'), experiment.visibility_rank_filter)
         self.assertEqual(data.pop('analysis_selection'), [str(f.id) for f in experiment.analysis_selection.all()])

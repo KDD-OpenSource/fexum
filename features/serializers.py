@@ -63,17 +63,22 @@ class ExperimentSerializer(ModelSerializer):
                   'visibility_blacklist')
 
     def validate(self, data):
-        "If instance cannot change dataset"
-        if data['target'].dataset != data['dataset']:
-            raise ValidationError('Target has to be part of experiment\'s dataset')
 
-        for feature in data['analysis_selection']:
-            if feature.dataset != data['dataset']:
+        if self.instance is not None and self.instance.target is not None and data.get(
+                'dataset') is not None and self.instance.target.dataset != data.get('dataset'):
+            raise ValidationError('Dataset cannot be changed if target is set.')
+
+        dataset = data.get('dataset') or self.instance.dataset
+
+        for feature in data.get('analysis_selection', []):
+            if feature.dataset != dataset:
                 raise ValidationError('All selected features have to be part of the experiment\'s dataset')
 
-        for feature in data['visibility_blacklist']:
-            if feature.dataset != data['dataset']:
+        for feature in data.get('visibility_blacklist', []):
+            if feature.dataset != dataset:
                 raise ValidationError('All blacklisted features have to be part of the experiment\'s dataset')
+
+        return data
 
 
 class ExperimentTargetSerializer(ModelSerializer):
