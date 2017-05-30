@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.test import TestCase
-from rest_framework.exceptions import ValidationError
+from rest_framework.validators import ValidationError
 
 from features.models import Calculation, Experiment
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentTargetSerializer, SampleSerializer, \
@@ -106,7 +106,6 @@ class TestExperimentSerializer(TestCase):
 
         experiment = Experiment.objects.first()
         self.assertEqual(data.pop('dataset'), str(experiment.dataset.id))
-        #self.assertEqual(data.pop('target'), str(experiment.target.id))
         self.assertEqual(data.pop('visibility_text_filter'), experiment.visibility_text_filter)
         self.assertEqual(data.pop('visibility_rank_filter'), experiment.visibility_rank_filter)
         self.assertEqual(data.pop('analysis_selection'), [str(f.id) for f in experiment.analysis_selection.all()])
@@ -114,7 +113,36 @@ class TestExperimentSerializer(TestCase):
         self.assertEqual(len(data), 0)
 
     def test_deserialize_one_invalid_data(self):
-        assert False
+        experiment = ExperimentFactory()
+        dataset = DatasetFactory()
+        feature = FeatureFactory()
+
+        data = {
+            'dataset': str(dataset.id),
+            'analysis_selection': [str(feature.id)],
+            'visibility_blacklist': [str(feature.id)],
+        }
+
+        serializer = ExperimentSerializer(instance=experiment, data=data, partial=True)
+        with self.assertRaisesRegexp(ValidationError, 'Dataset cannot be changed if target is set.'):
+            serializer.is_valid(raise_exception=True)
+
+        data.pop('dataset')
+        serializer = ExperimentSerializer(instance=experiment, data=data, partial=True)
+        with self.assertRaisesRegexp(ValidationError,
+                                     'All selected features have to be part of the experiment\'s dataset'):
+            serializer.is_valid(raise_exception=True)
+
+        data.pop('analysis_selection')
+        serializer = ExperimentSerializer(instance=experiment, data=data, partial=True)
+        with self.assertRaisesRegexp(ValidationError,
+                                     'All blacklisted features have to be part of the experiment\'s dataset'):
+            serializer.is_valid(raise_exception=True)
+
+        data.pop('visibility_blacklist')
+        serializer = ExperimentSerializer(instance=experiment, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.assertEqual(len(data), 0)
 
 
 class TestRelevancySerializer(TestCase):

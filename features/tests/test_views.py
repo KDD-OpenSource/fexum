@@ -161,7 +161,15 @@ class TestExperimentDetailView(FexumAPITestCase):
         self.assertEqual([experiment.visibility_blacklist.first()], visibility_blacklist)
 
     def test_patch_experiment_invalid_data(self):
-        assert False
+        experiment = ExperimentFactory()
+        self.client.force_authenticate(experiment.user)
+
+        data = {'visibility_blacklist': str(FeatureFactory().id)}
+
+        url = reverse('experiment-detail', args=[str(experiment.id)])
+        response = self.client.patch(url, data)
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_patch_experiment_detail_not_found(self):
         user = UserFactory()
