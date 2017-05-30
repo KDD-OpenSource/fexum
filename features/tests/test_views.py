@@ -26,6 +26,9 @@ class FexumAPITestCase(APITestCase):
             if isinstance(value, UUID):
                 return str(value)
 
+            if isinstance(value, list):
+                return [_replace_uuid_by_string(item) for item in value]
+
             return value
 
         return dict([(name, _replace_uuid_by_string(value=value)) for name, value in values_by_name.items()])
@@ -70,10 +73,9 @@ class TestExperimentListView(FexumAPITestCase):
 
         experiment = Experiment.objects.first()
 
-        data = ExperimentSerializer(instance=experiment).data
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), {'id': str(data['id']), 'dataset': str(data['dataset']),
-                                           'target': data['target']})
+        self.assertEqual(response.json(),
+                         self._replace_uuids_by_strings(ExperimentSerializer(instance=experiment).data))
 
         # Test if creation worked
         self.assertEqual(experiment.dataset, dataset)
@@ -104,10 +106,9 @@ class TestExperimentDetailView(FexumAPITestCase):
         url = reverse('experiment-detail', args=[experiment.id])
         response = self.client.get(url)
 
-        data = ExperimentSerializer(instance=experiment).data
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), {'id': str(data['id']), 'target': str(data['target']),
-                                           'dataset': str(data['dataset'])})
+        self.assertEqual(response.json(),
+                         self._replace_uuids_by_strings(ExperimentSerializer(instance=experiment).data))
 
     def test_retrieve_experiment_detail_not_found(self):
         user = UserFactory()
@@ -124,6 +125,66 @@ class TestExperimentDetailView(FexumAPITestCase):
 
     def test_get_experiment_unauthenticated(self):
         self.validate_error_on_unauthenticated('experiment-detail', lambda url: self.client.get(url),
+                                               ['079a60fc-c3b1-48ee-8bb6-ba19f061e9e0'])
+
+    def test_patch_experiment_detail(self):
+        experiment = ExperimentFactory()
+        self.client.force_authenticate(experiment.user)
+
+        visibility_text_filter = 'new_text'
+        visibility_rank_filter = 11
+        analysis_selection = [FeatureFactory(dataset=experiment.dataset)]
+        visibility_blacklist = [FeatureFactory(dataset=experiment.dataset)]
+
+        self.assertNotEqual(experiment.visibility_text_filter, visibility_text_filter)
+        self.assertNotEqual(experiment.visibility_rank_filter, visibility_rank_filter)
+        self.assertNotEqual(experiment.analysis_selection, analysis_selection)
+        self.assertNotEqual(experiment.visibility_blacklist, visibility_blacklist)
+
+        data = {
+            'visibility_rank_filter': visibility_rank_filter,
+            'visibility_text_filter': visibility_text_filter,
+            'analysis_selection': [f.id for f in analysis_selection],
+            'visibility_blacklist': [f.id for f in visibility_blacklist]
+        }
+        url = reverse('experiment-detail', args=[str(experiment.id)])
+
+        response = self.client.patch(url, data)
+
+        experiment = Experiment.objects.get(id=experiment.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(),
+                         self._replace_uuids_by_strings(ExperimentSerializer(instance=experiment).data))
+        self.assertEqual(experiment.visibility_text_filter, visibility_text_filter)
+        self.assertEqual(experiment.visibility_rank_filter, visibility_rank_filter)
+        self.assertEqual([experiment.analysis_selection.first()], analysis_selection)
+        self.assertEqual([experiment.visibility_blacklist.first()], visibility_blacklist)
+
+    def test_patch_experiment_invalid_data(self):
+        experiment = ExperimentFactory()
+        self.client.force_authenticate(experiment.user)
+
+        data = {'visibility_blacklist': str(FeatureFactory().id)}
+
+        url = reverse('experiment-detail', args=[str(experiment.id)])
+        response = self.client.patch(url, data)
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_patch_experiment_detail_not_found(self):
+        user = UserFactory()
+        self.client.force_authenticate(user)
+        experiment = ExperimentFactory()
+        self.assertNotEqual(user, experiment.user)
+
+        url = reverse('experiment-detail', args=[experiment.id])
+        response = self.client.patch(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})
+
+    def test_patch_experiment_unauthenticated(self):
+        self.validate_error_on_unauthenticated('experiment-detail', lambda url: self.client.patch(url),
                                                ['079a60fc-c3b1-48ee-8bb6-ba19f061e9e0'])
 
 
