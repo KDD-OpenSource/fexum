@@ -38,6 +38,12 @@ class ExperimentListView(APIView):
         serializer.save(user=request.user)
         return Response(serializer.data)
 
+    def post(self, request):
+        serializer = ExperimentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
+        return Response(serializer.data)
+
 
 class CurrentExperimentView(APIView):
     def get(self, request):
@@ -61,6 +67,13 @@ class ExperimentDetailView(APIView):
     def get(self, request, experiment_id):
         experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
         serializer = ExperimentSerializer(instance=experiment)
+        return Response(serializer.data)
+
+    def patch(self, request, experiment_id):
+        experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
+        serializer = ExperimentSerializer(instance=experiment, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(serializer.data)
 
 

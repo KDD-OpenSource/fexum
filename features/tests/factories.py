@@ -36,6 +36,24 @@ class ExperimentFactory(DjangoModelFactory):
     user = SubFactory(UserFactory)
     dataset = SubFactory(DatasetFactory)
     target = SubFactory(FeatureFactory)
+    visibility_text_filter = FuzzyText(length=150)
+    visibility_rank_filter = FuzzyInteger(low=1, high=10)
+
+    @post_generation
+    def analysis_selection(self, create, extracted, **kwargs):
+        if not create:
+            return
+        if extracted:
+            for feature in extracted:
+                self.analysis_selection.add(feature)
+
+    @post_generation
+    def visibility_blacklist(self, create, extracted, **kwargs):
+        if not create:
+            return
+        if extracted:
+            for feature in extracted:
+                self.visibility_blacklist.add(feature)
 
 
 class BinFactory(DjangoModelFactory):
