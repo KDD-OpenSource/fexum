@@ -6,7 +6,7 @@ services:
     networks:
       - fexum
   postgres:
-    image: postgres:9.4
+    image: healthcheck/postgres
     volumes:
       - /var/lib/postgresql/data
     networks:
