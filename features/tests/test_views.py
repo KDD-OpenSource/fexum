@@ -10,7 +10,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_C
     HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from rest_framework.test import APITestCase
 
-from features.models import Experiment, Dataset
+from features.models import Experiment, Dataset, Calculation
 from features.serializers import FeatureSerializer, BinSerializer, \
     SampleSerializer, DatasetSerializer, ExperimentSerializer, ExperimentTargetSerializer, \
     RelevancySerializer, RedundancySerializer, SpectrogramSerializer, CalculationSerializer
@@ -247,6 +247,31 @@ class TestTargetDetailView(FexumAPITestCase):
             calculate_hics.assert_called_once_with(immutable=True, kwargs={'calculation_id': calculation.id,
                                                                            'calculate_redundancies': True})
             # TODO: Test chain call
+
+    def test_select_target_duplicated(self):
+        experiment = ExperimentFactory(target=None)
+        self.client.force_authenticate(experiment.user)
+
+        target = FeatureFactory(dataset=experiment.dataset)
+        result_calculation_map = ResultCalculationMapFactory(target=target)
+        calculation = CalculationFactory(result_calculation_map=result_calculation_map,
+                                         type=Calculation.DEFAULT_HICS)
+
+        url = reverse('experiment-targets-detail', args=[experiment.id])
+        with patch('features.views.calculate_hics.subtask') as calculate_hics:
+
+            response = self.client.put(url, data={'target': target.id}, format='json')
+            self.assertEqual(response.status_code, HTTP_200_OK)
+
+            experiment = Experiment.objects.get(id=experiment.id)
+            data = ExperimentTargetSerializer(instance=experiment).data
+            calculation_count = Calculation.objects.filter(result_calculation_map=result_calculation_map,
+                                                           type=Calculation.DEFAULT_HICS).count()
+
+            self.assertEqual(calculation_count, 1)
+            self.assertEqual(experiment.target, target)
+            self.assertEqual(response.json(), {'target': str(data['target'])})
+            self.assertFalse(calculate_hics.called)
 
     def test_select_target_feature_not_found(self):
         user = UserFactory()
