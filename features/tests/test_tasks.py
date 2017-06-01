@@ -174,7 +174,7 @@ class TestCalculateHics(TestCase):
         for relevancy in Relevancy.objects.all():
             self.assertIsNotNone(relevancy.relevancy)
             self.assertEqual(relevancy.result_calculation_map.target, target)
-            self.assertEqual(relevancy.iteration, 10) 
+            self.assertEqual(relevancy.iteration, 10)
             self.assertIn(relevancy.features.first(), [feature1, feature2])
         self.assertEqual(Relevancy.objects.filter(features=feature1).count(), 1)
         self.assertEqual(Relevancy.objects.filter(features=feature2).count(), 1)
@@ -208,7 +208,7 @@ class TestCalculateHics(TestCase):
         result_calculation_map = ResultCalculationMapFactory(target=target)
         calculation = CalculationFactory(result_calculation_map=result_calculation_map, max_iteration=1, type=Calculation.FIXED_FEATURE_SET_HICS)
         features = [feature1, feature2]
-        
+
         feature_ids = [feature1.id, feature2.id]
         calculate_hics(calculation_id=calculation.id, bivariate=False, feature_ids=feature_ids)
 
@@ -297,7 +297,7 @@ class TestRemoveUnusedDatasets(TestCase):
         self.assertNotIn(str(dataset.id), _dataframe_columns)
         self.assertNotIn(str(dataset.id), [dataset.name.decode('ascii') for dataset in sa.list()])
 
- 
+
 class TestBuildSpectrogram(TestCase):
     def test_build_spectrogram(self):
         width = 10
