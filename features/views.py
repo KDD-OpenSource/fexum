@@ -79,7 +79,7 @@ class ExperimentDetailView(APIView):
 
 class TargetDetailView(APIView):
     def put(self, request, experiment_id):
-        number_of_iterations = 10
+        number_of_iterations = 30
 
         experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
         serializer = ExperimentTargetSerializer(instance=experiment, data=request.data)
@@ -88,6 +88,12 @@ class TargetDetailView(APIView):
 
         target = Feature.objects.get(id=experiment.target.id)
         result_calculation_map, _ = ResultCalculationMap.objects.get_or_create(target=target)
+
+        # early return to avoid duplicated calculation
+        if Calculation.objects.filter(type=Calculation.DEFAULT_HICS,
+                                      result_calculation_map=result_calculation_map).exists():
+            return Response(serializer.data)
+
         calculation = Calculation.objects.create(type=Calculation.DEFAULT_HICS,
                                                  result_calculation_map=result_calculation_map,
                                                  max_iteration=number_of_iterations,
