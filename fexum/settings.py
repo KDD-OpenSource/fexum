@@ -117,6 +117,16 @@ CELERY_RESULT_BACKEND = 'redis://redis:6379/1'
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_IGNORE_RESULT = False
 
+task_routes = {
+    'features.tasks.calculate_condtional_distributions': {
+        'queue': 'realtime'
+    },
+    'features.tasks.calculate_densities': {
+        'queue': 'realtime'
+    }
+}
+
+
 REST_FRAMEWORK = {
     'COERCE_DECIMAL_TO_STRING': False,
     'DEFAULT_AUTHENTICATION_CLASSES': (
