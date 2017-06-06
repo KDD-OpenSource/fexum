@@ -1,7 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 from celery import shared_task
 from sklearn.neighbors import KernelDensity
-from features.models import Feature, Bin, Slice, Sample, Dataset, ResultCalculationMap, \
+from features.models import Feature, Bin, Slice, Dataset, ResultCalculationMap, \
     Redundancy, Relevancy, Spectrogram, Calculation
 from celery.task import chord
 from celery.utils.log import get_task_logger
@@ -149,12 +149,12 @@ def build_spectrogram(feature_id, width=256, height=128, frequency_base=1.0):
     maximum_frequency = 0.5 * len(feature_column)
     if frequency_base == 1.0:
         # Linear
-        frequency_band_result = frequency_band(height, maximum_frequency-minimum_frequency, minimum_frequency)
+        frequency_band_result = frequency_band(height, maximum_frequency - minimum_frequency, minimum_frequency)
     else:
-        minimum_octave = log(minimum_frequency)/log(frequency_base)
-        maximum_octave = log(maximum_frequency)/log(frequency_base)
+        minimum_octave = log(minimum_frequency) / log(frequency_base)
+        maximum_octave = log(maximum_frequency) / log(frequency_base)
         # Exponential
-        frequency_band_result = frequency_band(height, maximum_octave-minimum_octave, minimum_octave, frequency_base)
+        frequency_band_result = frequency_band(height, maximum_octave - minimum_octave, minimum_octave, frequency_base)
 
     # Write into the spectrogram path
     filename = '{0}/spectrograms/{1}.png'.format(settings.MEDIA_ROOT, feature_id)
@@ -198,39 +198,13 @@ def build_histogram(feature_id, bins=50):
 
 
 @shared_task
-def downsample_feature(feature_id, max_samples=1000):
-    # obsolete
+def get_samples(feature_id, max_samples=None):
+    if not max_samples:
+        max_samples = 10000
     feature = Feature.objects.get(pk=feature_id)
-
-    dataframe = _get_dataframe(feature.dataset.id)
-    column = dataframe[feature.name]
-
-    sample_set = []
-
-    if max_samples < len(column):
-        sampling = column.groupby(np.arange(len(column)) // (len(column)//max_samples)).median()
-    else:
-        sampling = column
-
-    for idx, value in enumerate(sampling):
-        # TODO: Test, order
-        sample = Sample(
-            feature=feature,
-            value=value,
-            order=idx
-        )
-        sample_set.append(sample)
-
-    Sample.objects.bulk_create(sample_set)
-
-    del sample_set, sampling
-
-
-@shared_task
-def get_samples(feature_id, max_samples=10000):
-    feature = Feature.objects.get(pk=feature_id)
-    df = _get_dataframe(feature.dataframe.id)
-    return df.loc[:, feature.name][::np.int(np.ceil(len(df)/max_samples))].to_json()
+    df = _get_dataframe(feature.dataset.id)
+    samples = df.loc[:, feature.name][::np.int(np.ceil(len(df) / max_samples))]
+    return {str(feature_id): list(samples)}
 
 
 @shared_task
@@ -401,11 +375,8 @@ def initialize_from_dataset(dataset_id):
                                   feature_id in feature_ids]
     build_histogram_subtasks = [build_histogram.subtask(immutable=True, kwargs={'feature_id': feature_id}) for
                                 feature_id in feature_ids]
-    downsample_feature_subtasks = [downsample_feature.subtask(immutable=True, kwargs={'feature_id': feature_id}) for
-                                   feature_id in feature_ids]
 
-    subtasks = calculate_feature_statistics_subtasks + build_spectrogram_subtasks + build_histogram_subtasks + \
-        downsample_feature_subtasks
+    subtasks = calculate_feature_statistics_subtasks + build_spectrogram_subtasks + build_histogram_subtasks
 
     chord(subtasks)(initialize_from_dataset_processing_callback.subtask(kwargs={'dataset_id': dataset_id}))
 
@@ -419,48 +390,65 @@ def initialize_from_dataset_processing_callback(*args, **kwargs):
 
 
 @shared_task
-def calculate_conditional_distributions(target_id, feature_constraints, max_samples) -> list:
-    # TODO: Test
+def calculate_conditional_distributions(target_id, feature_constraints, max_samples=None) -> dict:
     target = Feature.objects.get(pk=target_id)
 
     logger.info(
         'Started for target {0} and features ranges/categories {1}'.format(target_id, feature_constraints))
 
-    dataframe = _get_dataframe(dataset_id=target.dataset.id)
+    df = _get_dataframe(dataset_id=target.dataset.id)
 
-    # Convert feature ids to feature name for using it in dataframe
+    # Convert feature ids to feature name for using it in dataframe and store feature ids in dict
+    feature_ids = {target.name: str(target_id)}
     for feature_constraint in feature_constraints:
         feature_name = Feature.objects.get(dataset_id=target.dataset.id,
                                            id=feature_constraint['feature']).name
+        feature_ids[feature_name] = str(feature_constraint['feature'])
         feature_constraint['feature'] = feature_name
 
     logger.info('Changed feature range to {0}'.format(feature_constraints))
 
     # Make filtering based on category or range
-    filter_list = np.array([True] * len(dataframe))
+    filter_list = np.array([True] * len(df))
     for ftr in feature_constraints:
         if 'range' in ftr:
-            filter_list = np.logical_and(dataframe[ftr['feature']] >= ftr['range']['from_value'], filter_list)
-            filter_list = np.logical_and(dataframe[ftr['feature']] <= ftr['range']['to_value'], filter_list)
+            filter_list = np.logical_and(df[ftr['feature']] >= ftr['range']['from_value'], filter_list)
+            filter_list = np.logical_and(df[ftr['feature']] <= ftr['range']['to_value'], filter_list)
 
         elif 'categories' in ftr:
-            filter_list = np.logical_and(dataframe[ftr['feature']].isin(ftr['categories']), filter_list)
+            filter_list = np.logical_and(df[ftr['feature']].isin(ftr['categories']), filter_list)
 
     # Calculate conditional probabilites based on filtering
-    sliced_dataframe = dataframe.loc[filter_list, :]
-    values, counts = np.unique(sliced_dataframe.loc[:, target.name], return_counts=True)
+    sliced_df = df.loc[filter_list, :]
+    values, counts = np.unique(sliced_df.loc[:, target.name], return_counts=True)
     probabilities = counts / filter_list.sum()
 
-    # Subsample dataframe
-    feature_names = [str(ftr['feature']) for ftr in feature_constraints]
-    samples = sliced_dataframe.loc[:, feature_names][::np.int(np.ceil(len(sliced_dataframe)/max_samples))].to_json()
-
     # Convert to result dict
-    result = [{'value': float(probs[0]), 'probability': probs[1]} for probs in zip(values, probabilities)]
+    result = {
+        'distribution':
+            [{'value': float(probs[0]), 'probability': probs[1]} for probs in zip(values, probabilities)],
+    }
+
+    # Subsample dataframe
+    if max_samples:
+        feature_names = [str(ftr['feature']) for ftr in feature_constraints] + [target.name]
+        samples = DataFrame(sliced_df.loc[:, feature_names][::max(np.int(np.ceil(len(sliced_df) / max_samples)), 1)])
+        result['samples'] = {feature_ids[column]: list(samples.loc[:, column]) for column in samples.columns}
 
     logger.info('Result: {0}'.format(result))
 
-    return (result, samples)
+    """
+    e.g.
+    {
+        'distribution': [{'value': 0.0, 'probability': 1.0}],
+        'samples': {
+            id('Col1'): [0.0, 0.0],
+            id('Col2'): [-0.046074360000000002, -0.047435999999999999],
+            id('Col3'): [0.0, 0.0]
+        }
+    }
+    """
+    return result
 
 
 @periodic_task(run_every=(crontab(minute=15)), ignore_result=True)

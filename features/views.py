@@ -13,12 +13,12 @@ from rest_framework.views import APIView
 
 from features.exceptions import NoCSVInArchiveFoundError, NotZIPFileError
 from features.models import Calculation
-from features.models import Feature, Bin, Sample, Dataset, Experiment, Slice, Relevancy, Redundancy, Spectrogram, \
+from features.models import Feature, Bin, Dataset, Experiment, Slice, Relevancy, Redundancy, Spectrogram, \
     ResultCalculationMap
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
-    SampleSerializer, DatasetSerializer, RedundancySerializer, \
+    DatasetSerializer, RedundancySerializer, \
     ExperimentTargetSerializer, RelevancySerializer, ConditionalDistributionRequestSerializer, \
-    ConditionalDistributionResultSerializer, DensitySerializer, \
+    DensitySerializer, \
     SpectrogramSerializer, CalculationSerializer
 from features.tasks import calculate_hics, calculate_conditional_distributions, initialize_from_dataset, \
     calculate_densities, get_samples
@@ -150,10 +150,9 @@ class FeatureListView(APIView):
 
 
 class FeatureSamplesView(APIView):
-    def get(self, request, feature_id):
-        max_samples = SampleSerializer(data=request.data)
-        get_samples_task = get_samples.apply_async(args=[feature_id, max_samples])
-        samples = samples.get()
+    def get(self, _, feature_id, max_samples):
+        get_samples_task = get_samples.apply_async(kwargs={'feature_id': feature_id, 'max_samples': max_samples})
+        samples = get_samples_task.get()
         return Response(samples)
 
 
@@ -227,22 +226,17 @@ class TargetRedundancyResults(APIView):
         return Response(serializer.data)
 
 
-class CondiditonalDistributionsView(APIView):
-    def post(self, request, target_id):
+class ConditionalDistributionsView(APIView):
+    def post(self, request, target_id, max_samples):
         target = get_object_or_404(Feature, pk=target_id)
         serializer = ConditionalDistributionRequestSerializer(data=request.data, many=True)
         serializer.is_valid(raise_exception=True)
 
         # Execute calculation on worker and get a synchronous result back to the client
-        asnyc_result = calculate_conditional_distributions.apply_async(
-            args=[target.id, [dict(data) for data in serializer.data], serializer.max_samples],
+        distributions_task = calculate_conditional_distributions.apply_async(
+            args=[target.id, [dict(data) for data in serializer.data], max_samples],
         )
-
-        # Serialize and validate output
-        result, samples = asnyc_result.get()
-        response_serializer = ConditionalDistributionResultSerializer(data=result, many=True)
-        response_serializer.is_valid(raise_exception=True)
-        return Response(response_serializer.validated_data)
+        return Response(distributions_task.get())
 
 
 class CalculationListView(APIView):

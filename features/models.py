@@ -98,16 +98,6 @@ class Feature(models.Model):
     categories = JSONField(default=None, blank=True, null=True)
 
 
-class Sample(models.Model):
-    class Meta:
-        ordering = ('order',)
-
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
-    value = models.FloatField()
-    order = models.IntegerField()
-
-
 class Bin(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)

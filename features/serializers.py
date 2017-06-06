@@ -2,7 +2,7 @@ from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRel
     SerializerMethodField, Serializer, ListField, FloatField, IntegerField
 from rest_framework.validators import ValidationError
 
-from features.models import Sample, Feature, Bin, Slice, Experiment, Dataset, Redundancy, \
+from features.models import Feature, Bin, Slice, Experiment, Dataset, Redundancy, \
     Relevancy, Spectrogram, Calculation
 
 
@@ -85,10 +85,6 @@ class RedundancySerializer(ModelSerializer):
         fields = ('id', 'first_feature', 'second_feature', 'redundancy', 'weight')
 
 
-class SampleSerializer(Serializer):
-    max_samples = IntegerField(required=False, min_value=1, default=10000)
-
-
 class RangeSerializer(Serializer):
     from_value = FloatField(required=True)
     to_value = FloatField(required=True)
@@ -103,17 +99,11 @@ class ConditionalDistributionRequestSerializer(Serializer):
     feature = PrimaryKeyRelatedField(queryset=Feature.objects.all())
     range = RangeSerializer(required=False)
     categories = ListField(required=False)
-    max_samples = IntegerField(required=False, min_value=0, default=10000)
 
     def validate(self, attrs):
         if (attrs.get('categories') is None) == (attrs.get('range') is None):
             raise ValidationError('Specify either a range or categories.')
         return attrs
-
-
-class ConditionalDistributionResultSerializer(Serializer):
-    value = FloatField(required=True)
-    probability = FloatField(required=True)
 
 
 class DensitySerializer(Serializer):

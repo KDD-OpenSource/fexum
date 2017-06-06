@@ -3,11 +3,11 @@ from decimal import Decimal
 from django.test import TestCase
 from rest_framework.exceptions import ValidationError
 
-from features.serializers import FeatureSerializer, BinSerializer, ExperimentTargetSerializer, SampleSerializer, \
+from features.serializers import FeatureSerializer, BinSerializer, ExperimentTargetSerializer, \
     DatasetSerializer, ExperimentSerializer, RedundancySerializer, RelevancySerializer, \
-    ConditionalDistributionRequestSerializer, ConditionalDistributionResultSerializer, \
+    ConditionalDistributionRequestSerializer, \
     SpectrogramSerializer, CalculationSerializer
-from features.tests.factories import FeatureFactory, BinFactory, DatasetFactory, SampleFactory, ExperimentFactory, \
+from features.tests.factories import FeatureFactory, BinFactory, DatasetFactory, ExperimentFactory, \
     RelevancyFactory, RedundancyFactory, SpectrogramFactory, \
     CalculationFactory
 
@@ -17,7 +17,7 @@ class TestFeatureSerializer(TestCase):
         feature = FeatureFactory()
         serializer = FeatureSerializer(instance=feature)
         data = serializer.data
-        
+
         self.assertEqual(data.pop('id'), str(feature.id))
         self.assertEqual(data.pop('name'), feature.name)
         self.assertEqual(data.pop('min'), feature.min)
@@ -38,17 +38,6 @@ class TestBinSerializer(TestCase):
         self.assertEqual(Decimal(data.pop('from_value')), bin.from_value)
         self.assertEqual(Decimal(data.pop('to_value')), bin.to_value)
         self.assertEqual(data.pop('count'), bin.count)
-        self.assertEqual(len(data), 0)
-
-
-class TestSampleSerializer(TestCase):
-    def test_serialize_one(self):
-        sample = SampleFactory()
-        serializer = SampleSerializer(instance=sample)
-        data = serializer.data
-
-        self.assertEqual(Decimal(data.pop('value')), sample.value)
-        self.assertEqual(Decimal(data.pop('order')), sample.order)
         self.assertEqual(len(data), 0)
 
 
@@ -119,7 +108,7 @@ class TestConditionalDistributionRequestSerializer(TestCase):
         feature = FeatureFactory()
 
         # Test that we can only specify one condition
-        data = {'feature': feature.id, 'range': {'from_value': 0, 'to_value': 1}, 'categories':[4.0, 3]}
+        data = {'feature': feature.id, 'range': {'from_value': 0, 'to_value': 1}, 'categories': [4.0, 3]}
         serializer = ConditionalDistributionRequestSerializer(data=data)
         self.assertRaises(ValidationError, serializer.is_valid, raise_exception=True)
         self.assertEqual(serializer.errors, {'non_field_errors': ['Specify either a range or categories.']})
@@ -128,21 +117,24 @@ class TestConditionalDistributionRequestSerializer(TestCase):
         data = {'feature': feature.id, 'range': {'from_value': 0, 'to_value': 1}}
         serializer = ConditionalDistributionRequestSerializer(data=data)
         serializer.is_valid(raise_exception=True)
+
+        print(dict(serializer.validated_data))
         self.assertEqual(dict(serializer.validated_data), {'feature': feature, 'range': data['range']})
 
         # Test for categories
-        data = {'feature': feature.id, 'categories':[4.0, 3.0]}
+        data = {'feature': feature.id, 'categories': [4.0, 3.0]}
         serializer = ConditionalDistributionRequestSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.assertEqual(dict(serializer.validated_data), {'feature': feature, 'categories': data['categories']})
 
-
+"""
 class TestConditionalDistributionResultSerializer(TestCase):
     def test_serialize_one(self):
         data = {'value': 1, 'probability': 1}
         serializer = ConditionalDistributionResultSerializer(data=data)
         self.assertTrue(serializer.is_valid(raise_exception=True))
         self.assertEqual(serializer.data, data)
+"""
 
 
 class TestSpectrogramSerializer(TestCase):
