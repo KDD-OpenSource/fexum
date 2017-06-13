@@ -38,12 +38,6 @@ class ExperimentListView(APIView):
         serializer.save(user=request.user)
         return Response(serializer.data)
 
-    def post(self, request):
-        serializer = ExperimentSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save(user=request.user)
-        return Response(serializer.data)
-
 
 class CurrentExperimentView(APIView):
     def get(self, request):
