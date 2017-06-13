@@ -60,7 +60,7 @@ class ExperimentSerializer(ModelSerializer):
     class Meta:
         model = Experiment
         fields = ('id', 'dataset', 'target', 'visibility_text_filter', 'visibility_rank_filter', 'analysis_selection',
-                  'visibility_blacklist')
+                  'visibility_blacklist', 'visibility_exclude_filter')
 
     def validate(self, data):
 
