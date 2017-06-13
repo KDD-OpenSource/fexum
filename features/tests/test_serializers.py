@@ -80,6 +80,7 @@ class TestExperimentSerializer(TestCase):
         self.assertEqual(data.pop('target'), experiment.target.id)
         self.assertEqual(data.pop('visibility_rank_filter'), experiment.visibility_rank_filter)
         self.assertEqual(data.pop('visibility_text_filter'), experiment.visibility_text_filter)
+        self.assertEqual(data.pop('visibility_exclude_filter'), experiment.visibility_exclude_filter)
         self.assertEqual(data.pop('analysis_selection'), [f.id for f in experiment.analysis_selection.all()])
         self.assertEqual(data.pop('visibility_blacklist'), [f.id for f in experiment.visibility_blacklist.all()])
         self.assertEqual(len(data), 0)
