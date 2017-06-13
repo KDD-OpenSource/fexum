@@ -10,7 +10,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_C
     HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from rest_framework.test import APITestCase
 
-from features.models import Experiment, Dataset
+from features.models import Experiment, Dataset, Calculation
 from features.serializers import FeatureSerializer, BinSerializer, \
     SampleSerializer, DatasetSerializer, ExperimentSerializer, ExperimentTargetSerializer, \
     RelevancySerializer, RedundancySerializer, SpectrogramSerializer, CalculationSerializer
@@ -25,6 +25,9 @@ class FexumAPITestCase(APITestCase):
         def _replace_uuid_by_string(value: Any) -> Any:
             if isinstance(value, UUID):
                 return str(value)
+
+            if isinstance(value, list):
+                return [_replace_uuid_by_string(item) for item in value]
 
             return value
 
@@ -70,10 +73,9 @@ class TestExperimentListView(FexumAPITestCase):
 
         experiment = Experiment.objects.first()
 
-        data = ExperimentSerializer(instance=experiment).data
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), {'id': str(data['id']), 'dataset': str(data['dataset']),
-                                           'target': data['target']})
+        self.assertEqual(response.json(),
+                         self._replace_uuids_by_strings(ExperimentSerializer(instance=experiment).data))
 
         # Test if creation worked
         self.assertEqual(experiment.dataset, dataset)
@@ -126,10 +128,60 @@ class TestExperimentDetailView(FexumAPITestCase):
                                                ['079a60fc-c3b1-48ee-8bb6-ba19f061e9e0'])
 
     def test_patch_experiment_detail(self):
-        assert False
+        experiment = ExperimentFactory()
+        self.client.force_authenticate(experiment.user)
+
+        visibility_text_filter = 'new_text'
+        visibility_rank_filter = 11
+        analysis_selection = [FeatureFactory(dataset=experiment.dataset)]
+        visibility_blacklist = [FeatureFactory(dataset=experiment.dataset)]
+
+        self.assertNotEqual(experiment.visibility_text_filter, visibility_text_filter)
+        self.assertNotEqual(experiment.visibility_rank_filter, visibility_rank_filter)
+        self.assertNotEqual(experiment.analysis_selection, analysis_selection)
+        self.assertNotEqual(experiment.visibility_blacklist, visibility_blacklist)
+
+        data = {
+            'visibility_rank_filter': visibility_rank_filter,
+            'visibility_text_filter': visibility_text_filter,
+            'analysis_selection': [f.id for f in analysis_selection],
+            'visibility_blacklist': [f.id for f in visibility_blacklist]
+        }
+        url = reverse('experiment-detail', args=[str(experiment.id)])
+
+        response = self.client.patch(url, data)
+
+        experiment = Experiment.objects.get(id=experiment.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(),
+                         self._replace_uuids_by_strings(ExperimentSerializer(instance=experiment).data))
+        self.assertEqual(experiment.visibility_text_filter, visibility_text_filter)
+        self.assertEqual(experiment.visibility_rank_filter, visibility_rank_filter)
+        self.assertEqual([experiment.analysis_selection.first()], analysis_selection)
+        self.assertEqual([experiment.visibility_blacklist.first()], visibility_blacklist)
+
+    def test_patch_experiment_invalid_data(self):
+        experiment = ExperimentFactory()
+        self.client.force_authenticate(experiment.user)
+
+        data = {'visibility_blacklist': str(FeatureFactory().id)}
+
+        url = reverse('experiment-detail', args=[str(experiment.id)])
+        response = self.client.patch(url, data)
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_patch_experiment_detail_not_found(self):
-        assert False
+        user = UserFactory()
+        self.client.force_authenticate(user)
+        experiment = ExperimentFactory()
+        self.assertNotEqual(user, experiment.user)
+
+        url = reverse('experiment-detail', args=[experiment.id])
+        response = self.client.patch(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})
 
     def test_patch_experiment_unauthenticated(self):
         self.validate_error_on_unauthenticated('experiment-detail', lambda url: self.client.patch(url),
@@ -195,6 +247,31 @@ class TestTargetDetailView(FexumAPITestCase):
             calculate_hics.assert_called_once_with(immutable=True, kwargs={'calculation_id': calculation.id,
                                                                            'calculate_redundancies': True})
             # TODO: Test chain call
+
+    def test_select_target_duplicated(self):
+        experiment = ExperimentFactory(target=None)
+        self.client.force_authenticate(experiment.user)
+
+        target = FeatureFactory(dataset=experiment.dataset)
+        result_calculation_map = ResultCalculationMapFactory(target=target)
+        calculation = CalculationFactory(result_calculation_map=result_calculation_map,
+                                         type=Calculation.DEFAULT_HICS)
+
+        url = reverse('experiment-targets-detail', args=[experiment.id])
+        with patch('features.views.calculate_hics.subtask') as calculate_hics:
+
+            response = self.client.put(url, data={'target': target.id}, format='json')
+            self.assertEqual(response.status_code, HTTP_200_OK)
+
+            experiment = Experiment.objects.get(id=experiment.id)
+            data = ExperimentTargetSerializer(instance=experiment).data
+            calculation_count = Calculation.objects.filter(result_calculation_map=result_calculation_map,
+                                                           type=Calculation.DEFAULT_HICS).count()
+
+            self.assertEqual(calculation_count, 1)
+            self.assertEqual(experiment.target, target)
+            self.assertEqual(response.json(), {'target': str(data['target'])})
+            self.assertFalse(calculate_hics.called)
 
     def test_select_target_feature_not_found(self):
         user = UserFactory()

@@ -345,7 +345,8 @@ def calculate_hics(calculation_id, feature_ids=[], bivariate=True, calculate_sup
     target = result_calculation_map.target
     dataframe = _get_dataframe(target.dataset.id)
     features = Feature.objects.filter(dataset=target.dataset).exclude(id=target.id).all()
-    categorical_feature_names = [feature.name for feature in features if feature.is_categorical]
+    categorical_features = Feature.objects.filter(dataset=target.dataset, is_categorical=True).all()
+    categorical_feature_names = [feature.name for feature in categorical_features if feature.is_categorical]
 
     result_storage = DjangoHICSResultStorage(result_calculation_map=result_calculation_map, features=features)
     correlation = IncrementalCorrelation(data=dataframe, target=target.name, result_storage=result_storage,
