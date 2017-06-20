@@ -1,8 +1,9 @@
 from decimal import Decimal
 
 from django.test import TestCase
-from rest_framework.exceptions import ValidationError
+from rest_framework.validators import ValidationError
 
+from features.models import Calculation, Experiment
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentTargetSerializer, \
     DatasetSerializer, ExperimentSerializer, RedundancySerializer, RelevancySerializer, \
     ConditionalDistributionRequestSerializer, \
@@ -10,6 +11,7 @@ from features.serializers import FeatureSerializer, BinSerializer, ExperimentTar
 from features.tests.factories import FeatureFactory, BinFactory, DatasetFactory, ExperimentFactory, \
     RelevancyFactory, RedundancyFactory, SpectrogramFactory, \
     CalculationFactory
+from users.tests.factories import UserFactory
 
 
 class TestFeatureSerializer(TestCase):
@@ -55,13 +57,81 @@ class TestDatasetSerializer(TestCase):
 
 class TestExperimentSerializer(TestCase):
     def test_serialize_one(self):
-        experiment = ExperimentFactory()
+        analysis_whitelist = [FeatureFactory(), FeatureFactory()]
+        visibility_blacklist = [FeatureFactory(), FeatureFactory()]
+
+        experiment = ExperimentFactory(analysis_selection=analysis_whitelist, visibility_blacklist=visibility_blacklist)
         serializer = ExperimentSerializer(instance=experiment)
         data = serializer.data
 
         self.assertEqual(data.pop('id'), str(experiment.id))
         self.assertEqual(data.pop('dataset'), experiment.dataset.id)
         self.assertEqual(data.pop('target'), experiment.target.id)
+        self.assertEqual(data.pop('visibility_rank_filter'), experiment.visibility_rank_filter)
+        self.assertEqual(data.pop('visibility_text_filter'), experiment.visibility_text_filter)
+        self.assertEqual(data.pop('visibility_exclude_filter'), experiment.visibility_exclude_filter)
+        self.assertEqual(data.pop('analysis_selection'), [f.id for f in experiment.analysis_selection.all()])
+        self.assertEqual(data.pop('visibility_blacklist'), [f.id for f in experiment.visibility_blacklist.all()])
+        self.assertEqual(len(data), 0)
+
+    def test_deserialize_one(self):
+        # Limit update for dataset
+        dataset = DatasetFactory()
+        target = FeatureFactory(dataset=dataset)
+        feature1 = FeatureFactory(dataset=dataset)
+        feature2 = FeatureFactory(dataset=dataset)
+        user = UserFactory()
+
+        data = {
+            'dataset': str(dataset.id),
+            'analysis_selection': [str(feature1.id)],
+            'visibility_text_filter': 'this is some random text',
+            'visibility_rank_filter': 1,
+            'visibility_blacklist': [str(feature2.id)],
+        }
+
+        serializer = ExperimentSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        serializer.save(user=user, target=target)
+
+        experiment = Experiment.objects.first()
+        self.assertEqual(data.pop('dataset'), str(experiment.dataset.id))
+        self.assertEqual(data.pop('visibility_text_filter'), experiment.visibility_text_filter)
+        self.assertEqual(data.pop('visibility_rank_filter'), experiment.visibility_rank_filter)
+        self.assertEqual(data.pop('analysis_selection'), [str(f.id) for f in experiment.analysis_selection.all()])
+        self.assertEqual(data.pop('visibility_blacklist'), [str(f.id) for f in experiment.visibility_blacklist.all()])
+        self.assertEqual(len(data), 0)
+
+    def test_deserialize_one_invalid_data(self):
+        experiment = ExperimentFactory()
+        dataset = DatasetFactory()
+        feature = FeatureFactory()
+
+        data = {
+            'dataset': str(dataset.id),
+            'analysis_selection': [str(feature.id)],
+            'visibility_blacklist': [str(feature.id)],
+        }
+
+        serializer = ExperimentSerializer(instance=experiment, data=data, partial=True)
+        with self.assertRaisesRegexp(ValidationError, 'Dataset cannot be changed if target is set.'):
+            serializer.is_valid(raise_exception=True)
+
+        data.pop('dataset')
+        serializer = ExperimentSerializer(instance=experiment, data=data, partial=True)
+        with self.assertRaisesRegexp(ValidationError,
+                                     'All selected features have to be part of the experiment\'s dataset'):
+            serializer.is_valid(raise_exception=True)
+
+        data.pop('analysis_selection')
+        serializer = ExperimentSerializer(instance=experiment, data=data, partial=True)
+        with self.assertRaisesRegexp(ValidationError,
+                                     'All blacklisted features have to be part of the experiment\'s dataset'):
+            serializer.is_valid(raise_exception=True)
+
+        data.pop('visibility_blacklist')
+        serializer = ExperimentSerializer(instance=experiment, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
         self.assertEqual(len(data), 0)
 
 
@@ -152,10 +222,28 @@ class TestSpectrogramSerializer(TestCase):
 class TestCalculationSerializer(TestCase):
     def test_serialize_one(self):
         calculation = CalculationFactory()
+
         serializer = CalculationSerializer(instance=calculation)
+
         data = serializer.data
 
         self.assertEqual(data.pop('id'), str(calculation.id))
         self.assertEqual(data.pop('max_iteration'), calculation.max_iteration)
         self.assertEqual(data.pop('current_iteration'), calculation.current_iteration)
+        self.assertEqual(data.pop('type'), calculation.type)
+        self.assertEqual(data.pop('target'), calculation.result_calculation_map.target.id)
+        self.assertEqual(data.pop('features'), None)
         self.assertEqual(len(data), 0)
+
+    def test_serialize_fixed_feature_set(self):
+        feature1 = FeatureFactory()
+        feature2 = FeatureFactory()
+        relevancy = RelevancyFactory(features=[feature1, feature2])
+        calculation = CalculationFactory(result_calculation_map=relevancy.result_calculation_map,
+                                         type=Calculation.FIXED_FEATURE_SET_HICS)
+
+        serializer = CalculationSerializer(instance=calculation)
+
+        data = serializer.data
+
+        self.assertEqual(data.pop('features'), [feature1.id, feature2.id])

@@ -86,3 +86,15 @@ class TestRetrieveCalculations(TestCase):
     def test_retrieve_calculations(self):
         url = reverse('calculation-list')
         self.assertEqual(url, '/api/calculations')
+
+
+class TestCurrentExperimentView(TestCase):
+    def test_retrieve_current_experiment(self):
+        url = reverse('current-experiment-detail')
+        self.assertEqual(url, '/api/experiments/current')
+
+
+class TestSetCurrentExperimentView(TestCase):
+    def test_set_current_experiment(self):
+        url = reverse('set-current-experiment', args=['391ec5ac-f741-45c9-855a-7615c89ce128'])
+        self.assertEqual(url, '/api/experiments/current/391ec5ac-f741-45c9-855a-7615c89ce128')

@@ -1,6 +1,6 @@
 from factory import DjangoModelFactory, Sequence, SubFactory
 from features.models import Feature, Bin, Slice, Dataset, Experiment, ResultCalculationMap, Redundancy, \
-    Relevancy, Spectrogram, Calculation
+    Relevancy, Spectrogram, Calculation, CurrentExperiment
 from factory.fuzzy import FuzzyFloat, FuzzyInteger, FuzzyText
 from factory.django import FileField, ImageField
 from users.tests.factories import UserFactory
@@ -36,6 +36,25 @@ class ExperimentFactory(DjangoModelFactory):
     user = SubFactory(UserFactory)
     dataset = SubFactory(DatasetFactory)
     target = SubFactory(FeatureFactory)
+    visibility_text_filter = FuzzyText(length=150)
+    visibility_rank_filter = FuzzyInteger(low=1, high=10)
+    visibility_exclude_filter = FuzzyText(length=150)
+
+    @post_generation
+    def analysis_selection(self, create, extracted, **kwargs):
+        if not create:
+            return
+        if extracted:
+            for feature in extracted:
+                self.analysis_selection.add(feature)
+
+    @post_generation
+    def visibility_blacklist(self, create, extracted, **kwargs):
+        if not create:
+            return
+        if extracted:
+            for feature in extracted:
+                self.visibility_blacklist.add(feature)
 
 
 class BinFactory(DjangoModelFactory):
@@ -114,3 +133,11 @@ class CalculationFactory(DjangoModelFactory):
         model = Calculation
 
     result_calculation_map = SubFactory(ResultCalculationMapFactory)
+
+
+class CurrentExperimentFactory(DjangoModelFactory):
+    class Meta:
+        model = CurrentExperiment
+
+    user = SubFactory(UserFactory)
+    experiment = SubFactory(ExperimentFactory)

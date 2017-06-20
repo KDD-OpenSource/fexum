@@ -4,11 +4,14 @@ from features.views import FeatureListView, FeatureSamplesView, DatasetListView,
     FeatureHistogramView, FeatureSlicesView, TargetDetailView, DatasetViewUploadView, \
     ExperimentListView, FeatureRelevancyResultsView, ExperimentDetailView, TargetRedundancyResults, \
     ConditionalDistributionsView, FeatureDensityView, FeatureSpectrogramView, FixedFeatureSetHicsView, \
-    CalculationListView
+    CalculationListView, CurrentExperimentView, SetCurrentExperimentView
 
 urlpatterns = [
     # Experiments
     url(r'experiments$', ExperimentListView.as_view(), name='experiment-list'),
+    url(r'experiments/current$', CurrentExperimentView.as_view(), name='current-experiment-detail'),
+    url(r'experiments/current/(?P<experiment_id>[a-zA-Z0-9-]+)$', SetCurrentExperimentView.as_view(),
+        name='set-current-experiment'),
     url(r'experiments/(?P<experiment_id>[a-zA-Z0-9-]+)$', ExperimentDetailView.as_view(),
         name='experiment-detail'),
     url(r'experiments/(?P<experiment_id>[a-zA-Z0-9-]+)/target$', TargetDetailView.as_view(),

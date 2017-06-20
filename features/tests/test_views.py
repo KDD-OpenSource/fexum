@@ -1,24 +1,49 @@
 import os
 import zipfile
+from typing import Dict, Any, Callable
 from unittest.mock import patch
-from uuid import uuid4
+from uuid import uuid4, UUID
 
+from django.core.handlers.wsgi import WSGIRequest
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_204_NO_CONTENT, \
     HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from rest_framework.test import APITestCase
 
-from features.models import Experiment, Dataset
+from features.models import Experiment, Dataset, Calculation
 from features.serializers import FeatureSerializer, BinSerializer, \
     DatasetSerializer, ExperimentSerializer, ExperimentTargetSerializer, \
     RelevancySerializer, RedundancySerializer, SpectrogramSerializer, CalculationSerializer
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
     DatasetFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, \
-    ResultCalculationMapFactory, SpectrogramFactory, CalculationFactory
+    ResultCalculationMapFactory, SpectrogramFactory, CalculationFactory, CurrentExperimentFactory
 from users.tests.factories import UserFactory
 
 
-class TestExperimentListView(APITestCase):
+class FexumAPITestCase(APITestCase):
+    def _replace_uuids_by_strings(self, values_by_name: Dict) -> Dict:
+        def _replace_uuid_by_string(value: Any) -> Any:
+            if isinstance(value, UUID):
+                return str(value)
+
+            if isinstance(value, list):
+                return [_replace_uuid_by_string(item) for item in value]
+
+            return value
+
+        return dict([(name, _replace_uuid_by_string(value=value)) for name, value in values_by_name.items()])
+
+    def validate_error_on_unauthenticated(self, url_shortcut: str, request: Callable[[str], WSGIRequest],
+                                          url_shortcut_args=[]):
+        url = reverse(url_shortcut, args=url_shortcut_args)
+        response = request(url)
+
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+        self.assertEqual(response.json(),
+                         {'detail': 'Authentication credentials were not provided.'})
+
+
+class TestExperimentListView(FexumAPITestCase):
     def test_retrieve_experiment_list(self):
         experiment = ExperimentFactory()
         ExperimentFactory()  # Also just create create a second experiment with a different user
@@ -48,10 +73,9 @@ class TestExperimentListView(APITestCase):
 
         experiment = Experiment.objects.first()
 
-        data = ExperimentSerializer(instance=experiment).data
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), {'id': str(data['id']), 'dataset': str(data['dataset']),
-                                           'target': data['target']})
+        self.assertEqual(response.json(),
+                         self._replace_uuids_by_strings(ExperimentSerializer(instance=experiment).data))
 
         # Test if creation worked
         self.assertEqual(experiment.dataset, dataset)
@@ -71,15 +95,10 @@ class TestExperimentListView(APITestCase):
             'Invalid pk "079a60fc-c3b1-48ee-8bb6-ba19f061e9e0" - object does not exist.']})
 
     def test_get_experiment_list_unauthenticated(self):
-        url = reverse('experiment-list')
-        response = self.client.post(url, data={})
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+        self.validate_error_on_unauthenticated('experiment-list', lambda url: self.client.post(url, data={}))
 
 
-class TestExperimentDetailView(APITestCase):
+class TestExperimentDetailView(FexumAPITestCase):
     def test_retrieve_experiment_detail(self):
         experiment = ExperimentFactory()
         self.client.force_authenticate(experiment.user)
@@ -87,10 +106,9 @@ class TestExperimentDetailView(APITestCase):
         url = reverse('experiment-detail', args=[experiment.id])
         response = self.client.get(url)
 
-        data = ExperimentSerializer(instance=experiment).data
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), {'id': str(data['id']), 'target': str(data['target']),
-                                           'dataset': str(data['dataset'])})
+        self.assertEqual(response.json(),
+                         self._replace_uuids_by_strings(ExperimentSerializer(instance=experiment).data))
 
     def test_retrieve_experiment_detail_not_found(self):
         user = UserFactory()
@@ -106,15 +124,71 @@ class TestExperimentDetailView(APITestCase):
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
     def test_get_experiment_unauthenticated(self):
-        url = reverse('experiment-detail', args=['079a60fc-c3b1-48ee-8bb6-ba19f061e9e0'])
-        response = self.client.get(url)
+        self.validate_error_on_unauthenticated('experiment-detail', lambda url: self.client.get(url),
+                                               ['079a60fc-c3b1-48ee-8bb6-ba19f061e9e0'])
 
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+    def test_patch_experiment_detail(self):
+        experiment = ExperimentFactory()
+        self.client.force_authenticate(experiment.user)
+
+        visibility_text_filter = 'new_text'
+        visibility_rank_filter = 11
+        analysis_selection = [FeatureFactory(dataset=experiment.dataset)]
+        visibility_blacklist = [FeatureFactory(dataset=experiment.dataset)]
+
+        self.assertNotEqual(experiment.visibility_text_filter, visibility_text_filter)
+        self.assertNotEqual(experiment.visibility_rank_filter, visibility_rank_filter)
+        self.assertNotEqual(experiment.analysis_selection, analysis_selection)
+        self.assertNotEqual(experiment.visibility_blacklist, visibility_blacklist)
+
+        data = {
+            'visibility_rank_filter': visibility_rank_filter,
+            'visibility_text_filter': visibility_text_filter,
+            'analysis_selection': [f.id for f in analysis_selection],
+            'visibility_blacklist': [f.id for f in visibility_blacklist]
+        }
+        url = reverse('experiment-detail', args=[str(experiment.id)])
+
+        response = self.client.patch(url, data)
+
+        experiment = Experiment.objects.get(id=experiment.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+                         self._replace_uuids_by_strings(ExperimentSerializer(instance=experiment).data))
+        self.assertEqual(experiment.visibility_text_filter, visibility_text_filter)
+        self.assertEqual(experiment.visibility_rank_filter, visibility_rank_filter)
+        self.assertEqual([experiment.analysis_selection.first()], analysis_selection)
+        self.assertEqual([experiment.visibility_blacklist.first()], visibility_blacklist)
+
+    def test_patch_experiment_invalid_data(self):
+        experiment = ExperimentFactory()
+        self.client.force_authenticate(experiment.user)
+
+        data = {'visibility_blacklist': str(FeatureFactory().id)}
+
+        url = reverse('experiment-detail', args=[str(experiment.id)])
+        response = self.client.patch(url, data)
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_patch_experiment_detail_not_found(self):
+        user = UserFactory()
+        self.client.force_authenticate(user)
+        experiment = ExperimentFactory()
+        self.assertNotEqual(user, experiment.user)
+
+        url = reverse('experiment-detail', args=[experiment.id])
+        response = self.client.patch(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})
+
+    def test_patch_experiment_unauthenticated(self):
+        self.validate_error_on_unauthenticated('experiment-detail', lambda url: self.client.patch(url),
+                                               ['079a60fc-c3b1-48ee-8bb6-ba19f061e9e0'])
 
 
-class TestTargetDetailView(APITestCase):
+class TestTargetDetailView(FexumAPITestCase):
     def test_delete_target(self):
         experiment = ExperimentFactory()
         self.client.force_authenticate(experiment.user)
@@ -143,12 +217,8 @@ class TestTargetDetailView(APITestCase):
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
     def test_delete_target_unauthenticated(self):
-        url = reverse('experiment-targets-detail', args=['1c6f46c4-e2d6-4378-8dc4-7417cca743da'])
-        response = self.client.delete(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+        self.validate_error_on_unauthenticated('experiment-targets-detail', lambda url: self.client.delete(url),
+                                               ['1c6f46c4-e2d6-4378-8dc4-7417cca743da'])
 
     def test_select_target(self):
         experiment = ExperimentFactory(target=None)
@@ -174,9 +244,34 @@ class TestTargetDetailView(APITestCase):
             data = ExperimentTargetSerializer(instance=experiment).data
             self.assertEqual(experiment.target, target)
             self.assertEqual(response.json(), {'target': str(data['target'])})
-            calculate_hics.assert_called_once_with(immutable=True, kwargs={'calculation': calculation.id,
+            calculate_hics.assert_called_once_with(immutable=True, kwargs={'calculation_id': calculation.id,
                                                                            'calculate_redundancies': True})
             # TODO: Test chain call
+
+    def test_select_target_duplicated(self):
+        experiment = ExperimentFactory(target=None)
+        self.client.force_authenticate(experiment.user)
+
+        target = FeatureFactory(dataset=experiment.dataset)
+        result_calculation_map = ResultCalculationMapFactory(target=target)
+        calculation = CalculationFactory(result_calculation_map=result_calculation_map,
+                                         type=Calculation.DEFAULT_HICS)
+
+        url = reverse('experiment-targets-detail', args=[experiment.id])
+        with patch('features.views.calculate_hics.subtask') as calculate_hics:
+
+            response = self.client.put(url, data={'target': target.id}, format='json')
+            self.assertEqual(response.status_code, HTTP_200_OK)
+
+            experiment = Experiment.objects.get(id=experiment.id)
+            data = ExperimentTargetSerializer(instance=experiment).data
+            calculation_count = Calculation.objects.filter(result_calculation_map=result_calculation_map,
+                                                           type=Calculation.DEFAULT_HICS).count()
+
+            self.assertEqual(calculation_count, 1)
+            self.assertEqual(experiment.target, target)
+            self.assertEqual(response.json(), {'target': str(data['target'])})
+            self.assertFalse(calculate_hics.called)
 
     def test_select_target_feature_not_found(self):
         user = UserFactory()
@@ -206,15 +301,11 @@ class TestTargetDetailView(APITestCase):
         self.assertEqual(response.json(), {'target': ['Target must be from the same dataset.']})
 
     def test_select_feature_unauthenticated(self):
-        url = reverse('experiment-targets-detail', args=['1c6f46c4-e2d6-4378-8dc4-7417cca743da'])
-        response = self.client.put(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+        self.validate_error_on_unauthenticated('experiment-targets-detail', lambda url: self.client.put(url),
+                                               ['1c6f46c4-e2d6-4378-8dc4-7417cca743da'])
 
 
-class TestDatasetListView(APITestCase):
+class TestDatasetListView(FexumAPITestCase):
     def test_retrieve_all_datasets(self):
         user = UserFactory()
 
@@ -228,15 +319,10 @@ class TestDatasetListView(APITestCase):
         self.assertEqual(response.json(), [DatasetSerializer(instance=dataset).data])
 
     def test_retrieve_all_datasets_unauthenticated(self):
-        url = reverse('dataset-list')
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+        self.validate_error_on_unauthenticated('dataset-list', lambda url: self.client.get(url))
 
 
-class TestDatasetUploadView(APITestCase):
+class TestDatasetUploadView(FexumAPITestCase):
     file_name = 'features/tests/assets/test_file.csv'
     url = reverse('dataset-upload')
     zip_file_name = 'archive.zip'
@@ -288,11 +374,7 @@ class TestDatasetUploadView(APITestCase):
         self.assertEqual(response.json(), {'detail': 'No CSV file found in ZIP archive.'})
 
     def test_upload_dataset_unauthenticated(self):
-        response = self.client.get(self.url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+        self.validate_error_on_unauthenticated('dataset-upload', lambda url: self.client.get(self.url))
 
     def tearDown(self):
         # Remove that shitty file
@@ -301,7 +383,7 @@ class TestDatasetUploadView(APITestCase):
             self.assertFalse(os.path.isfile(self.zip_file_name))
 
 
-class TestFeatureListView(APITestCase):
+class TestFeatureListView(FexumAPITestCase):
     def test_retrieve_feature_list(self):
         user = UserFactory()
         self.client.force_authenticate(user)
@@ -337,15 +419,11 @@ class TestFeatureListView(APITestCase):
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
     def test_retrieve_feature_list_dataset_unauthenticated(self):
-        url = reverse('dataset-features-list', args=['5781ca8a-3c7d-46b4-897e-90d80e938258'])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+        self.validate_error_on_unauthenticated('dataset-features-list', lambda url: self.client.get(url),
+                                               ['5781ca8a-3c7d-46b4-897e-90d80e938258'])
 
 
-class TestFeatureSamplesView(APITestCase):
+class TestFeatureSamplesView(FexumAPITestCase):
     def test_retrieve_samples(self):
         class get_mock():
             def get(self):
@@ -377,16 +455,11 @@ class TestFeatureSamplesView(APITestCase):
     def test_retrieve_samples_not_found(self):
         pass
 
-    def test_retrieve_samples_not_authenticated(self):
-        url = reverse('feature-samples', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_retrieve_samples_unauthenticated(self):
+        self.validate_error_on_unauthenticated('feature-samples', lambda url: self.client.get(url), ['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
 
 
-class TestFeatureHistogramView(APITestCase):
+class TestFeatureHistogramView(FexumAPITestCase):
     def test_retrieve_histogram(self):
         user = UserFactory()
         self.client.force_authenticate(user)
@@ -417,16 +490,12 @@ class TestFeatureHistogramView(APITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
-    def test_retrieve_histogram_not_authenticated(self):
-        url = reverse('feature-histogram', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_retrieve_histogram_unauthenticated(self):
+        self.validate_error_on_unauthenticated('feature-histogram', lambda url: self.client.get(url),
+                                               ['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
 
 
-class TestFeatureSlicesView(APITestCase):
+class TestFeatureSlicesView(FexumAPITestCase):
     def test_retrieve_slices(self):
         user = UserFactory()
         self.client.force_authenticate(user)
@@ -484,16 +553,11 @@ class TestFeatureSlicesView(APITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
-    def test_retrieve_slices_target_not_authenticated(self):
-        url = reverse('target-feature-slices', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.post(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_retrieve_slices_target_unauthenticated(self):
+        self.validate_error_on_unauthenticated('target-feature-slices', lambda url:  self.client.post(url), ['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
 
 
-class TestFeatureRelevancyResultsView(APITestCase):
+class TestFeatureRelevancyResultsView(FexumAPITestCase):
     def test_retrieve_relevancy_results(self):
         user = UserFactory()
         self.client.force_authenticate(user)
@@ -529,17 +593,11 @@ class TestFeatureRelevancyResultsView(APITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
-    def test_retrieve_relevancy_results_target_not_authenticated(self):
-        url = reverse('target-feature-relevancy_results',
-                      args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_retrieve_relevancy_results_target_unauthenticated(self):
+        self.validate_error_on_unauthenticated('target-feature-relevancy_results', lambda url: self.client.get(url), ['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
 
 
-class TestFeatureRedundancyResults(APITestCase):
+class TestFeatureRedundancyResults(FexumAPITestCase):
     def test_retrieve_redundancy_results(self):
         user = UserFactory()
         self.client.force_authenticate(user)
@@ -577,16 +635,11 @@ class TestFeatureRedundancyResults(APITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
-    def test_retrieve_redundancy_results_dataset_not_authenticated(self):
-        url = reverse('feature-redundancy_results', args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_retrieve_redundancy_results_dataset_unauthenticated(self):
+        self.validate_error_on_unauthenticated('feature-redundancy_results', lambda url: self.client.get(url), ['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
 
 
-class TestConditionalDistributionsView(APITestCase):
+class TestConditionalDistributionsView(FexumAPITestCase):
     def test_conditional_distributions_target_not_found(self):
         pass
 
@@ -596,14 +649,8 @@ class TestConditionalDistributionsView(APITestCase):
     def test_conditional_distributions_missing_data(self):
         pass
 
-    def test_conditional_distributions_not_authenticated(self):
-        url = reverse('target-conditional-distributions',
-                      args=['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
-        response = self.client.post(url, data={}, format='json')
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_conditional_distributions_unauthenticated(self):
+        self.validate_error_on_unauthenticated('target-condidtional-distributions', lambda url: self.client.post(url, data={}, format='json'), ['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
 
     def test_conditional_distributions(self):
         class get_mock():
@@ -649,7 +696,7 @@ class TestConditionalDistributionsView(APITestCase):
         self.assertEqual(response.json(), {'task_mock_return_value': '1'})
 
 
-class TestFeatureSpectrogramView(APITestCase):
+class TestFeatureSpectrogramView(FexumAPITestCase):
     def test_retrieve_spectrogram(self):
         user = UserFactory()
         self.client.force_authenticate(user)
@@ -672,16 +719,11 @@ class TestFeatureSpectrogramView(APITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
-    def test_retrieve_spectrogram_authenticated(self):
-        url = reverse('feature-spectrogram', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_retrieve_spectrogram_unauthenticated(self):
+        self.validate_error_on_unauthenticated('feature-spectrogram', lambda url: self.client.get(url), ['9b1fe7e4-9bb7-at-a1e4-40a35465d310'])
 
 
-class TestFixedFeatureSetHicsView(APITestCase):
+class TestFixedFeatureSetHicsView(FexumAPITestCase):
     def test_fixed_feature_set_hics(self):
         user = UserFactory()
         self.client.force_authenticate(user)
@@ -722,7 +764,8 @@ class TestFixedFeatureSetHicsView(APITestCase):
             create_calculation.return_value = calculation
 
             url = reverse('fixed-feature-set-hics', args=[str(target.id)])
-            response = self.client.post(url, data={'features': ['9b1fe7e4-9bb7-4388-a1e4-40a35465d310']}, format='json')
+            response = self.client.post(url, data={'features': ['9b1fe7e4-9bb7-4388-a1e4-40a35465d310']},
+                                        format='json')
 
             task_mock.assert_not_called()
 
@@ -739,16 +782,11 @@ class TestFixedFeatureSetHicsView(APITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
         self.assertEqual(response.json(), {'detail': 'Not found.'})
 
-    def test_fixed_feature_set_hics_not_authenticated(self):
-        url = reverse('fixed-feature-set-hics', args=['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
-        response = self.client.post(url)
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+    def test_fixed_feature_set_hics_unauthenticated(self):
+        self.validate_error_on_unauthenticated('fixed-feature-set-hics', lambda url: self.client.post(url), ['9b1fe7e4-9bb7-4388-a1e4-40a35465d310'])
 
 
-class TestCalculationListView(APITestCase):
+class TestCalculationListView(FexumAPITestCase):
     def test_retrieve_calculations(self):
         user = UserFactory()
 
@@ -759,7 +797,8 @@ class TestCalculationListView(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), [CalculationSerializer(instance=calculation).data])
+        self.assertEqual(response.json(),
+                         [self._replace_uuids_by_strings(CalculationSerializer(instance=calculation).data)])
 
     def test_do_not_retrieve_done_calculations(self):
         user = UserFactory()
@@ -774,9 +813,66 @@ class TestCalculationListView(APITestCase):
         self.assertEqual(response.json(), [])
 
     def test_retrieve_calculations_unauthenticated(self):
-        url = reverse('calculation-list')
+        self.validate_error_on_unauthenticated('calculation-list', lambda url: self.client.get(url))
+
+
+class TestCurrentExperimentView(FexumAPITestCase):
+    def test_retrieve_current_experiment_unauthenticated(self):
+        self.validate_error_on_unauthenticated('current-experiment-detail', lambda url: self.client.get(url))
+
+    def test_retrieve_current_experiment(self):
+        user = UserFactory()
+        current_experiment = CurrentExperimentFactory(user=user, experiment__user=user)
+
+        url = reverse('current-experiment-detail')
+
+        self.client.force_authenticate(user)
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.json(),
-                         {'detail': 'Authentication credentials were not provided.'})
+                         self._replace_uuids_by_strings(
+                             ExperimentSerializer(instance=current_experiment.experiment).data))
+
+    def test_retrieve_current_experiment_not_found(self):
+        user = UserFactory()
+
+        url = reverse('current-experiment-detail')
+
+        self.client.force_authenticate(user)
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})
+
+
+class TestSetCurrentExperimentView(FexumAPITestCase):
+    def test_set_current_experiment_unauthenticated(self):
+        self.validate_error_on_unauthenticated('set-current-experiment', lambda url: self.client.put(url), [
+            '391ec5ac-f741-45c9-855a-7615c89ce128'])
+
+    def test_set_current_experiment(self):
+        user = UserFactory()
+        experiment = ExperimentFactory(user=user)
+
+        url = reverse('set-current-experiment', args=[str(experiment.id)])
+
+        self.client.force_authenticate(user)
+        response = self.client.put(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.json(),
+                         self._replace_uuids_by_strings(ExperimentSerializer(instance=experiment).data))
+
+    def test_set_current_experiment_not_found(self):
+        user = UserFactory()
+        # Belongs to someone else
+        experiment = ExperimentFactory()
+
+        url = reverse('set-current-experiment', args=[str(experiment.id)])
+
+        self.client.force_authenticate(user)
+        response = self.client.put(url)
+
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})

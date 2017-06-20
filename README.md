@@ -1,4 +1,4 @@
-# FEXUM
+# FEXUM [![Build Status](https://travis-ci.org/KDD-OpenSource/fexum.svg?branch=master)](https://travis-ci.org/KDD-OpenSource/fexum)
 _Framework for Exploring and Understanding Multivariate Correlations_
 
 This repository contains the backend of our big data framework for exploring and understanding:
@@ -41,6 +41,19 @@ This is useful when you want to test and create database objects, e.g.:
 
 ### Task Monitoring
 Open the docker host at port 5555
+
+### Running with docker in your own network environment
+
+By default the network is configured for the docker containers as followed:
+```
+networks:
+  fexum:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.151.100.0/24
+```
+If this does not work with your network setup, change the subnet.
 
 ## Development & Contributing
 

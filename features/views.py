@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 from features.exceptions import NoCSVInArchiveFoundError, NotZIPFileError
 from features.models import Calculation
 from features.models import Feature, Bin, Dataset, Experiment, Slice, Relevancy, Redundancy, Spectrogram, \
-    ResultCalculationMap
+    ResultCalculationMap, CurrentExperiment
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
     DatasetSerializer, RedundancySerializer, \
     ExperimentTargetSerializer, RelevancySerializer, ConditionalDistributionRequestSerializer, \
@@ -33,9 +33,27 @@ class ExperimentListView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = ExperimentSerializer(data=request.data)
+        serializer = ExperimentSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save(user=request.user)
+        return Response(serializer.data)
+
+
+class CurrentExperimentView(APIView):
+    def get(self, request):
+        current_experiment, _ = CurrentExperiment.objects.get_or_create(user=request.user)
+        experiment = get_object_or_404(Experiment, pk=current_experiment.experiment_id)
+        serializer = ExperimentSerializer(instance=experiment)
+        return Response(serializer.data)
+
+
+class SetCurrentExperimentView(APIView):
+    def put(self, request, experiment_id):
+        current_experiment, _ = CurrentExperiment.objects.get_or_create(user=request.user)
+        experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
+        current_experiment.experiment = experiment
+        current_experiment.save()
+        serializer = ExperimentSerializer(instance=experiment)
         return Response(serializer.data)
 
 
@@ -45,10 +63,17 @@ class ExperimentDetailView(APIView):
         serializer = ExperimentSerializer(instance=experiment)
         return Response(serializer.data)
 
+    def patch(self, request, experiment_id):
+        experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
+        serializer = ExperimentSerializer(instance=experiment, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
 
 class TargetDetailView(APIView):
     def put(self, request, experiment_id):
-        number_of_iterations = 10
+        number_of_iterations = 30
 
         experiment = get_object_or_404(Experiment, pk=experiment_id, user=request.user)
         serializer = ExperimentTargetSerializer(instance=experiment, data=request.data)
@@ -57,13 +82,19 @@ class TargetDetailView(APIView):
 
         target = Feature.objects.get(id=experiment.target.id)
         result_calculation_map, _ = ResultCalculationMap.objects.get_or_create(target=target)
+
+        # early return to avoid duplicated calculation
+        if Calculation.objects.filter(type=Calculation.DEFAULT_HICS,
+                                      result_calculation_map=result_calculation_map).exists():
+            return Response(serializer.data)
+
         calculation = Calculation.objects.create(type=Calculation.DEFAULT_HICS,
                                                  result_calculation_map=result_calculation_map,
                                                  max_iteration=number_of_iterations,
                                                  current_iteration=0)
 
         tasks = [calculate_hics.subtask(immutable=True,
-                                        kwargs={'calculation': calculation.id,
+                                        kwargs={'calculation_id': calculation.id,
                                                 'calculate_redundancies': True})] * number_of_iterations
 
         chain(tasks).apply_async()

@@ -10,6 +10,11 @@ class Experiment(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     target = models.ForeignKey('Feature', on_delete=models.CASCADE, blank=True, null=True)
     dataset = models.ForeignKey('Dataset', on_delete=models.CASCADE)
+    analysis_selection = models.ManyToManyField('Feature', related_name='analysis_selection')  # Not unique?
+    visibility_text_filter = models.CharField(max_length=150, default='', blank=True)
+    visibility_rank_filter = models.IntegerField(blank=True, null=True)
+    visibility_blacklist = models.ManyToManyField('Feature', related_name='visibility_blacklist')
+    visibility_exclude_filter = models.CharField(max_length=150, default='', blank=True)
 
 
 class Dataset(models.Model):
@@ -31,6 +36,11 @@ class Dataset(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class CurrentExperiment(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, unique=True)
+    experiment = models.ForeignKey('Experiment', on_delete=models.CASCADE, null=True, blank=True)
 
 
 class ResultCalculationMap(models.Model):
