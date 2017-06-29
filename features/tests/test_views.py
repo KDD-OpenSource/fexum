@@ -650,7 +650,7 @@ class TestConditionalDistributionsView(FexumAPITestCase):
         pass
 
     def test_conditional_distributions_unauthenticated(self):
-        self.validate_error_on_unauthenticated('target-condidtional-distributions', lambda url: self.client.post(url, data={}, format='json'), ['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+        self.validate_error_on_unauthenticated('target-conditional-distributions', lambda url: self.client.post(url, data={}, format='json'), ['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
 
     def test_conditional_distributions(self):
         class get_mock():
