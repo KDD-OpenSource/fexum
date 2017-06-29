@@ -8,7 +8,7 @@ from features.models import Feature, Bin, Dataset, Slice, Redundancy, Relevancy,
     Spectrogram
 from features.models import ResultCalculationMap, Calculation
 from features.tasks import _dataframe_columns, _dataframe_last_access, _get_dataframe
-from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
+from features.tasks import initialize_from_dataset, build_histogram, \
     calculate_feature_statistics, calculate_hics, calculate_densities, remove_unused_dataframes, \
     build_spectrogram
 from features.tasks import get_samples, calculate_conditional_distributions
