@@ -19,7 +19,7 @@ RUN npm install -g grunt-cli bower
 RUN npm install
 RUN echo '{ "allow_root": true }' > /root/.bowerrc
 RUN bower install --quiet --silent
-RUN grunt buildProd --out=/var/www/fexum/public > /dev/null
+RUN grunt buildProd --out=/var/www/fexum/public # > /dev/null
 
 # Configure NGINX
 WORKDIR /setup
