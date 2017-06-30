@@ -68,6 +68,7 @@ class Calculation(models.Model):
     max_iteration = models.IntegerField(default=0)
     current_iteration = models.IntegerField(default=0)
     type = models.CharField(max_length=30, choices=RESULT_TYPE, default=NONE)
+    features = models.ManyToManyField('Feature', blank=True)
 
 
 class Relevancy(models.Model):
