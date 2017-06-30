@@ -170,4 +170,4 @@ class CalculationSerializer(ModelSerializer):
         if obj.type != Calculation.FIXED_FEATURE_SET_HICS:
             return None
 
-        return [feature.id for feature in obj.features]
+        return [feature.id for feature in obj.features.all()]
