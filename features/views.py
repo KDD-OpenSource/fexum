@@ -182,7 +182,8 @@ class FeatureListView(APIView):
 
 class FeatureSamplesView(APIView):
     def get(self, _, feature_id, max_samples):
-        get_samples_task = get_samples.apply_async(kwargs={'feature_id': feature_id, 'max_samples': max_samples})
+        get_samples_task = get_samples.apply_async(kwargs={'feature_id': feature_id,
+                                                   'max_samples': None if max_samples is None else int(max_samples)})
         samples = get_samples_task.get()
         return Response(samples)
 
@@ -264,8 +265,10 @@ class ConditionalDistributionsView(APIView):
         serializer.is_valid(raise_exception=True)
 
         # Execute calculation on worker and get a synchronous result back to the client
+
         distributions_task = calculate_conditional_distributions.apply_async(
-            args=[target.id, [dict(data) for data in serializer.data], max_samples],
+            args=[target.id, [dict(data) for data in serializer.data],
+                  None if max_samples is None else int(max_samples)],
         )
         return Response(distributions_task.get())
 
