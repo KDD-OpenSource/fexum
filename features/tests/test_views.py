@@ -443,7 +443,7 @@ class TestFeatureSamplesView(FexumAPITestCase):
 
             task_mock.assert_called_once_with(kwargs={
                 'feature_id': str(feature.id),
-                'max_samples': str(1337)
+                'max_samples': 1337
             })
 
             self.assertEqual(response.status_code, HTTP_200_OK)
@@ -686,7 +686,7 @@ class TestConditionalDistributionsView(FexumAPITestCase):
         self.assertEqual(response.json(), {'task_mock_return_value': '1'})
 
         # Test with max_samples
-        max_samples = '2'
+        max_samples = 2
         url = reverse('target-conditional-distributions', args=[target.id, max_samples])
         with patch('features.views.calculate_conditional_distributions.apply_async', ) as task_mock:
             task_mock.return_value = get_mock()
