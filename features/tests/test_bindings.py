@@ -2,7 +2,7 @@ from channels.tests import ChannelTestCase, HttpClient
 
 from features.models import Dataset, Calculation
 from features.tests.factories import ExperimentFactory, CalculationFactory, DatasetFactory, FeatureFactory, \
-    RelevancyFactory, CurrentExperimentFactory
+    RelevancyFactory, CurrentExperimentFactory, ResultCalculationMapFactory
 
 
 class TestDatasetBinding(ChannelTestCase):
@@ -90,8 +90,10 @@ class TestCalculationBinding(ChannelTestCase):
         client.join_group('user-{}-updates'.format(experiment.user_id))
 
         feature = FeatureFactory()
-        relevancy = RelevancyFactory(features=[feature], result_calculation_map__target=experiment.target)
-        calculation = CalculationFactory(result_calculation_map=relevancy.result_calculation_map,
+        # relevancy = RelevancyFactory(features=[feature], result_calculation_map__target=experiment.target)
+        result_calculation_map = ResultCalculationMapFactory()
+        calculation = CalculationFactory(features=[feature],
+                                         result_calculation_map=result_calculation_map,
                                          type=Calculation.FIXED_FEATURE_SET_HICS)
 
         # It should not receive this one as it's on a different channel
