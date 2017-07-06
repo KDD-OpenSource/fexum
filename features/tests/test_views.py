@@ -742,8 +742,8 @@ class TestFixedFeatureSetHicsView(FexumAPITestCase):
             response = self.client.post(url, data={'features': [feature1.id, feature2.id]}, format='json')
 
             task_mock.assert_called_once_with(kwargs={
-                'calculation_id': calculation.id,
-                'feature_ids': [feature1.id, feature2.id],
+                'calculation_id': str(calculation.id),
+                'feature_ids': [str(feature1.id), str(feature2.id)],
                 'bivariate': False,
                 'calculate_supersets': False,
                 'calculate_redundancies': False})

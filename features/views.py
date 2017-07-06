@@ -94,7 +94,7 @@ class TargetDetailView(APIView):
                                                  current_iteration=0)
 
         tasks = [calculate_hics.subtask(immutable=True,
-                                        kwargs={'calculation_id': calculation.id,
+                                        kwargs={'calculation_id': str(calculation.id),
                                                 'calculate_redundancies': True})] * number_of_iterations
 
         chain(tasks).apply_async()
@@ -127,8 +127,8 @@ class FixedFeatureSetHicsView(APIView):
                                                  current_iteration=0,
                                                  features=features)
         calculate_hics.apply_async(kwargs={
-            'calculation_id': calculation.id,
-            'feature_ids': [feature.id for feature in features],
+            'calculation_id': str(calculation.id),
+            'feature_ids': [str(feature.id) for feature in features],
             'bivariate': False,
             'calculate_supersets': False,
             'calculate_redundancies': False})
