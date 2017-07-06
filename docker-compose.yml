@@ -82,7 +82,7 @@ services:
       - fexum
     volumes:
       - .:/code
-    command: "celery -A fexum worker --beat --loglevel=info"
+    command: "celery -A fexum worker --beat --loglevel=info -Q realtime,celery"
     shm_size: 8g
     environment:
       DJANGO_SETTINGS_MODULE: fexum.settings

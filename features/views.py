@@ -124,9 +124,10 @@ class FixedFeatureSetHicsView(APIView):
         calculation = Calculation.objects.create(type=Calculation.FIXED_FEATURE_SET_HICS,
                                                  result_calculation_map=result_calculation_map,
                                                  max_iteration=1,
-                                                 current_iteration=0)
+                                                 current_iteration=0,
+                                                 features=features)
         calculate_hics.apply_async(kwargs={
-            'calculation': calculation.id,
+            'calculation_id': calculation.id,
             'feature_ids': [feature.id for feature in features],
             'bivariate': False,
             'calculate_supersets': False,

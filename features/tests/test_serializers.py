@@ -10,7 +10,7 @@ from features.serializers import FeatureSerializer, BinSerializer, ExperimentTar
     SpectrogramSerializer, CalculationSerializer
 from features.tests.factories import FeatureFactory, BinFactory, DatasetFactory, SampleFactory, ExperimentFactory, \
     RelevancyFactory, RedundancyFactory, SpectrogramFactory, \
-    CalculationFactory
+    CalculationFactory, ResultCalculationMapFactory
 from users.tests.factories import UserFactory
 
 
@@ -246,9 +246,10 @@ class TestCalculationSerializer(TestCase):
     def test_serialize_fixed_feature_set(self):
         feature1 = FeatureFactory()
         feature2 = FeatureFactory()
-        relevancy = RelevancyFactory(features=[feature1, feature2])
-        calculation = CalculationFactory(result_calculation_map=relevancy.result_calculation_map,
-                                         type=Calculation.FIXED_FEATURE_SET_HICS)
+        result_calculation_map = ResultCalculationMapFactory()
+        calculation = CalculationFactory(result_calculation_map=result_calculation_map,
+                                         type=Calculation.FIXED_FEATURE_SET_HICS,
+                                         features=[feature1, feature2])
 
         serializer = CalculationSerializer(instance=calculation)
 
