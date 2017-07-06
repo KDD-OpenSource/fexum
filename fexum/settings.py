@@ -123,6 +123,9 @@ task_routes = {
     },
     'features.tasks.calculate_densities': {
         'queue': 'realtime'
+    },
+    'features.tasks.get_samples': {
+        'queue': 'realtime'
     }
 }
 
