@@ -14,6 +14,7 @@ class Experiment(models.Model):
     visibility_text_filter = models.CharField(max_length=150, default='', blank=True)
     visibility_rank_filter = models.IntegerField(blank=True, null=True)
     visibility_blacklist = models.ManyToManyField('Feature', related_name='visibility_blacklist')
+    visibility_exclude_filter = models.CharField(max_length=150, default='', blank=True)
 
 
 class Dataset(models.Model):
@@ -30,7 +31,7 @@ class Dataset(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=255)
     content = models.FileField()
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PROCESSING) # TODO: Use status appriatly
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PROCESSING)  # TODO: Use status appriatly
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, blank=True, null=True)
 
     def __str__(self):

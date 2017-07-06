@@ -21,11 +21,10 @@ are located in different repositories.
 * [Alexander Meißner](https://github.com/Lichtso)
 
 ## Getting Started
-1. Run the [setup script](deployment/ubuntu-setup.sh). **Do not install docker.io using apt-get!**
-2. Run `$ docker-compose build` to build all containers (do that when you are changing dependencies)
-3. Run `$ docker-compose up` to start all containers. Put `-d` for headless mode
-4. Run `$ docker-compose run web_wsgi python3 manage.py migrate` to apply migrations
-5. Access the docker ip (mostly localhost) at port 80.
+1. Run `$ docker-compose build` to build all containers (do that when you are changing dependencies)
+2. Run `$ docker-compose up` to start all containers. Put `-d` for headless mode
+3. Run `$ docker-compose run web_wsgi python3 manage.py migrate` to apply migrations
+4. Access the docker ip (mostly localhost) at port 80.
 
 ### Python Shell
 ```shell
