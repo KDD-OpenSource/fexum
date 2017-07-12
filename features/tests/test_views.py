@@ -244,7 +244,7 @@ class TestTargetDetailView(FexumAPITestCase):
             data = ExperimentTargetSerializer(instance=experiment).data
             self.assertEqual(experiment.target, target)
             self.assertEqual(response.json(), {'target': str(data['target'])})
-            calculate_hics.assert_called_once_with(immutable=True, kwargs={'calculation_id': calculation.id,
+            calculate_hics.assert_called_once_with(immutable=True, kwargs={'calculation_id': str(calculation.id),
                                                                            'calculate_redundancies': True})
             # TODO: Test chain call
 
@@ -743,7 +743,7 @@ class TestFixedFeatureSetHicsView(FexumAPITestCase):
 
             task_mock.assert_called_once_with(kwargs={
                 'calculation_id': str(calculation.id),
-                'feature_ids': [str(feature1.id), str(feature2.id)],
+                'feature_ids': sorted([str(feature1.id), str(feature2.id)], reverse=True),
                 'bivariate': False,
                 'calculate_supersets': False,
                 'calculate_redundancies': False})
