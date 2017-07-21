@@ -204,7 +204,7 @@ class TestCalculateHics(TestCase):
         calculation = CalculationFactory(result_calculation_map=result_calculation_map, max_iteration=1, type=Calculation.FIXED_FEATURE_SET_HICS)
         features = [feature1, feature2]
 
-        feature_ids = [feature1.id, feature2.id]
+        feature_ids = {feature1.id, feature2.id}
         calculate_hics(calculation_id=calculation.id, bivariate=False, feature_ids=feature_ids)
 
         # Relevancy
@@ -242,7 +242,7 @@ class TestCalculateHics(TestCase):
         result_calculation_map = ResultCalculationMapFactory(target=target)
         calculation = CalculationFactory(result_calculation_map=result_calculation_map, max_iteration=1, type=Calculation.FEATURE_SUPER_SET_HICS)
 
-        feature_ids = [feature1.id]
+        feature_ids = {feature1.id}
         calculate_hics(calculation_id=calculation.id, bivariate=False, feature_ids=feature_ids, calculate_supersets=True)
 
         # Relevancy

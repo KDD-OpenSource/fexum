@@ -128,7 +128,7 @@ class FixedFeatureSetHicsView(APIView):
                                                  features=features)
         calculate_hics.apply_async(kwargs={
             'calculation_id': str(calculation.id),
-            'feature_ids': [str(feature.id) for feature in features],
+            'feature_ids': {str(feature.id) for feature in features},
             'bivariate': False,
             'calculate_supersets': False,
             'calculate_redundancies': False})

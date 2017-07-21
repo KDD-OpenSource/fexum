@@ -208,7 +208,7 @@ def get_samples(feature_id, max_samples=None):
 
 
 @shared_task
-def calculate_hics(calculation_id, feature_ids=[], bivariate=True, calculate_supersets=False, calculate_redundancies=False):
+def calculate_hics(calculation_id, feature_ids={}, bivariate=True, calculate_supersets=False, calculate_redundancies=False):
     class DjangoHICSResultStorage(AbstractResultStorage):
         def __init__(self, result_calculation_map, features):
             self.features = features

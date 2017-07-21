@@ -739,11 +739,11 @@ class TestFixedFeatureSetHicsView(FexumAPITestCase):
             create_calculation.return_value = calculation
 
             url = reverse('fixed-feature-set-hics', args=[str(target.id)])
-            response = self.client.post(url, data={'features': sorted([feature1.id, feature2.id])}, format='json')
+            response = self.client.post(url, data={'features': [feature1.id, feature2.id]}, format='json')
 
             task_mock.assert_called_once_with(kwargs={
                 'calculation_id': str(calculation.id),
-                'feature_ids': sorted([str(feature1.id), str(feature2.id)]),
+                'feature_ids': {str(feature1.id), str(feature2.id)},
                 'bivariate': False,
                 'calculate_supersets': False,
                 'calculate_redundancies': False})
