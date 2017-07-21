@@ -4,14 +4,14 @@ from unittest.mock import patch, call
 
 import SharedArray as sa
 from django.test import TestCase
-
-from features.models import Feature, Sample, Bin, Dataset, Slice, Redundancy, Relevancy, \
+from features.models import Feature, Bin, Dataset, Slice, Redundancy, Relevancy, \
     Spectrogram
 from features.models import ResultCalculationMap, Calculation
 from features.tasks import _dataframe_columns, _dataframe_last_access, _get_dataframe
-from features.tasks import initialize_from_dataset, build_histogram, downsample_feature, \
+from features.tasks import initialize_from_dataset, build_histogram, \
     calculate_feature_statistics, calculate_hics, calculate_densities, remove_unused_dataframes, \
     build_spectrogram
+from features.tasks import get_samples, calculate_conditional_distributions
 from features.tests.factories import FeatureFactory, DatasetFactory, ResultCalculationMapFactory, CalculationFactory
 
 
@@ -32,30 +32,28 @@ class TestInitializeFromDatasetTask(TestCase):
 
         # TODO: Fuck nesting
         with patch('features.tasks.build_histogram.subtask') as build_histogram_mock:
-            with patch('features.tasks.downsample_feature.subtask') as downsample_feature_mock:
-                with patch('features.tasks.calculate_feature_statistics.subtask') \
-                        as calculate_feature_statistics_mock:
-                    with patch('features.tasks.build_spectrogram.subtask') \
-                            as build_spectrogram_mock:
-                        with patch('features.tasks.initialize_from_dataset_processing_callback.subtask') \
-                                as initialize_from_dataset_processing_callback_mock:
-                            with patch('features.tasks.chord') \
-                                    as chord_mock:
+            with patch('features.tasks.calculate_feature_statistics.subtask') \
+                    as calculate_feature_statistics_mock:
+                with patch('features.tasks.build_spectrogram.subtask') \
+                        as build_spectrogram_mock:
+                    with patch('features.tasks.initialize_from_dataset_processing_callback.subtask') \
+                            as initialize_from_dataset_processing_callback_mock:
+                        with patch('features.tasks.chord') \
+                                as chord_mock:
 
-                                initialize_from_dataset(dataset_id=dataset.id)
+                            initialize_from_dataset(dataset_id=dataset.id)
 
-                                # Make sure that we call the preprocessing task for each feature
-                                features = Feature.objects.filter(name__in=feature_names).all()
-                                kalls = [call(immutable=True, kwargs={'feature_id': feature.id}) for feature in features]
+                            # Make sure that we call the preprocessing task for each feature
+                            features = Feature.objects.filter(name__in=feature_names).all()
+                            kalls = [call(immutable=True, kwargs={'feature_id': feature.id}) for feature in features]
 
-                                build_histogram_mock.assert_has_calls(kalls, any_order=True)
-                                calculate_feature_statistics_mock.assert_has_calls(kalls, any_order=True)
-                                downsample_feature_mock.assert_has_calls(kalls, any_order=True)
-                                build_spectrogram_mock.assert_has_calls(kalls, any_order=True)
+                            build_histogram_mock.assert_has_calls(kalls, any_order=True)
+                            calculate_feature_statistics_mock.assert_has_calls(kalls, any_order=True)
+                            build_spectrogram_mock.assert_has_calls(kalls, any_order=True)
 
-                                initialize_from_dataset_processing_callback_mock.assert_called_once_with(
-                                    kwargs={'dataset_id': dataset.id})
-                                chord_mock.assert_called_once()
+                            initialize_from_dataset_processing_callback_mock.assert_called_once_with(
+                                kwargs={'dataset_id': dataset.id})
+                            chord_mock.assert_called_once()
 
         self.assertEqual(feature_names, [feature.name for feature in Feature.objects.all()])
 
@@ -103,20 +101,17 @@ class TestCalculateDensities(TestCase):
             self.assertLess(y, 0.6)
 
 
-class TestDownsampleTask(TestCase):
-    def test_downsample_feature(self):
+class TestGetSamples(TestCase):
+    def test_get_samples(self):
         dataset = _build_test_dataset()
         feature = Feature.objects.get(dataset=dataset, name='Col2')
+        max_samples = 5
 
-        sample_count = 5
-        downsample_feature(feature_id=feature.id, sample_count=sample_count)
+        samples = get_samples(feature.id, max_samples)
 
-        samples = Sample.objects.filter(feature=feature)
-
-        # Test that samples get created from 10 datapoints
-        self.assertEqual(samples.count(), sample_count)
-        self.assertEqual([sample.value for sample in samples],
-                         [-0.426213735, -0.37090778, 0.097019415, -0.48668665, -0.178641])
+        self.assertEqual(samples,
+                         {str(feature.id): [-0.24040447000000001, 0.74163977000000003, -0.046074360000000002,
+                          -1.3395821000000001, -0.30984600000000001]})
 
 
 class TestCalculateFeatureStatistics(TestCase):
@@ -209,7 +204,7 @@ class TestCalculateHics(TestCase):
         calculation = CalculationFactory(result_calculation_map=result_calculation_map, max_iteration=1, type=Calculation.FIXED_FEATURE_SET_HICS)
         features = [feature1, feature2]
 
-        feature_ids = [feature1.id, feature2.id]
+        feature_ids = {feature1.id, feature2.id}
         calculate_hics(calculation_id=calculation.id, bivariate=False, feature_ids=feature_ids)
 
         # Relevancy
@@ -247,7 +242,7 @@ class TestCalculateHics(TestCase):
         result_calculation_map = ResultCalculationMapFactory(target=target)
         calculation = CalculationFactory(result_calculation_map=result_calculation_map, max_iteration=1, type=Calculation.FEATURE_SUPER_SET_HICS)
 
-        feature_ids = [feature1.id]
+        feature_ids = {feature1.id}
         calculate_hics(calculation_id=calculation.id, bivariate=False, feature_ids=feature_ids, calculate_supersets=True)
 
         # Relevancy
@@ -320,8 +315,23 @@ class TestCalculateArbitarySlices(TestCase):
 
 
 class TestCalculateConditionalDistributions(TestCase):
-    def test_calculate_conditional_distributions_categorical(self):
-        pass
+    def test_calculate_conditional_distributions(self):
+        dataset = _build_test_dataset()
 
-    def test_calculate_conditional_distributions_in_range(self):
-        pass
+        feature1 = Feature.objects.get(dataset=dataset, name='Col1')
+        feature2 = Feature.objects.get(dataset=dataset, name='Col2')
+        target = Feature.objects.get(dataset=dataset, name='Col3')
+
+        feature_constraints = [{'feature': feature1.id, 'categories': [0, 1]},
+                               {'feature': feature2.id, 'range': {'from_value': -0.1, 'to_value': 0.2}}]
+
+        max_samples = 2
+        distributions_and_samples = calculate_conditional_distributions(target.id, feature_constraints, max_samples)
+
+        self.assertEqual(distributions_and_samples,
+                         {'distribution': [{'value': 0.0, 'probability': 1.0}],
+                          'samples': {
+                             str(feature1.id): [0.0, 0.0],
+                             str(feature2.id): [-0.046074360000000002, -0.047435999999999999],
+                             str(target.id): [0.0, 0.0]}
+                          })

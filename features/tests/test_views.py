@@ -12,10 +12,10 @@ from rest_framework.test import APITestCase
 
 from features.models import Experiment, Dataset, Calculation
 from features.serializers import FeatureSerializer, BinSerializer, \
-    SampleSerializer, DatasetSerializer, ExperimentSerializer, ExperimentTargetSerializer, \
+    DatasetSerializer, ExperimentSerializer, ExperimentTargetSerializer, \
     RelevancySerializer, RedundancySerializer, SpectrogramSerializer, CalculationSerializer
 from features.tests.factories import FeatureFactory, BinFactory, SliceFactory, \
-    SampleFactory, DatasetFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, \
+    DatasetFactory, ExperimentFactory, RelevancyFactory, RedundancyFactory, \
     ResultCalculationMapFactory, SpectrogramFactory, CalculationFactory, CurrentExperimentFactory
 from users.tests.factories import UserFactory
 
@@ -244,7 +244,7 @@ class TestTargetDetailView(FexumAPITestCase):
             data = ExperimentTargetSerializer(instance=experiment).data
             self.assertEqual(experiment.target, target)
             self.assertEqual(response.json(), {'target': str(data['target'])})
-            calculate_hics.assert_called_once_with(immutable=True, kwargs={'calculation_id': calculation.id,
+            calculate_hics.assert_called_once_with(immutable=True, kwargs={'calculation_id': str(calculation.id),
                                                                            'calculate_redundancies': True})
             # TODO: Test chain call
 
@@ -425,20 +425,32 @@ class TestFeatureListView(FexumAPITestCase):
 
 class TestFeatureSamplesView(FexumAPITestCase):
     def test_retrieve_samples(self):
+        class get_mock():
+            def get(self):
+                return 'task_mock_return_value'
+
         user = UserFactory()
         self.client.force_authenticate(user)
 
-        sample = SampleFactory()
+        feature = FeatureFactory()
+        max_samples = 1337
 
-        url = reverse('feature-samples', args=[sample.feature.id])
-        response = self.client.get(url)
+        with patch('features.views.get_samples.apply_async') as task_mock:
+            task_mock.return_value = get_mock()
 
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        data = SampleSerializer(instance=sample).data
-        json_data = response.json()
-        self.assertEqual(len(json_data), 1)
-        self.assertAlmostEqual(json_data.pop(0).pop('value'), data['value'])
-        self.assertEqual(len(json_data), 0)
+            url = reverse('feature-samples', args=[feature.id, max_samples])
+            response = self.client.get(url)
+
+            task_mock.assert_called_once_with(kwargs={
+                'feature_id': str(feature.id),
+                'max_samples': 1337
+            })
+
+            self.assertEqual(response.status_code, HTTP_200_OK)
+
+            json_data = response.json()
+            self.assertEqual(len(json_data), 22)
+            self.assertEqual(json_data, 'task_mock_return_value')
 
     def test_retrieve_samples_not_found(self):
         pass
@@ -627,7 +639,7 @@ class TestFeatureRedundancyResults(FexumAPITestCase):
         self.validate_error_on_unauthenticated('feature-redundancy_results', lambda url: self.client.get(url), ['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
 
 
-class TestCondiditonalDistributionsView(FexumAPITestCase):
+class TestConditionalDistributionsView(FexumAPITestCase):
     def test_conditional_distributions_target_not_found(self):
         pass
 
@@ -638,44 +650,50 @@ class TestCondiditonalDistributionsView(FexumAPITestCase):
         pass
 
     def test_conditional_distributions_unauthenticated(self):
-        self.validate_error_on_unauthenticated('target-condidtional-distributions', lambda url: self.client.post(url, data={}, format='json'), ['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
+        self.validate_error_on_unauthenticated('target-conditional-distributions', lambda url: self.client.post(url, data={}, format='json'), ['7a662af1-5cf2-4782-bcf2-02d601bcbb6e'])
 
     def test_conditional_distributions(self):
+        class get_mock():
+            def get(self):
+                return {'task_mock_return_value': '1'}
+
         user = UserFactory()
         self.client.force_authenticate(user)
 
         target = FeatureFactory()
         feature = FeatureFactory(dataset=target.dataset)
-        url = reverse('target-condidtional-distributions', args=[target.id])
+        url = reverse('target-conditional-distributions', args=[target.id])
 
-        # Test for range
-        data_range = [{
-            'feature': feature.id,
-            'range': {
-                'from_value': -1,
-                'to_value': 1
+        data = [
+            {
+                'feature': feature.id,
+                'range': {
+                    'from_value': -1,
+                    'to_value': 1
+                },
+            },
+            {
+                'feature': feature.id,
+                'categories': [1.0, 3.0]
             }
-        }]
+        ]
 
         with patch('features.views.calculate_conditional_distributions.apply_async', ) as task_mock:
-            task_mock.get.return_value = []  # TODO: Proper data
-            response = self.client.post(url, data=data_range, format='json')
-            task_mock.assert_called_once_with(args=[target.id, data_range])
+            task_mock.return_value = get_mock()
+            response = self.client.post(url, data=data, format='json')
+            task_mock.assert_called_once_with(args=[target.id, data, None])
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), [])
+        self.assertEqual(response.json(), {'task_mock_return_value': '1'})
 
-        # Test for categories
-        data_categorical = [{
-            'feature': feature.id,
-            'categories': [1.0, 3.0]
-        }]
-
+        # Test with max_samples
+        max_samples = 2
+        url = reverse('target-conditional-distributions', args=[target.id, max_samples])
         with patch('features.views.calculate_conditional_distributions.apply_async', ) as task_mock:
-            task_mock.get.return_value = []  # TODO: Proper data
-            response = self.client.post(url, data=data_categorical, format='json')
-            task_mock.assert_called_once_with(args=[target.id, data_categorical])
+            task_mock.return_value = get_mock()
+            response = self.client.post(url, data=data, format='json')
+            task_mock.assert_called_once_with(args=[target.id, data, max_samples])
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.json(), [])
+        self.assertEqual(response.json(), {'task_mock_return_value': '1'})
 
 
 class TestFeatureSpectrogramView(FexumAPITestCase):
@@ -724,8 +742,8 @@ class TestFixedFeatureSetHicsView(FexumAPITestCase):
             response = self.client.post(url, data={'features': [feature1.id, feature2.id]}, format='json')
 
             task_mock.assert_called_once_with(kwargs={
-                'calculation_id': calculation.id,
-                'feature_ids': [feature1.id, feature2.id],
+                'calculation_id': str(calculation.id),
+                'feature_ids': {str(feature1.id), str(feature2.id)},
                 'bivariate': False,
                 'calculate_supersets': False,
                 'calculate_redundancies': False})

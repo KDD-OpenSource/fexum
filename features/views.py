@@ -13,15 +13,15 @@ from rest_framework.views import APIView
 
 from features.exceptions import NoCSVInArchiveFoundError, NotZIPFileError
 from features.models import Calculation
-from features.models import Feature, Bin, Sample, Dataset, Experiment, Slice, Relevancy, Redundancy, Spectrogram, \
+from features.models import Feature, Bin, Dataset, Experiment, Slice, Relevancy, Redundancy, Spectrogram, \
     ResultCalculationMap, CurrentExperiment
 from features.serializers import FeatureSerializer, BinSerializer, ExperimentSerializer, \
-    SampleSerializer, DatasetSerializer, RedundancySerializer, \
+    DatasetSerializer, RedundancySerializer, \
     ExperimentTargetSerializer, RelevancySerializer, ConditionalDistributionRequestSerializer, \
-    ConditionalDistributionResultSerializer, DensitySerializer, \
+    DensitySerializer, \
     SpectrogramSerializer, CalculationSerializer
 from features.tasks import calculate_hics, calculate_conditional_distributions, initialize_from_dataset, \
-    calculate_densities
+    calculate_densities, get_samples
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ class TargetDetailView(APIView):
                                                  current_iteration=0)
 
         tasks = [calculate_hics.subtask(immutable=True,
-                                        kwargs={'calculation_id': calculation.id,
+                                        kwargs={'calculation_id': str(calculation.id),
                                                 'calculate_redundancies': True})] * number_of_iterations
 
         chain(tasks).apply_async()
@@ -127,8 +127,8 @@ class FixedFeatureSetHicsView(APIView):
                                                  current_iteration=0,
                                                  features=features)
         calculate_hics.apply_async(kwargs={
-            'calculation_id': calculation.id,
-            'feature_ids': [feature.id for feature in features],
+            'calculation_id': str(calculation.id),
+            'feature_ids': {str(feature.id) for feature in features},
             'bivariate': False,
             'calculate_supersets': False,
             'calculate_redundancies': False})
@@ -182,10 +182,11 @@ class FeatureListView(APIView):
 
 
 class FeatureSamplesView(APIView):
-    def get(self, _, feature_id):
-        samples = Sample.objects.filter(feature_id=feature_id).all()
-        serializer = SampleSerializer(instance=samples, many=True)
-        return Response(serializer.data)
+    def get(self, _, feature_id, max_samples):
+        get_samples_task = get_samples.apply_async(kwargs={'feature_id': feature_id,
+                                                   'max_samples': None if max_samples is None else int(max_samples)})
+        samples = get_samples_task.get()
+        return Response(samples)
 
 
 class FeatureDensityView(APIView):
@@ -258,22 +259,19 @@ class TargetRedundancyResults(APIView):
         return Response(serializer.data)
 
 
-class CondiditonalDistributionsView(APIView):
-    def post(self, request, target_id):
+class ConditionalDistributionsView(APIView):
+    def post(self, request, target_id, max_samples):
         target = get_object_or_404(Feature, pk=target_id)
         serializer = ConditionalDistributionRequestSerializer(data=request.data, many=True)
         serializer.is_valid(raise_exception=True)
 
         # Execute calculation on worker and get a synchronous result back to the client
-        asnyc_result = calculate_conditional_distributions.apply_async(
-            args=[target.id, [dict(data) for data in serializer.data]],
-        )
 
-        # Serialize and validate output
-        results = asnyc_result.get()
-        response_serializer = ConditionalDistributionResultSerializer(data=results, many=True)
-        response_serializer.is_valid(raise_exception=True)
-        return Response(response_serializer.validated_data)
+        distributions_task = calculate_conditional_distributions.apply_async(
+            args=[target.id, [dict(data) for data in serializer.data],
+                  None if max_samples is None else int(max_samples)],
+        )
+        return Response(distributions_task.get())
 
 
 class CalculationListView(APIView):

@@ -109,16 +109,6 @@ class Feature(models.Model):
     categories = JSONField(default=None, blank=True, null=True)
 
 
-class Sample(models.Model):
-    class Meta:
-        ordering = ('order',)
-
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
-    value = models.FloatField()
-    order = models.IntegerField()
-
-
 class Bin(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
@@ -130,7 +120,7 @@ class Bin(models.Model):
 
 class Slice(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    object_definition = JSONField(default=[])   # json of hics internal slice representation for easy reconstruction 
+    object_definition = JSONField(default=[])   # json of hics internal slice representation for easy reconstruction
     output_definition = JSONField(default=[])   # json representation of slices for frontend
     features = models.ManyToManyField('Feature')  # TODO: Consider ManyToMany trough for relation uniquess
     result_calculation_map = models.ForeignKey(ResultCalculationMap, on_delete=models.CASCADE)

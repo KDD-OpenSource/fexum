@@ -3,7 +3,7 @@ from django.conf.urls import url
 from features.views import FeatureListView, FeatureSamplesView, DatasetListView, \
     FeatureHistogramView, FeatureSlicesView, TargetDetailView, DatasetViewUploadView, \
     ExperimentListView, FeatureRelevancyResultsView, ExperimentDetailView, TargetRedundancyResults, \
-    CondiditonalDistributionsView, FeatureDensityView, FeatureSpectrogramView, FixedFeatureSetHicsView, \
+    ConditionalDistributionsView, FeatureDensityView, FeatureSpectrogramView, FixedFeatureSetHicsView, \
     CalculationListView, CurrentExperimentView, SetCurrentExperimentView
 
 urlpatterns = [
@@ -24,7 +24,7 @@ urlpatterns = [
         name='dataset-features-list'),
 
     # Features
-    url(r'features/(?P<feature_id>[a-zA-Z0-9-]+)/samples$', FeatureSamplesView.as_view(),
+    url(r'features/(?P<feature_id>[a-zA-Z0-9-]+)/samples(?:/(?P<max_samples>[0-9]+))?$', FeatureSamplesView.as_view(),
         name='feature-samples'),
     url(r'features/(?P<feature_id>[a-zA-Z0-9-]+)/spectrogram', FeatureSpectrogramView.as_view(),
         name='feature-spectrogram'),
@@ -47,8 +47,8 @@ urlpatterns = [
         name='fixed-feature-set-hics'),
 
     # Distributions
-    url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/distributions$', CondiditonalDistributionsView.as_view(),
-        name='target-condidtional-distributions'),
+    url(r'targets/(?P<target_id>[a-zA-Z0-9-]+)/distributions(?:/(?P<max_samples>[0-9]+))?$',
+        ConditionalDistributionsView.as_view(), name='target-conditional-distributions'),
 
     # Calculations
     url(r'calculations$', CalculationListView.as_view(), name='calculation-list'),

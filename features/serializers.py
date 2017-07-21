@@ -1,8 +1,8 @@
 from rest_framework.serializers import ModelSerializer, JSONField, PrimaryKeyRelatedField, \
-    SerializerMethodField, Serializer, ListField, FloatField
+    SerializerMethodField, Serializer, ListField, FloatField, IntegerField
 from rest_framework.validators import ValidationError
 
-from features.models import Sample, Feature, Bin, Slice, Experiment, Dataset, Redundancy, \
+from features.models import Feature, Bin, Slice, Experiment, Dataset, Redundancy, \
     Relevancy, Spectrogram, Calculation
 
 
@@ -18,12 +18,6 @@ class BinSerializer(ModelSerializer):
     class Meta:
         model = Bin
         fields = ('from_value', 'to_value', 'count')
-
-
-class SampleSerializer(ModelSerializer):
-    class Meta:
-        model = Sample
-        fields = ('value', 'order')
 
 
 class FeatureSliceSerializer(ModelSerializer):
@@ -131,11 +125,6 @@ class ConditionalDistributionRequestSerializer(Serializer):
         if (attrs.get('categories') is None) == (attrs.get('range') is None):
             raise ValidationError('Specify either a range or categories.')
         return attrs
-
-
-class ConditionalDistributionResultSerializer(Serializer):
-    value = FloatField(required=True)
-    probability = FloatField(required=True)
 
 
 class DensitySerializer(Serializer):

@@ -1,5 +1,5 @@
 from factory import DjangoModelFactory, Sequence, SubFactory
-from features.models import Sample, Feature, Bin, Slice, Dataset, Experiment, ResultCalculationMap, Redundancy, \
+from features.models import Feature, Bin, Slice, Dataset, Experiment, ResultCalculationMap, Redundancy, \
     Relevancy, Spectrogram, Calculation, CurrentExperiment
 from factory.fuzzy import FuzzyFloat, FuzzyInteger, FuzzyText
 from factory.django import FileField, ImageField
@@ -67,15 +67,6 @@ class BinFactory(DjangoModelFactory):
     count = FuzzyInteger(1, 1000)
 
 
-class SampleFactory(DjangoModelFactory):
-    class Meta:
-        model = Sample
-
-    feature = SubFactory(FeatureFactory)
-    value = FuzzyFloat(0, 200)
-    order = Sequence(lambda n: n)
-
-
 class ResultCalculationMapFactory(DjangoModelFactory):
     class Meta:
         model = ResultCalculationMap
@@ -86,7 +77,7 @@ class RelevancyFactory(DjangoModelFactory):
     class Meta:
         model = Relevancy
 
-    iteration = FuzzyInteger(1,100)
+    iteration = FuzzyInteger(1, 100)
     relevancy = FuzzyFloat(0, 1)
     result_calculation_map = SubFactory(ResultCalculationMapFactory)
 
@@ -95,7 +86,7 @@ class RelevancyFactory(DjangoModelFactory):
         if not create:
             return
         if extracted:
-            for feature in extracted:    
+            for feature in extracted:
                 self.features.add(feature)
 
 
