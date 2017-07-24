@@ -46,7 +46,7 @@ class CurrentExperiment(models.Model):
 class ResultCalculationMap(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     created_at = models.DateTimeField(editable=False, default=now)  # TODO: Test
-    target = models.ForeignKey('Feature', on_delete=models.CASCADE)
+    target = models.ForeignKey(Feature, on_delete=models.CASCADE)
 
 
 class Calculation(models.Model):
@@ -68,13 +68,13 @@ class Calculation(models.Model):
     max_iteration = models.IntegerField(default=0)
     current_iteration = models.IntegerField(default=0)
     type = models.CharField(max_length=30, choices=RESULT_TYPE, default=NONE)
-    features = models.ManyToManyField('Feature', blank=True)
+    features = models.ManyToManyField(Feature, blank=True)
 
 
 class Relevancy(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     relevancy = models.FloatField()
-    features = models.ManyToManyField('Feature')
+    features = models.ManyToManyField(Feature)
     result_calculation_map = models.ForeignKey(ResultCalculationMap, on_delete=models.CASCADE)
     iteration = models.IntegerField()
 
