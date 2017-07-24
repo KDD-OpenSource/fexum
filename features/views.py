@@ -124,8 +124,10 @@ class FixedFeatureSetHicsView(APIView):
         calculation = Calculation.objects.create(type=Calculation.FIXED_FEATURE_SET_HICS,
                                                  result_calculation_map=result_calculation_map,
                                                  max_iteration=1,
-                                                 current_iteration=0,
-                                                 features=features)
+                                                 current_iteration=0)
+        calculation.features = features
+        calculation.save(update_fields=['features'])
+
         calculate_hics.apply_async(kwargs={
             'calculation_id': str(calculation.id),
             'feature_ids': [str(feature.id) for feature in features],
