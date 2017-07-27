@@ -743,7 +743,7 @@ class TestFixedFeatureSetHicsView(FexumAPITestCase):
 
             task_mock.assert_called_once_with(kwargs={
                 'calculation_id': str(calculation.id),
-                'feature_ids': {str(feature1.id), str(feature2.id)},
+                'feature_ids': [str(feature1.id), str(feature2.id)],
                 'bivariate': False,
                 'calculate_supersets': False,
                 'calculate_redundancies': False})
