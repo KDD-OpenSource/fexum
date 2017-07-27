@@ -126,7 +126,7 @@ class FixedFeatureSetHicsView(APIView):
                                                  max_iteration=1,
                                                  current_iteration=0)
         calculation.features = features
-        calculation.save(update_fields=['features'])
+        calculation.save()
 
         calculate_hics.apply_async(kwargs={
             'calculation_id': str(calculation.id),
