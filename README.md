@@ -11,6 +11,8 @@ The [frontend](https://github.com/KDD-OpenSource/fexum-frontend) and
 [correlation algorithm](https://github.com/KDD-OpenSource/fexum-hics)
 are located in different repositories.
 
+The basis for this application has been made into a [paper](https://doi.org/10.1007/978-3-319-71273-4_40), which was submitted to and accepted by ECML PKDD 2017, and published as part of the conference proceedings in the "Lecture Notes in Computer Science" (LNCS) series.
+
 ## Contributors
 * [Louis Kirsch](https://github.com/timediv)
 * [Niklas Riekenbrauck](https://github.com/nikriek)
